@@ -1,0 +1,707 @@
+{% extends "base.html" %}
+
+{% block title %}Yoga Practice - Mental Health{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="text-center mb-4">🧘‍♀️ Yoga Practice</h1>
+            <p class="text-center text-muted mb-5">
+                Strengthen your body and mind through yoga poses and sequences
+            </p>
+        </div>
+    </div>
+
+    <!-- Yoga Categories -->
+    <div class="row mb-5">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 yoga-card">
+                <div class="card-body text-center">
+                    <div class="yoga-icon mb-3">
+                        <i class="fas fa-sun text-warning" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">Morning Flow</h5>
+                    <p class="card-text">Energizing sequence to start your day</p>
+                    <div class="mb-3">
+                        <span class="badge bg-warning">15 minutes</span>
+                        <span class="badge bg-success">Beginner</span>
+                    </div>
+                    <button class="btn btn-warning start-yoga" data-sequence="morning">
+                        <i class="fas fa-play"></i> Start Flow
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 yoga-card">
+                <div class="card-body text-center">
+                    <div class="yoga-icon mb-3">
+                        <i class="fas fa-moon text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">Evening Wind Down</h5>
+                    <p class="card-text">Relaxing poses for better sleep</p>
+                    <div class="mb-3">
+                        <span class="badge bg-primary">20 minutes</span>
+                        <span class="badge bg-info">All Levels</span>
+                    </div>
+                    <button class="btn btn-primary start-yoga" data-sequence="evening">
+                        <i class="fas fa-play"></i> Start Sequence
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 yoga-card">
+                <div class="card-body text-center">
+                    <div class="yoga-icon mb-3">
+                        <i class="fas fa-dumbbell text-danger" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">Stress Relief</h5>
+                    <p class="card-text">Target tension and anxiety</p>
+                    <div class="mb-3">
+                        <span class="badge bg-danger">10 minutes</span>
+                        <span class="badge bg-warning">Intermediate</span>
+                    </div>
+                    <button class="btn btn-danger start-yoga" data-sequence="stress-relief">
+                        <i class="fas fa-play"></i> Start Practice
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Individual Poses -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h3 class="text-center mb-4">🧘 Individual Poses</h3>
+        </div>
+    </div>
+
+    <div class="row mb-5">
+        <div class="col-md-3 mb-3">
+            <div class="card pose-card text-center" data-pose="tree">
+                <div class="card-body">
+                    <div class="pose-icon mb-2">
+                        <i class="fas fa-tree text-success" style="font-size: 2rem;"></i>
+                    </div>
+                    <h6 class="card-title">Tree Pose</h6>
+                    <p class="card-text small">Balance & focus</p>
+                    <button class="btn btn-outline-success btn-sm show-pose" data-pose="tree">
+                        View
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card pose-card text-center" data-pose="warrior">
+                <div class="card-body">
+                    <div class="pose-icon mb-2">
+                        <i class="fas fa-shield-alt text-danger" style="font-size: 2rem;"></i>
+                    </div>
+                    <h6 class="card-title">Warrior II</h6>
+                    <p class="card-text small">Strength & courage</p>
+                    <button class="btn btn-outline-danger btn-sm show-pose" data-pose="warrior">
+                        View
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card pose-card text-center" data-pose="downward-dog">
+                <div class="card-body">
+                    <div class="pose-icon mb-2">
+                        <i class="fas fa-dog text-warning" style="font-size: 2rem;"></i>
+                    </div>
+                    <h6 class="card-title">Downward Dog</h6>
+                    <p class="card-text small">Stretch & energize</p>
+                    <button class="btn btn-outline-warning btn-sm show-pose" data-pose="downward-dog">
+                        View
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card pose-card text-center" data-pose="child">
+                <div class="card-body">
+                    <div class="pose-icon mb-2">
+                        <i class="fas fa-pray text-info" style="font-size: 2rem;"></i>
+                    </div>
+                    <h6 class="card-title">Child's Pose</h6>
+                    <p class="card-text small">Rest & restore</p>
+                    <button class="btn btn-outline-info btn-sm show-pose" data-pose="child">
+                        View
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Yoga Player Modal -->
+    <div class="modal fade" id="yogaModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="yogaTitle">Yoga Sequence</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="pose-visualization text-center mb-4">
+                                <div class="pose-circle" id="poseCircle">
+                                    <i class="fas fa-om" id="poseIcon" style="font-size: 4rem; color: white;"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="pose-instructions">
+                                <h4 id="currentPose">Get ready...</h4>
+                                <p id="poseDescription">Prepare your mat and find a comfortable space.</p>
+                                <div class="benefits mt-3">
+                                    <h6>Benefits:</h6>
+                                    <ul id="poseBenefits">
+                                        <li>Improves flexibility</li>
+                                        <li>Reduces stress</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sequence-controls text-center mt-4">
+                        <div class="timer-display mb-3">
+                            <h4 id="sequenceTimer">00:00</h4>
+                            <div class="progress">
+                                <div class="progress-bar" id="sequenceProgress" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="pose-counter mb-3">
+                            <span id="currentPoseNumber">0</span> / <span id="totalPoses">0</span>
+                        </div>
+
+                        <div class="controls">
+                            <button class="btn btn-success me-2" id="startSequenceBtn">
+                                <i class="fas fa-play"></i> Start Sequence
+                            </button>
+                            <button class="btn btn-warning me-2" id="nextPoseBtn" style="display: none;">
+                                <i class="fas fa-arrow-right"></i> Next Pose
+                            </button>
+                            <button class="btn btn-secondary" id="resetSequenceBtn">
+                                <i class="fas fa-redo"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pose Detail Modal -->
+    <div class="modal fade" id="poseModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="poseDetailTitle">Pose Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="pose-visual text-center mb-3">
+                                <i class="fas fa-om" id="detailPoseIcon" style="font-size: 6rem; color: #6c757d;"></i>
+                            </div>
+                            <!-- YouTube Video Section -->
+                            <div class="video-section">
+                                <h6 class="text-center mb-3">📹 Watch Tutorial</h6>
+                                <div class="ratio ratio-16x9">
+                                    <iframe id="poseVideo" src="" title="Yoga Pose Tutorial" frameborder="0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                            allowfullscreen style="border-radius: 8px;">
+                                    </iframe>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h4 id="detailPoseName">Pose Name</h4>
+                            <p id="detailPoseDescription">Description</p>
+                            <h6>Steps:</h6>
+                            <ol id="detailPoseSteps">
+                                <li>Step 1</li>
+                                <li>Step 2</li>
+                            </ol>
+                            <h6>Benefits:</h6>
+                            <ul id="detailPoseBenefits">
+                                <li>Benefit 1</li>
+                                <li>Benefit 2</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Benefits Section -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h4 class="card-title text-center mb-4">🌟 Benefits of Yoga</h4>
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <div class="text-center">
+                                <i class="fas fa-brain text-primary mb-2" style="font-size: 2rem;"></i>
+                                <h6>Mental Clarity</h6>
+                                <p class="small text-muted">Improved focus and concentration</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="text-center">
+                                <i class="fas fa-heartbeat text-danger mb-2" style="font-size: 2rem;"></i>
+                                <h6>Stress Relief</h6>
+                                <p class="small text-muted">Reduced anxiety and tension</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="text-center">
+                                <i class="fas fa-dumbbell text-success mb-2" style="font-size: 2rem;"></i>
+                                <h6>Physical Strength</h6>
+                                <p class="small text-muted">Increased flexibility and muscle tone</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="text-center">
+                                <i class="fas fa-moon text-info mb-2" style="font-size: 2rem;"></i>
+                                <h6>Better Sleep</h6>
+                                <p class="small text-muted">Improved sleep quality</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.yoga-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+}
+
+.yoga-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.pose-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.pose-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.pose-circle {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    box-shadow: 0 0 30px rgba(255, 154, 158, 0.3);
+}
+
+.pose-visualization {
+    min-height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+</style>
+
+<script>
+const yogaSequences = {
+    'morning': {
+        name: 'Morning Flow',
+        duration: 15,
+        videoUrl: 'https://www.youtube.com/embed/4pKly2JojMw',
+        poses: [
+            {
+                name: 'Mountain Pose',
+                description: 'Stand tall with feet together, arms at sides',
+                icon: 'fas fa-male',
+                benefits: ['Improves posture', 'Builds strength', 'Increases awareness'],
+                holdTime: 30
+            },
+            {
+                name: 'Forward Fold',
+                description: 'Bend forward from hips, let hands reach toward ground',
+                icon: 'fas fa-arrows-alt-v',
+                benefits: ['Stretches hamstrings', 'Calms mind', 'Relieves tension'],
+                holdTime: 30
+            },
+            {
+                name: 'Downward Dog',
+                description: 'Form an inverted V-shape with your body',
+                icon: 'fas fa-dog',
+                benefits: ['Strengthens arms', 'Stretches back', 'Energizes body'],
+                holdTime: 45
+            },
+            {
+                name: 'Warrior I',
+                description: 'Step forward into a lunge, raise arms overhead',
+                icon: 'fas fa-shield-alt',
+                benefits: ['Builds strength', 'Improves balance', 'Boosts confidence'],
+                holdTime: 30
+            },
+            {
+                name: 'Tree Pose',
+                description: 'Balance on one leg, place other foot on inner thigh',
+                icon: 'fas fa-tree',
+                benefits: ['Improves balance', 'Strengthens legs', 'Enhances focus'],
+                holdTime: 30
+            }
+        ]
+    },
+    'evening': {
+        name: 'Evening Wind Down',
+        duration: 20,
+        videoUrl: 'https://www.youtube.com/embed/8TuA0lAa2n0',
+        poses: [
+            {
+                name: 'Seated Meditation',
+                description: 'Sit comfortably with spine straight, hands in lap',
+                icon: 'fas fa-om',
+                benefits: ['Calms mind', 'Reduces stress', 'Improves focus'],
+                holdTime: 60
+            },
+            {
+                name: 'Cat-Cow Stretch',
+                description: 'Alternate between arching and rounding your back',
+                icon: 'fas fa-cat',
+                benefits: ['Relieves back tension', 'Improves flexibility', 'Soothes spine'],
+                holdTime: 60
+            },
+            {
+                name: 'Child\'s Pose',
+                description: 'Kneel and fold forward, arms extended',
+                icon: 'fas fa-pray',
+                benefits: ['Stretches back', 'Calms nervous system', 'Restores energy'],
+                holdTime: 60
+            },
+            {
+                name: 'Seated Forward Bend',
+                description: 'Sit with legs extended, fold forward from hips',
+                icon: 'fas fa-arrows-alt-v',
+                benefits: ['Stretches hamstrings', 'Calms mind', 'Relieves anxiety'],
+                holdTime: 45
+            },
+            {
+                name: 'Legs Up Wall',
+                description: 'Lie on back, legs extended up against wall',
+                icon: 'fas fa-long-arrow-alt-up',
+                benefits: ['Improves circulation', 'Reduces swelling', 'Promotes relaxation'],
+                holdTime: 90
+            }
+        ]
+    },
+    'stress-relief': {
+        name: 'Stress Relief Flow',
+        duration: 10,
+        videoUrl: 'https://www.youtube.com/embed/v7pWVTf9PX0',
+        poses: [
+            {
+                name: 'Easy Pose',
+                description: 'Sit cross-legged with hands on knees',
+                icon: 'fas fa-om',
+                benefits: ['Grounds energy', 'Calms mind', 'Improves posture'],
+                holdTime: 60
+            },
+            {
+                name: 'Neck Rolls',
+                description: 'Gently roll head in circles to release tension',
+                icon: 'fas fa-undo',
+                benefits: ['Relieves neck tension', 'Improves mobility', 'Reduces headaches'],
+                holdTime: 30
+            },
+            {
+                name: 'Shoulder Rolls',
+                description: 'Roll shoulders forward and backward',
+                icon: 'fas fa-undo',
+                benefits: ['Releases shoulder tension', 'Improves circulation', 'Reduces stress'],
+                holdTime: 30
+            },
+            {
+                name: 'Seated Twist',
+                description: 'Twist gently to each side while seated',
+                icon: 'fas fa-sync',
+                benefits: ['Stretches spine', 'Massages organs', 'Relieves back tension'],
+                holdTime: 30
+            },
+            {
+                name: 'Corpse Pose',
+                description: 'Lie flat on back, completely relaxed',
+                icon: 'fas fa-bed',
+                benefits: ['Ultimate relaxation', 'Reduces stress', 'Promotes sleep'],
+                holdTime: 120
+            }
+        ]
+    }
+};
+
+const poseDetails = {
+    'tree': {
+        name: 'Vrksasana (Tree Pose)',
+        description: 'A balancing pose that improves focus and strengthens the legs.',
+        icon: 'fas fa-tree',
+        videoUrl: 'https://youtu.be/ZIAnRmD7FqY?si=SNqRrE4WgOq9MYv_',
+        steps: [
+            'Stand tall in Mountain Pose',
+            'Shift weight to left foot',
+            'Place right foot on inner left thigh or calf',
+            'Bring hands to heart center or overhead',
+            'Hold and breathe, then switch sides'
+        ],
+        benefits: [
+            'Improves balance and coordination',
+            'Strengthens legs and core',
+            'Enhances focus and concentration',
+            'Stretches inner thighs and groin'
+        ]
+    },
+    'warrior': {
+        name: 'Virabhadrasana II (Warrior II)',
+        description: 'A powerful standing pose that builds strength and confidence.',
+        icon: 'fas fa-shield-alt',
+        videoUrl: 'https://youtu.be/bcYeuESSrP0?si=rLNh7ubjYS_YIHjD',
+        steps: [
+            'Step feet wide apart',
+            'Turn right foot out 90 degrees',
+            'Bend right knee over ankle',
+            'Extend arms parallel to floor',
+            'Gaze over right fingertips'
+        ],
+        benefits: [
+            'Strengthens legs and arms',
+            'Opens hips and chest',
+            'Builds stamina and concentration',
+            'Improves balance and stability'
+        ]
+    },
+    'downward-dog': {
+        name: 'Adho Mukha Svanasana (Downward Dog)',
+        description: 'An inversion that stretches the entire body and builds strength.',
+        icon: 'fas fa-dog',
+        videoUrl: 'https://youtu.be/zK1cLctwBsk?si=emgmRbXy99NNHTP',
+        steps: [
+            'Start on hands and knees',
+            'Lift hips up and back',
+            'Straighten legs and arms',
+            'Form an inverted V-shape',
+            'Press heels toward ground'
+        ],
+        benefits: [
+            'Stretches hamstrings and calves',
+            'Strengthens arms and shoulders',
+            'Energizes the body',
+            'Calms the mind'
+        ]
+    },
+    'child': {
+        name: 'Balasana (Child\'s Pose)',
+        description: 'A restorative pose that promotes relaxation and introspection.',
+        icon: 'fas fa-pray',
+        videoUrl: 'https://youtu.be/2MJGg-dUKh0?si=qjMjgCTBMZyDk5CW',
+        steps: [
+            'Kneel on mat with knees wide',
+            'Fold forward, arms extended',
+            'Rest forehead on ground',
+            'Breathe deeply and relax',
+            'Hold for several breaths'
+        ],
+        benefits: [
+            'Stretches hips and thighs',
+            'Calms the nervous system',
+            'Relieves stress and fatigue',
+            'Promotes mindfulness'
+        ]
+    }
+};
+
+let currentSequence = null;
+let currentPoseIndex = -1;
+let sequenceTimer = null;
+let poseTimer = null;
+let timeLeft = 0;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Sequence buttons
+    document.querySelectorAll('.start-yoga').forEach(button => {
+        button.addEventListener('click', function() {
+            const sequence = this.getAttribute('data-sequence');
+            startYogaSequence(sequence);
+        });
+    });
+
+    // Pose detail buttons
+    document.querySelectorAll('.show-pose').forEach(button => {
+        button.addEventListener('click', function() {
+            const pose = this.getAttribute('data-pose');
+            showPoseDetails(pose);
+        });
+    });
+
+    // Sequence controls
+    document.getElementById('startSequenceBtn').addEventListener('click', startCurrentSequence);
+    document.getElementById('nextPoseBtn').addEventListener('click', nextPose);
+    document.getElementById('resetSequenceBtn').addEventListener('click', resetSequence);
+});
+
+function startYogaSequence(sequenceKey) {
+    currentSequence = yogaSequences[sequenceKey];
+    currentPoseIndex = -1;
+
+    document.getElementById('yogaTitle').textContent = currentSequence.name;
+    document.getElementById('totalPoses').textContent = currentSequence.poses.length;
+
+    const modal = new bootstrap.Modal(document.getElementById('yogaModal'));
+    modal.show();
+
+    resetSequence();
+}
+
+function startCurrentSequence() {
+    document.getElementById('startSequenceBtn').style.display = 'none';
+    document.getElementById('nextPoseBtn').style.display = 'inline-block';
+    nextPose();
+}
+
+function nextPose() {
+    currentPoseIndex++;
+
+    if (currentPoseIndex >= currentSequence.poses.length) {
+        completeSequence();
+        return;
+    }
+
+    const pose = currentSequence.poses[currentPoseIndex];
+    document.getElementById('currentPoseNumber').textContent = currentPoseIndex + 1;
+    document.getElementById('currentPose').textContent = pose.name;
+    document.getElementById('poseDescription').textContent = pose.description;
+    document.getElementById('poseIcon').className = pose.icon;
+
+    // Update benefits
+    const benefitsList = document.getElementById('poseBenefits');
+    benefitsList.innerHTML = '';
+    pose.benefits.forEach(benefit => {
+        const li = document.createElement('li');
+        li.textContent = benefit;
+        benefitsList.appendChild(li);
+    });
+
+    // Start pose timer
+    startPoseTimer(pose.holdTime);
+}
+
+function startPoseTimer(duration) {
+    clearInterval(poseTimer);
+    let poseTimeLeft = duration;
+
+    poseTimer = setInterval(() => {
+        poseTimeLeft--;
+
+        const minutes = Math.floor(poseTimeLeft / 60);
+        const seconds = poseTimeLeft % 60;
+        document.getElementById('sequenceTimer').textContent =
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        const progress = ((duration - poseTimeLeft) / duration) * 100;
+        document.getElementById('sequenceProgress').style.width = `${progress}%`;
+
+        if (poseTimeLeft <= 0) {
+            clearInterval(poseTimer);
+            // Auto-advance to next pose after 3 seconds
+            setTimeout(() => {
+                if (document.getElementById('nextPoseBtn').style.display !== 'none') {
+                    nextPose();
+                }
+            }, 3000);
+        }
+    }, 1000);
+}
+
+function resetSequence() {
+    clearInterval(poseTimer);
+    currentPoseIndex = -1;
+    document.getElementById('currentPoseNumber').textContent = '0';
+    document.getElementById('currentPose').textContent = 'Get ready...';
+    document.getElementById('poseDescription').textContent = 'Prepare your mat and find a comfortable space.';
+    document.getElementById('sequenceTimer').textContent = '00:00';
+    document.getElementById('sequenceProgress').style.width = '0%';
+    document.getElementById('startSequenceBtn').style.display = 'inline-block';
+    document.getElementById('nextPoseBtn').style.display = 'none';
+}
+
+function completeSequence() {
+    document.getElementById('currentPose').textContent = 'Sequence Complete!';
+    document.getElementById('poseDescription').textContent = 'Well done! Take a moment to notice how your body feels.';
+    document.getElementById('nextPoseBtn').style.display = 'none';
+    document.getElementById('startSequenceBtn').innerHTML = '<i class="fas fa-redo"></i> Practice Again';
+    document.getElementById('startSequenceBtn').style.display = 'inline-block';
+
+    setTimeout(() => {
+        alert('🎉 Yoga sequence completed! How do you feel?');
+    }, 2000);
+}
+
+function showPoseDetails(poseKey) {
+    const pose = poseDetails[poseKey];
+    document.getElementById('poseDetailTitle').textContent = pose.name;
+    document.getElementById('detailPoseName').textContent = pose.name;
+    document.getElementById('detailPoseDescription').textContent = pose.description;
+    document.getElementById('detailPoseIcon').className = pose.icon;
+
+    // Set video URL
+    const videoFrame = document.getElementById('poseVideo');
+    if (pose.videoUrl) {
+        videoFrame.src = pose.videoUrl;
+    } else {
+        videoFrame.src = '';
+    }
+
+    // Update steps
+    const stepsList = document.getElementById('detailPoseSteps');
+    stepsList.innerHTML = '';
+    pose.steps.forEach(step => {
+        const li = document.createElement('li');
+        li.textContent = step;
+        stepsList.appendChild(li);
+    });
+
+    // Update benefits
+    const benefitsList = document.getElementById('detailPoseBenefits');
+    benefitsList.innerHTML = '';
+    pose.benefits.forEach(benefit => {
+        const li = document.createElement('li');
+        li.textContent = benefit;
+        benefitsList.appendChild(li);
+    });
+
+    const modal = new bootstrap.Modal(document.getElementById('poseModal'));
+    modal.show();
+}
+</script>
+
+{% endblock %}

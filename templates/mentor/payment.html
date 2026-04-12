@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}Mentor Connect Payment - Marg Darshak{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-6">
+      <div class="card shadow">
+        <div class="card-header bg-warning text-dark text-center">
+          <h3 class="mb-0">💳 Pay for Mentor Access</h3>
+        </div>
+        <div class="card-body text-center">
+          <div class="mb-4">
+            <img src="/static/icon-192.png" alt="MargDarshak Logo" style="width: 60px; height: 60px; border-radius: 10px;">
+          </div>
+          
+          <h4 class="mb-3">₹99 for 1-Month Mentor Access</h4>
+          <p class="text-muted mb-4">Send payment to any UPI ID below and submit the form.</p>
+          
+          <div class="payment-options">
+            <div class="row g-3">
+              <div class="col-12">
+                <div class="card border-primary">
+                  <div class="card-body">
+                    <h6 class="text-primary">📱 PhonePe</h6>
+                    <p class="mb-1"><strong>7620260012@ibl</strong></p>
+                    <button class="btn btn-sm btn-outline-primary" onclick="copyToClipboard('7620260012@ibl')">Copy UPI ID</button>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="col-12">
+                <div class="card border-success">
+                  <div class="card-body">
+                    <h6 class="text-success">💰 Paytm</h6>
+                    <p class="mb-1"><strong>7620260012@ptyes</strong></p>
+                    <button class="btn btn-sm btn-outline-success" onclick="copyToClipboard('7620260012@ptyes')">Copy UPI ID</button>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="col-12">
+                <div class="card border-warning">
+                  <div class="card-body">
+                    <h6 class="text-warning">💳 Google Pay</h6>
+                    <p class="mb-1"><strong>mryashu9300@okaxis</strong></p>
+                    <button class="btn btn-sm btn-outline-warning" onclick="copyToClipboard('mryashu9300@okaxis')">Copy UPI ID</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="alert alert-info mt-4">
+            <h6>📋 Payment Instructions:</h6>
+            <ol class="text-start mb-3">
+              <li>Choose your preferred UPI app</li>
+              <li>Send exactly ₹99</li>
+              <li>Note: <strong>{{ g.current_user.email }}</strong></li>
+              <li>Fill the form below with UTR number</li>
+            </ol>
+          </div>
+          
+          <form method="post" action="{{ url_for('mentor_request') }}">
+            <div class="mb-3">
+              <label class="form-label">UTR/Transaction ID</label>
+              <input type="text" name="utr" class="form-control" placeholder="Enter UTR from payment" required>
+              <div class="form-text">You can find UTR in your UPI app transaction details</div>
+            </div>
+            
+            <button type="submit" class="btn btn-success btn-lg">
+              <i class="fas fa-check me-2"></i>I Have Paid - Submit Request
+            </button>
+          </form>
+          
+          <p class="small text-muted mt-3">Access will be activated after payment verification (within 24 hours).</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Show success message
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('btn-success');
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.classList.remove('btn-success');
+        }, 2000);
+    });
+}
+</script>
+{% endblock %}

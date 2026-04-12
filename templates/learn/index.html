@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}Learning Guides - Marg Darshak{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row mb-4">
+    <div class="col-12 text-center">
+      <h2>Beginner Learning Guides</h2>
+      <p class="text-muted">Step-by-step guides for essential platforms and tools. Perfect for 1st/2nd year students with zero knowledge.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    {% for platform in platforms %}
+    <div class="col-md-4 mb-4">
+      <a href="{{ url_for('learn_platform', platform=platform.id) }}" class="text-decoration-none">
+        <div class="card h-100 shadow-sm hover-card">
+          <div class="card-body d-flex flex-column text-center">
+            <div class="mb-3" style="font-size: 3rem;">{{ platform.icon }}</div>
+            <h5 class="card-title">{{ platform.name }}</h5>
+            <p class="card-text text-muted small">{{ platform.description }}</p>
+            <div class="mt-auto">
+              <span class="btn btn-outline-primary">Read Guide →</span>
+            </div>
+          </div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<style>
+.hover-card:hover {
+  transform: translateY(-5px);
+  transition: transform 0.2s;
+}
+</style>
+{% endblock %}

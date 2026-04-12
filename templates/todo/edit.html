@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Header -->
+            <div class="text-center mb-4">
+                <h1 class="display-5 fw-bold text-primary">✏️ Task Edit करें</h1>
+                <p class="text-muted">Task को update करें</p>
+            </div>
+
+            <!-- Edit Task Form -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="post">
+                        <div class="mb-3">
+                            <label for="title" class="form-label fw-bold">📝 Task Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="title" name="title" required
+                                   value="{{ task.title }}" placeholder="Example: Study Data Structures for 30 minutes">
+                            <div class="form-text">Task का short और clear title लिखें</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label fw-bold">📖 Description (Optional)</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                      placeholder="Extra details about this task...">{{ task.description or '' }}</textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="category" class="form-label fw-bold">🏷️ Category <span class="text-danger">*</span></label>
+                                <select class="form-select" id="category" name="category" required>
+                                    <option value="">Choose category</option>
+                                    <option value="Study" {% if task.category == 'Study' %}selected{% endif %}>📚 Study</option>
+                                    <option value="Skill" {% if task.category == 'Skill' %}selected{% endif %}>💪 Skill Development</option>
+                                    <option value="Health" {% if task.category == 'Health' %}selected{% endif %}>❤️ Health & Wellness</option>
+                                    <option value="Personal" {% if task.category == 'Personal' %}selected{% endif %}>🏠 Personal</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="priority" class="form-label fw-bold">⭐ Priority <span class="text-danger">*</span></label>
+                                <select class="form-select" id="priority" name="priority" required>
+                                    <option value="">Choose priority</option>
+                                    <option value="Low" {% if task.priority == 'Low' %}selected{% endif %}>🟢 Low - कर लेंगे जब समय मिलेगा</option>
+                                    <option value="Medium" {% if task.priority == 'Medium' %}selected{% endif %}>🟡 Medium - आज जरूर करना है</option>
+                                    <option value="High" {% if task.priority == 'High' %}selected{% endif %}>🔴 High - सबसे पहले करना है</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="deadline" class="form-label fw-bold">📅 Deadline <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="deadline" name="deadline" required
+                                   value="{{ task.deadline }}">
+                            <div class="form-text">Task kab tak complete करना है</div>
+                        </div>
+
+                        <!-- Current Status -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">📊 Current Status</label>
+                            <div>
+                                {% if task.status == 'Completed' %}
+                                    <span class="badge bg-success fs-6">✅ Completed</span>
+                                {% else %}
+                                    <span class="badge bg-warning fs-6">⏳ Pending</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Productivity Tips -->
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">📚 याद रखें:</h6>
+                            <ul class="mb-0 small">
+                                <li>एक दिन में सिर्फ 3-5 tasks रखें (overloading मत करें)</li>
+                                <li>बड़े tasks को छोटे steps में तोड़ें</li>
+                                <li>Priority का सही selection बहुत important है</li>
+                                <li>Deadline realistic रखें, बहुत दूर मत</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                💾 Changes Save करें
+                            </button>
+                            <a href="{{ url_for('todo') }}" class="btn btn-outline-secondary btn-lg">
+                                🔙 Back to Tasks
+                            </a>
+                            <form method="post" action="{{ url_for('delete_task', task_id=task.id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this task?')">
+                                <button type="submit" class="btn btn-outline-danger btn-lg">
+                                    🗑️ Delete Task
+                                </button>
+                            </form>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Set minimum date to today
+document.getElementById('deadline').min = new Date().toISOString().split('T')[0];
+</script>
+
+<style>
+    .card {
+        border: none;
+        border-radius: 10px;
+    }
+    .form-control, .form-select {
+        border-radius: 8px;
+    }
+</style>
+{% endblock %}

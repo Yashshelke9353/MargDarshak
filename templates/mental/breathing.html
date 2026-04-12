@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{% block title %}Guided Breathing - Marg Darshak{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header text-center">
+                    <h2>🌬️ Guided Breathing Exercise</h2>
+                    <p class="text-muted">Follow the breathing pattern below for relaxation</p>
+                </div>
+                <div class="card-body text-center">
+                    <!-- Breathing Circle -->
+                    <div class="mb-4">
+                        <div id="breathing-circle" class="breathing-circle">
+                            <div class="inner-circle">
+                                <h3 id="instruction">Breathe In</h3>
+                                <p id="timer">4</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controls -->
+                    <div class="mb-4">
+                        <button id="start-btn" class="btn btn-primary btn-lg">Start Breathing</button>
+                        <button id="pause-btn" class="btn btn-warning btn-lg" style="display:none;">Pause</button>
+                        <button id="reset-btn" class="btn btn-secondary btn-lg">Reset</button>
+                    </div>
+
+                    <!-- Progress -->
+                    <div class="mb-4">
+                        <div class="progress">
+                            <div id="progress-bar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <small class="text-muted">Cycle: <span id="cycle-count">0</span>/4</small>
+                    </div>
+
+                    <!-- Instructions -->
+                    <div class="alert alert-info">
+                        <h5>Instructions:</h5>
+                        <ol class="text-left">
+                            <li><strong>Inhale</strong> slowly through your nose for 4 seconds</li>
+                            <li><strong>Hold</strong> your breath for 4 seconds</li>
+                            <li><strong>Exhale</strong> slowly through your mouth for 4 seconds</li>
+                            <li><strong>Hold</strong> for 4 seconds before the next cycle</li>
+                        </ol>
+                        <p>Repeat for 4 cycles (about 1 minute)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.breathing-circle {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    transition: all 4s ease-in-out;
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+}
+
+.inner-circle {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #333;
+}
+
+.breathing-circle.breathe-in {
+    transform: scale(1.5);
+}
+
+.breathing-circle.breathe-out {
+    transform: scale(0.8);
+}
+</style>
+
+<script>
+let interval;
+let cycleCount = 0;
+let isPaused = false;
+let currentPhase = 0;
+const phases = [
+    { instruction: 'Breathe In', duration: 4 },
+    { instruction: 'Hold', duration: 4 },
+    { instruction: 'Breathe Out', duration: 4 },
+    { instruction: 'Hold', duration: 4 }
+];
+
+function updateDisplay() {
+    const phase = phases[currentPhase];
+    document.getElementById('instruction').textContent = phase.instruction;
+    document.getElementById('breathing-circle').className = 'breathing-circle ' +
+        (phase.instruction === 'Breathe In' ? 'breathe-in' :
+         phase.instruction === 'Breathe Out' ? 'breathe-out' : '');
+}
+
+function startBreathing() {
+    if (interval) return;
+
+    document.getElementById('start-btn').style.display = 'none';
+    document.getElementById('pause-btn').style.display = 'inline-block';
+
+    let timeLeft = phases[currentPhase].duration;
+
+    interval = setInterval(() => {
+        if (isPaused) return;
+
+        document.getElementById('timer').textContent = timeLeft;
+        document.getElementById('progress-bar').style.width = ((phases[currentPhase].duration - timeLeft + 1) / phases[currentPhase].duration * 25) + '%';
+
+        timeLeft--;
+
+        if (timeLeft < 0) {
+            currentPhase = (currentPhase + 1) % 4;
+            if (currentPhase === 0) {
+                cycleCount++;
+                document.getElementById('cycle-count').textContent = cycleCount;
+                if (cycleCount >= 4) {
+                    stopBreathing();
+                    alert('Great job! You completed 4 breathing cycles.');
+                    return;
+                }
+            }
+            timeLeft = phases[currentPhase].duration;
+            updateDisplay();
+        }
+    }, 1000);
+
+    updateDisplay();
+}
+
+function pauseBreathing() {
+    isPaused = !isPaused;
+    document.getElementById('pause-btn').textContent = isPaused ? 'Resume' : 'Pause';
+}
+
+function resetBreathing() {
+    stopBreathing();
+    cycleCount = 0;
+    currentPhase = 0;
+    document.getElementById('cycle-count').textContent = '0';
+    document.getElementById('timer').textContent = '4';
+    document.getElementById('instruction').textContent = 'Breathe In';
+    document.getElementById('progress-bar').style.width = '0%';
+    document.getElementById('breathing-circle').className = 'breathing-circle';
+    document.getElementById('start-btn').style.display = 'inline-block';
+    document.getElementById('pause-btn').style.display = 'none';
+}
+
+function stopBreathing() {
+    if (interval) {
+        clearInterval(interval);
+        interval = null;
+    }
+    isPaused = false;
+}
+
+document.getElementById('start-btn').addEventListener('click', startBreathing);
+document.getElementById('pause-btn').addEventListener('click', pauseBreathing);
+document.getElementById('reset-btn').addEventListener('click', resetBreathing);
+</script>
+{% endblock %}

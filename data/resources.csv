@@ -1,0 +1,99 @@
+title,topic,platform,resource_type,url,difficulty,duration_hours,quality_score,language,is_free
+Python for Beginners Full Course,Programming,YouTube,Video,https://www.youtube.com/watch?v=rfscVS0vtbw,Beginner,20,4.7,English,TRUE
+Data Science Complete Course,Data Science,YouTube,Video,https://www.youtube.com/watch?v=ua-CiDNNj30,Intermediate,40,4.8,English,TRUE
+Machine Learning A-Z Hands-On Python,Machine Learning,Udemy,Course,https://www.udemy.com/course/machinelearning/,Intermediate,44,4.6,English,FALSE
+Web Development Bootcamp,Web Development,Udemy,Course,https://www.udemy.com/course/the-complete-web-development-bootcamp/,Beginner,65,4.7,English,FALSE
+DSA for Beginners,Data Structures,YouTube,Video,https://www.youtube.com/watch?v=BBpAmxU_NQo,Beginner,30,4.6,English,TRUE
+React JS Full Course,Frontend,YouTube,Video,https://www.youtube.com/watch?v=bMknfKXIFA8,Intermediate,12,4.5,English,TRUE
+SQL Complete Tutorial,Database,YouTube,Video,https://www.youtube.com/watch?v=HXV3zeQKqGY,Beginner,4,4.7,English,TRUE
+Digital Marketing Course,Marketing,Google,Course,https://learndigital.withgoogle.com/digitalunlocked,Beginner,40,4.5,English,TRUE
+AWS Cloud Practitioner,Cloud Computing,AWS,Course,https://aws.amazon.com/training/,Beginner,15,4.6,English,TRUE
+Graphic Design Masterclass,Design,Udemy,Course,https://www.udemy.com/course/graphic-design-masterclass/,Beginner,35,4.5,English,FALSE
+Excel for Data Analysis,Excel,YouTube,Video,https://www.youtube.com/watch?v=Vl0H-qTclOg,Beginner,8,4.6,English,TRUE
+Introduction to Cybersecurity,Cybersecurity,Cisco,Course,https://www.netacad.com/courses/cybersecurity,Beginner,15,4.5,English,TRUE
+Git and GitHub for Beginners,Version Control,YouTube,Video,https://www.youtube.com/watch?v=RGOj5yH7evk,Beginner,1,4.7,English,TRUE
+Communication Skills Course,Soft Skills,Coursera,Course,https://www.coursera.org/learn/wharton-communication-skills,Beginner,20,4.6,English,FALSE
+Financial Planning Basics,Finance,YouTube,Video,https://www.youtube.com/watch?v=gFPN3R-P4IA,Beginner,5,4.5,English,TRUE
+Java Programming for Beginners,Programming,YouTube,Video,https://www.youtube.com/watch?v=eIrMbAQSU34,Beginner,15,4.6,English,TRUE
+C++ Complete Course,Programming,YouTube,Video,https://www.youtube.com/watch?v=vLnPwxZdW4Y,Intermediate,25,4.5,English,TRUE
+Artificial Intelligence Course,AI,Udemy,Course,https://www.udemy.com/course/artificial-intelligence/,Intermediate,30,4.7,English,FALSE
+Blockchain Technology Explained,Blockchain,YouTube,Video,https://www.youtube.com/watch?v=SSo_EIwHSd4,Beginner,10,4.4,English,TRUE
+Mobile App Development,App Development,Udemy,Course,https://www.udemy.com/course/the-complete-android-developer-course/,Intermediate,40,4.6,English,FALSE
+Ethical Hacking Course,Cybersecurity,Udemy,Course,https://www.udemy.com/course/learn-ethical-hacking-from-scratch/,Intermediate,20,4.5,English,FALSE
+Photography Basics,Creative,YouTube,Video,https://www.youtube.com/watch?v=1bQG7ZGnqJc,Beginner,5,4.6,English,TRUE
+Public Speaking Skills,Soft Skills,Coursera,Course,https://www.coursera.org/learn/public-speaking,Beginner,10,4.7,English,FALSE
+Investment Banking Course,Finance,Udemy,Course,https://www.udemy.com/course/investment-banking/,Advanced,25,4.5,English,FALSE
+Yoga and Meditation,Mental Health,YouTube,Video,https://www.youtube.com/watch?v=1VYBjNAWdQE,Beginner,2,4.8,English,TRUE
+Node.js Tutorial,Web Development,YouTube,Video,https://www.youtube.com/watch?v=TlB_eWDSMt4,Intermediate,8,4.6,English,TRUE
+Angular Full Course,Frontend,YouTube,Video,https://www.youtube.com/watch?v=0LhBvqxbQ-M,Intermediate,15,4.5,English,TRUE
+MongoDB Tutorial,Database,YouTube,Video,https://www.youtube.com/watch?v=-56x56UppqQ,Beginner,6,4.7,English,TRUE
+SEO Masterclass,Marketing,Udemy,Course,https://www.udemy.com/course/seo-masterclass/,Intermediate,12,4.6,English,FALSE
+Docker for Beginners,DevOps,YouTube,Video,https://www.youtube.com/watch?v=3c-iBn73dDE,Beginner,4,4.5,English,TRUE
+Kotlin Programming,Programming,YouTube,Video,https://www.youtube.com/watch?v=F9UC9DY-vIU,Beginner,20,4.6,English,TRUE
+Swift for iOS Development,App Development,YouTube,Video,https://www.youtube.com/watch?v=comQ1-x2a1Q,Intermediate,30,4.7,English,TRUE
+Data Visualization with Tableau,Data Science,YouTube,Video,https://www.youtube.com/watch?v=7aHjrZ3kp9A,Beginner,10,4.6,English,TRUE
+Project Management Fundamentals,Business,Coursera,Course,https://www.coursera.org/learn/project-management,Beginner,15,4.5,English,FALSE
+Engineering Mechanics,Civil Engineering,YouTube,Video,https://www.youtube.com/watch?v=example1,Beginner,10,4.4,English,TRUE
+AutoCAD for Beginners,Civil Engineering,Udemy,Course,https://www.udemy.com/course/autocad/,Beginner,20,4.6,English,FALSE
+Medical Terminology,Medical,Udemy,Course,https://www.udemy.com/course/medical-terminology/,Beginner,8,4.5,English,FALSE
+Anatomy and Physiology,Medical,Coursera,Course,https://www.coursera.org/learn/anatomy-physiology,Beginner,25,4.7,English,FALSE
+Pharmacology Basics,Pharmacy,YouTube,Video,https://www.youtube.com/watch?v=example2,Beginner,12,4.5,English,TRUE
+Drug Discovery and Development,Pharmacy,Udemy,Course,https://www.udemy.com/course/drug-discovery/,Intermediate,18,4.6,English,FALSE
+Sustainable Agriculture,Agriculture,Coursera,Course,https://www.coursera.org/learn/sustainable-agriculture,Beginner,16,4.6,English,TRUE
+Soil Science Fundamentals,Agriculture,YouTube,Video,https://www.youtube.com/watch?v=example3,Beginner,8,4.4,English,TRUE
+Military Strategy,Defense,YouTube,Video,https://www.youtube.com/watch?v=example4,Intermediate,15,4.3,English,TRUE
+Leadership in Military,Defense,Coursera,Course,https://www.coursera.org/learn/military-leadership,Intermediate,20,4.5,English,FALSE
+Thermodynamics,Mechanical Engineering,YouTube,Video,https://www.youtube.com/watch?v=example5,Intermediate,14,4.6,English,TRUE
+Fluid Mechanics,Civil Engineering,Udemy,Course,https://www.udemy.com/course/fluid-mechanics/,Intermediate,22,4.5,English,FALSE
+Organic Chemistry,Medical,Udemy,Course,https://www.udemy.com/course/organic-chemistry/,Intermediate,30,4.7,English,FALSE
+Pathophysiology,Medical,Coursera,Course,https://www.coursera.org/learn/pathophysiology,Intermediate,28,4.8,English,FALSE
+Clinical Pharmacy,Pharmacy,Udemy,Course,https://www.udemy.com/course/clinical-pharmacy/,Advanced,25,4.6,English,FALSE
+Agricultural Economics,Agriculture,Coursera,Course,https://www.coursera.org/learn/agricultural-economics,Intermediate,18,4.5,English,TRUE
+Precision Farming Technology,Agriculture,Udemy,Course,https://www.udemy.com/course/precision-farming/,Intermediate,12,4.4,English,FALSE
+Combat Training,Defense,YouTube,Video,https://www.youtube.com/watch?v=example6,Advanced,20,4.2,English,TRUE
+International Relations,Defense,Coursera,Course,https://www.coursera.org/learn/international-relations,Intermediate,24,4.6,English,FALSE
+Structural Analysis,Civil Engineering,Udemy,Course,https://www.udemy.com/course/structural-analysis/,Advanced,35,4.7,English,FALSE
+Heat Transfer,Mechanical Engineering,Udemy,Course,https://www.udemy.com/course/heat-transfer/,Intermediate,16,4.5,English,FALSE
+Biochemistry,Medical,Udemy,Course,https://www.udemy.com/course/biochemistry/,Intermediate,20,4.6,English,FALSE
+Toxicology,Pharmacy,Coursera,Course,https://www.coursera.org/learn/toxicology,Advanced,22,4.7,English,FALSE
+Crop Protection,Agriculture,YouTube,Video,https://www.youtube.com/watch?v=example7,Intermediate,10,4.4,English,TRUE
+Livestock Management,Agriculture,Udemy,Course,https://www.udemy.com/course/livestock-management/,Beginner,14,4.3,English,FALSE
+Naval Warfare,Defense,Udemy,Course,https://www.udemy.com/course/naval-warfare/,Advanced,30,4.4,English,FALSE
+Aerospace Engineering,Aerospace,YouTube,Video,https://www.youtube.com/watch?v=example8,Intermediate,18,4.5,English,TRUE
+Electrical Circuits,Electrical Engineering,Udemy,Course,https://www.udemy.com/course/electrical-circuits/,Beginner,12,4.6,English,FALSE
+Power Systems,Electrical Engineering,Coursera,Course,https://www.coursera.org/learn/power-systems,Intermediate,26,4.7,English,FALSE
+Microbiology,Medical,Udemy,Course,https://www.udemy.com/course/microbiology/,Beginner,15,4.5,English,FALSE
+Pharmaceutical Chemistry,Pharmacy,Udemy,Course,https://www.udemy.com/course/pharmaceutical-chemistry/,Intermediate,20,4.6,English,FALSE
+Agribusiness Management,Agriculture,Coursera,Course,https://www.coursera.org/learn/agribusiness,Intermediate,16,4.5,English,FALSE
+Military History,Defense,YouTube,Video,https://www.youtube.com/watch?v=example9,Beginner,8,4.3,English,TRUE
+Construction Management,Civil Engineering,Udemy,Course,https://www.udemy.com/course/construction-management/,Intermediate,18,4.6,English,FALSE
+Robotics,Mechanical Engineering,Udemy,Course,https://www.udemy.com/course/robotics/,Advanced,28,4.7,English,FALSE
+Immunology,Medical,Coursera,Course,https://www.coursera.org/learn/immunology,Advanced,32,4.8,English,FALSE
+Drug Formulation,Pharmacy,Udemy,Course,https://www.udemy.com/course/drug-formulation/,Advanced,24,4.6,English,FALSE
+Horticulture,Agriculture,YouTube,Video,https://www.youtube.com/watch?v=example10,Beginner,6,4.4,English,TRUE
+Cyber Warfare,Defense,Coursera,Course,https://www.coursera.org/learn/cyber-warfare,Advanced,20,4.5,English,FALSE
+```
+
+**Save karo as:** `data/resources.csv`
+
+---
+
+## **OPTION 2: AI Se Generate Karwao (Fast)**
+
+Agar manually typing nahi karna:
+
+### **ChatGPT/Claude ko yeh prompt de:**
+```
+Generate a CSV file with 30 diverse career options for Indian students. Include these columns:
+- title (career name)
+- category (Technology/Business/Creative/Engineering/Healthcare/etc)
+- description (1 line)
+- required_skills (semicolon separated, 3-5 skills)
+- avg_salary_inr (realistic Indian salary)
+- growth_rate (Low/Medium/High/Very High)
+- difficulty_level (Easy/Medium/Hard/Very Hard)
+- education_required (degree needed)
+- top_colleges (semicolon separated, 2-3 colleges)
+- job_roles (semicolon separated, 2-3 related roles)
+
+Give complete CSV format with header row.

@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Upgrade to Premium - Marg Darshak{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-6">
+      <div class="card shadow">
+        <div class="card-header bg-warning text-dark text-center">
+          <h3 class="mb-0">🚀 Unlock Premium Features</h3>
+        </div>
+        <div class="card-body text-center">
+          <div class="mb-4">
+            <img src="/static/icon-192.png" alt="Premium Feature" style="width: 80px; height: 80px; border-radius: 15px;">
+          </div>
+          
+          <h4 class="mb-3">1-to-1 Mentor Connect</h4>
+          <p class="text-muted mb-4">Get personal guidance from experienced mentors for your career journey.</p>
+          
+          <div class="alert alert-info">
+            <h5>What you get:</h5>
+            <ul class="text-start">
+              <li>✅ 1 Personal Career Mentor</li>
+              <li>✅ Monthly 1-2 Video/Voice Sessions</li>
+              <li>✅ Career Roadmap Review</li>
+              <li>✅ Resume & Profile Feedback</li>
+              <li>✅ WhatsApp/Chat Support</li>
+              <li>✅ Priority AI Assistance</li>
+            </ul>
+          </div>
+          
+          <div class="pricing-options mb-4">
+            <h5>Choose Your Plan:</h5>
+            <div class="row g-3">
+              <div class="col-4">
+                <div class="card border-primary">
+                  <div class="card-body p-2">
+                    <h6>₹99</h6>
+                    <small>1 Month</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="card border-success">
+                  <div class="card-body p-2">
+                    <h6>₹249</h6>
+                    <small>3 Months</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="card border-warning">
+                  <div class="card-body p-2">
+                    <h6>₹799</h6>
+                    <small>1 Year</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <form method="post" action="{{ url_for('mentor_upgrade') }}">
+            <button type="submit" class="btn btn-success btn-lg">
+              <i class="fas fa-lock-open me-2"></i>Unlock with ₹99
+            </button>
+          </form>
+          
+          <p class="small text-muted mt-3">Secure payment via UPI. Access granted after verification.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

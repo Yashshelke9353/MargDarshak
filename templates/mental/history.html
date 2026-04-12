@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Mood History - Marg Darshak{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="text-center mb-4">📊 Mood History</h1>
+            <p class="text-center text-muted">Review your mood patterns over time</p>
+        </div>
+    </div>
+
+    {% if moods %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Your Mood Entries</h5>
+                    <a href="{{ url_for('mental_mood') }}" class="btn btn-primary">Add New Entry</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Mood</th>
+                                    <th>Notes</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for mood in moods %}
+                                <tr>
+                                    <td>{{ mood.date }}</td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if mood.mood == 'Happy' %}bg-success
+                                            {% elif mood.mood == 'Excited' %}bg-primary
+                                            {% elif mood.mood == 'Calm' %}bg-info
+                                            {% elif mood.mood == 'Content' %}bg-success
+                                            {% elif mood.mood == 'Neutral' %}bg-secondary
+                                            {% elif mood.mood == 'Tired' %}bg-dark
+                                            {% elif mood.mood == 'Anxious' %}bg-warning
+                                            {% elif mood.mood == 'Sad' %}bg-secondary
+                                            {% elif mood.mood == 'Angry' %}bg-danger
+                                            {% else %}bg-light text-dark{% endif %}">
+                                            {{ mood.mood }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if mood.notes and mood.notes.startswith('Assessment:') %}
+                                            {% set assessment = mood.notes.split('Assessment:')[1].split('.')[0] %}
+                                            <small class="text-muted">
+                                                <strong>Assessment:</strong><br>
+                                                {{ assessment }}
+                                            </small>
+                                            {% if mood.notes.split('Assessment:')[1].split('.', 1)[1] %}
+                                                <br><small>{{ mood.notes.split('Assessment:')[1].split('.', 1)[1].strip() }}</small>
+                                            {% endif %}
+                                        {% else %}
+                                            {{ mood.notes or '-' }}
+                                        {% endif %}
+                                    </td>
+                                    <td><small class="text-muted">{{ mood.timestamp.split(' ')[1] if mood.timestamp else '-' }}</small></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <h5>No mood entries yet</h5>
+                <p>Start tracking your mood to build your history!</p>
+                <a href="{{ url_for('mental_mood') }}" class="btn btn-primary">Log Your First Mood</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Back to Dashboard -->
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            <a href="{{ url_for('mental_home') }}" class="btn btn-outline-primary">← Back to Mental Health Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,727 @@
+{% extends 'base.html' %}
+
+{% block title %}Career Quiz - Marg Darshak{% endblock %}
+
+{% block content %}
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+
+<style>
+    /* Scope styles directly */
+    #career-app {
+        font-family: 'Inter', sans-serif;
+    }
+    #career-app h1, #career-app h4 {
+        font-family: 'Outfit', sans-serif;
+    }
+    
+    .glass-quiz {
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: 28px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04);
+        position: relative;
+        overflow: hidden;
+    }
+    body.dark-mode .glass-quiz {
+        background: rgba(30, 41, 59, 0.5);
+        border-color: rgba(255, 255, 255, 0.05);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+</style>
+
+<div class="container my-5 pb-5" id="career-app">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            
+            <!-- Quiz Header -->
+            <div class="text-center mb-5" data-tilt data-tilt-scale="1.02" data-tilt-max="5">
+                <h1 class="mb-3" style="font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 900; background: linear-gradient(135deg, #6366f1, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.03em;">🎯 Career Discovery</h1>
+                <p class="lead" style="color: #64748b; font-weight: 500; font-size: 1.25rem;">Answer precisely to calculate your perfect algorithmic match.</p>
+                
+                <div class="progress mt-4 mb-2" style="height: 10px; border-radius: 10px; background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.02);">
+                    <div id="progressBar" class="progress-bar" role="progressbar" style="width: 33%"></div>
+                </div>
+                <small style="color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 2px;">Phase <span id="currentQ">1</span> of <span id="totalQ">12</span></small>
+            </div>
+            
+            <!-- Quiz Form -->
+            <div id="quizContainer" class="glass-quiz">
+                <div class="card-body p-4 p-md-5">
+                    
+                    <!-- Question 1 -->
+                    <div class="question-slide active" data-question="1">
+                        <h4 class="mb-4">What excites you the most?</h4>
+                        <div class="option-group">
+                            <label class="option-card">
+                                <input type="radio" name="q1" value="technical" data-category="technical">
+                                <div class="option-content">
+                                    <i class="fas fa-laptop-code fa-2x mb-2"></i>
+                                    <h6>Building & Creating</h6>
+                                    <p class="small text-muted">Tech, coding, engineering</p>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q1" value="creative" data-category="creative">
+                                <div class="option-content">
+                                    <i class="fas fa-palette fa-2x mb-2"></i>
+                                    <h6>Designing & Expressing</h6>
+                                    <p class="small text-muted">Art, design, writing</p>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q1" value="social" data-category="social">
+                                <div class="option-content">
+                                    <i class="fas fa-users fa-2x mb-2"></i>
+                                    <h6>Helping & Connecting</h6>
+                                    <p class="small text-muted">People, teaching, healthcare</p>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q1" value="analytical" data-category="analytical">
+                                <div class="option-content">
+                                    <i class="fas fa-chart-line fa-2x mb-2"></i>
+                                    <h6>Analyzing & Strategizing</h6>
+                                    <p class="small text-muted">Data, business, research</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 2 -->
+                    <div class="question-slide" data-question="2">
+                        <h4 class="mb-4">How do you prefer to work?</h4>
+                        <div class="option-group">
+                            <label class="option-card">
+                                <input type="radio" name="q2" value="technical">
+                                <div class="option-content">
+                                    <i class="fas fa-desktop fa-2x mb-2"></i>
+                                    <h6>Independently with Technology</h6>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q2" value="social">
+                                <div class="option-content">
+                                    <i class="fas fa-user-friends fa-2x mb-2"></i>
+                                    <h6>Collaborating with Teams</h6>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q2" value="creative">
+                                <div class="option-content">
+                                    <i class="fas fa-lightbulb fa-2x mb-2"></i>
+                                    <h6>Creatively and Flexibly</h6>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q2" value="analytical">
+                                <div class="option-content">
+                                    <i class="fas fa-brain fa-2x mb-2"></i>
+                                    <h6>Methodically with Data</h6>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 3 -->
+                    <div class="question-slide" data-question="3">
+                        <h4 class="mb-4">What's your ideal work environment?</h4>
+                        <div class="option-group">
+                            <label class="option-card">
+                                <input type="radio" name="q3" value="technical">
+                                <div class="option-content">
+                                    <i class="fas fa-building fa-2x mb-2"></i>
+                                    <h6>Tech Office / Remote</h6>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q3" value="creative">
+                                <div class="option-content">
+                                    <i class="fas fa-paint-brush fa-2x mb-2"></i>
+                                    <h6>Studio / Creative Space</h6>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q3" value="social">
+                                <div class="option-content">
+                                    <i class="fas fa-hospital fa-2x mb-2"></i>
+                                    <h6>Field Work / Community</h6>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q3" value="entrepreneurial">
+                                <div class="option-content">
+                                    <i class="fas fa-briefcase fa-2x mb-2"></i>
+                                    <h6>Dynamic Business Setting</h6>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 4 -->
+                    <div class="question-slide" data-question="4">
+                        <h4 class="mb-4">Which subjects do you enjoy the most?</h4>
+                        <div class="option-group">
+                            <label class="option-card">
+                                <input type="radio" name="q4" value="technical">
+                                <div class="option-content">
+                                    <i class="fas fa-calculator fa-2x mb-2"></i>
+                                    <h6>Math and Science</h6>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q4" value="creative">
+                                <div class="option-content">
+                                    <i class="fas fa-palette fa-2x mb-2"></i>
+                                    <h6>Arts and Languages</h6>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q4" value="social">
+                                <div class="option-content">
+                                    <i class="fas fa-users fa-2x mb-2"></i>
+                                    <h6>Social Studies and History</h6>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q4" value="entrepreneurial">
+                                <div class="option-content">
+                                    <i class="fas fa-chart-line fa-2x mb-2"></i>
+                                    <h6>Business and Economics</h6>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 5 -->
+                    <div class="question-slide" data-question="5">
+                        <h4 class="mb-4">Do you like working with your hands or with ideas?</h4>
+                        <div class="option-group">
+                            <label class="option-card">
+                                <input type="radio" name="q5" value="technical">
+                                <div class="option-content">
+                                    <i class="fas fa-tools fa-2x mb-2"></i>
+                                    <h6>Working with Hands</h6>
+                                    <p class="small text-muted">Building, fixing, creating physical things</p>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q5" value="analytical">
+                                <div class="option-content">
+                                    <i class="fas fa-lightbulb fa-2x mb-2"></i>
+                                    <h6>Working with Ideas</h6>
+                                    <p class="small text-muted">Thinking, planning, analyzing concepts</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 6 -->
+                    <div class="question-slide" data-question="6">
+                        <h4 class="mb-4">Are you comfortable with public speaking?</h4>
+                        <div class="option-group">
+                            <label class="option-card">
+                                <input type="radio" name="q6" value="social">
+                                <div class="option-content">
+                                    <i class="fas fa-microphone fa-2x mb-2"></i>
+                                    <h6>Yes, I enjoy it</h6>
+                                    <p class="small text-muted">Presenting, teaching, leading groups</p>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q6" value="technical">
+                                <div class="option-content">
+                                    <i class="fas fa-desktop fa-2x mb-2"></i>
+                                    <h6>No, I prefer quiet work</h6>
+                                    <p class="small text-muted">Working alone or in small teams</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 7 -->
+                    <div class="question-slide" data-question="7">
+                        <h4 class="mb-4">Do you prefer routine work or creative problem-solving?</h4>
+                        <div class="option-group">
+                            <label class="option-card">
+                                <input type="radio" name="q7" value="analytical">
+                                <div class="option-content">
+                                    <i class="fas fa-tasks fa-2x mb-2"></i>
+                                    <h6>Routine Work</h6>
+                                    <p class="small text-muted">Following procedures, organized tasks</p>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q7" value="creative">
+                                <div class="option-content">
+                                    <i class="fas fa-brain fa-2x mb-2"></i>
+                                    <h6>Creative Problem-Solving</h6>
+                                    <p class="small text-muted">Finding new solutions, innovative thinking</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 8 -->
+                    <div class="question-slide" data-question="8">
+                        <h4 class="mb-4">Do you enjoy working with machines and technology?</h4>
+                        <div class="option-group">
+                            <label class="option-card">
+                                <input type="radio" name="q8" value="technical">
+                                <div class="option-content">
+                                    <i class="fas fa-cogs fa-2x mb-2"></i>
+                                    <h6>Yes, I love technology</h6>
+                                    <p class="small text-muted">Engineering, computers, gadgets</p>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q8" value="creative">
+                                <div class="option-content">
+                                    <i class="fas fa-paint-brush fa-2x mb-2"></i>
+                                    <h6>Not really, I prefer creative work</h6>
+                                    <p class="small text-muted">Art, design, writing</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 9 -->
+                    <div class="question-slide" data-question="9">
+                        <h4 class="mb-4">Are you interested in helping people with health issues?</h4>
+                        <div class="option-group">
+                            <label class="option-card">
+                                <input type="radio" name="q9" value="social">
+                                <div class="option-content">
+                                    <i class="fas fa-heartbeat fa-2x mb-2"></i>
+                                    <h6>Yes, healthcare interests me</h6>
+                                    <p class="small text-muted">Doctor, nurse, pharmacist</p>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q9" value="technical">
+                                <div class="option-content">
+                                    <i class="fas fa-laptop fa-2x mb-2"></i>
+                                    <h6>No, I prefer technical fields</h6>
+                                    <p class="small text-muted">Engineering, IT</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 10 -->
+                    <div class="question-slide" data-question="10">
+                        <h4 class="mb-4">Do you like working outdoors or with nature?</h4>
+                        <div class="option-group">
+                            <label class="option-card">
+                                <input type="radio" name="q10" value="technical">
+                                <div class="option-content">
+                                    <i class="fas fa-tree fa-2x mb-2"></i>
+                                    <h6>Yes, nature and outdoors</h6>
+                                    <p class="small text-muted">Agriculture, environmental work</p>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q10" value="entrepreneurial">
+                                <div class="option-content">
+                                    <i class="fas fa-building fa-2x mb-2"></i>
+                                    <h6>No, I prefer indoor work</h6>
+                                    <p class="small text-muted">Offices, businesses</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 11 -->
+                    <div class="question-slide" data-question="11">
+                        <h4 class="mb-4">Are you good at mathematics and physics?</h4>
+                        <div class="option-group">
+                            <label class="option-card">
+                                <input type="radio" name="q11" value="technical">
+                                <div class="option-content">
+                                    <i class="fas fa-calculator fa-2x mb-2"></i>
+                                    <h6>Yes, math and science are my strengths</h6>
+                                    <p class="small text-muted">Engineering, research</p>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q11" value="creative">
+                                <div class="option-content">
+                                    <i class="fas fa-music fa-2x mb-2"></i>
+                                    <h6>Not really, I prefer arts</h6>
+                                    <p class="small text-muted">Creative fields</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Question 12 -->
+                    <div class="question-slide" data-question="12">
+                        <h4 class="mb-4">Do you want to serve your country or community?</h4>
+                        <div class="option-group">
+                            <label class="option-card">
+                                <input type="radio" name="q12" value="social">
+                                <div class="option-content">
+                                    <i class="fas fa-flag fa-2x mb-2"></i>
+                                    <h6>Yes, service and duty</h6>
+                                    <p class="small text-muted">Army, police, social work</p>
+                                </div>
+                            </label>
+                            
+                            <label class="option-card">
+                                <input type="radio" name="q12" value="entrepreneurial">
+                                <div class="option-content">
+                                    <i class="fas fa-briefcase fa-2x mb-2"></i>
+                                    <h6>No, I prefer business</h6>
+                                    <p class="small text-muted">Entrepreneurship, management</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Navigation Buttons -->
+                    <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-2">
+    <button type="button" class="btn btn-outline-secondary" id="prevBtn" onclick="previousQuestion()" disabled>
+        <i class="fas fa-arrow-left"></i> Previous
+    </button>
+
+    <div class="d-flex gap-2">
+        <a href="/career/browse" class="btn btn-outline-info">
+            Skip Quiz
+        </a>
+        <button type="button" class="btn btn-outline-primary" onclick="toggleQuizHelpVideo()">
+            ▶ why its imp
+        </button>
+    </div>
+
+    <button type="button" class="btn btn-primary" id="nextBtn" onclick="nextQuestion()" disabled>
+        Next <i class="fas fa-arrow-right"></i>
+    </button>
+
+    <button type="button" class="btn btn-success" id="submitBtn" onclick="submitQuiz()" style="display: none;">
+        Get Results <i class="fas fa-check"></i>
+    </button>
+</div>
+
+<!-- Quiz Help Video -->
+<div id="quizHelpVideoBox" class="text-center mt-3" style="display:none;">
+    <video id="quizHelpVideo" width="60%" controls>
+        <source src="/static/videos/quiz-help.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    <div class="mt-2">
+        <button class="btn btn-outline-danger btn-sm" onclick="toggleQuizHelpVideo()">
+            ✖ Close Video
+        </button>
+    </div>
+</div>
+
+<script>
+function toggleQuizHelpVideo() {
+    const box = document.getElementById("quizHelpVideoBox");
+    const video = document.getElementById("quizHelpVideo");
+
+    if (box.style.display === "none") {
+        box.style.display = "block";
+        video.play();
+    } else {
+        video.pause();
+        video.currentTime = 0;
+        box.style.display = "none";
+    }
+}
+</script>
+
+                    
+                </div>
+            </div>
+            
+            <!-- Loading State -->
+            <div id="loadingState" class="text-center my-5" style="display: none;">
+                <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3">Analyzing your responses...</p>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<style>
+    .question-slide {
+        display: none;
+    }
+    
+    .question-slide.active {
+        display: block;
+        animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    
+    @keyframes slideUpFade {
+        from { opacity: 0; transform: translateY(40px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    
+    .question-slide h4 {
+        font-weight: 800;
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        color: var(--bs-body-color);
+        margin-bottom: 2.5rem !important;
+        text-align: center;
+    }
+    
+    .option-group {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .option-card {
+        border: 2px solid transparent;
+        background: rgba(255,255,255,0.7);
+        border-radius: 20px;
+        padding: 2rem 1.5rem;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        display: block;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+    }
+    body.dark-mode .option-card { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.05); }
+    
+    .option-card:hover {
+        border-color: #6366f1;
+        box-shadow: 0 15px 30px rgba(99, 102, 241, 0.15);
+        transform: translateY(-5px);
+        background: #ffffff;
+    }
+    body.dark-mode .option-card:hover { background: rgba(99, 102, 241, 0.1); }
+    
+    .option-card input[type="radio"] {
+        display: none;
+    }
+    
+    .option-card:has(input[type="radio"]:checked) {
+        border-color: #6366f1;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(236, 72, 153, 0.05));
+        box-shadow: 0 10px 25px rgba(99, 102, 241, 0.2);
+        transform: scale(1.02);
+    }
+    body.dark-mode .option-card:has(input[type="radio"]:checked) {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(236, 72, 153, 0.2));
+    }
+    
+    .option-card input[type="radio"]:checked + .option-content {
+        color: #6366f1;
+    }
+    body.dark-mode .option-card input[type="radio"]:checked + .option-content { color: #a78bfa; }
+    
+    .option-content {
+        text-align: center;
+        transition: color 0.3s ease;
+    }
+    .option-content i {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 1.5rem !important;
+        transform: scale(1.2);
+    }
+    body.dark-mode .option-content i { background: linear-gradient(135deg, #a78bfa, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    
+    .option-content h6 {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 700;
+        font-size: 1.15rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .progress-bar {
+        background: linear-gradient(90deg, #6366f1 0%, #ec4899 100%);
+        transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        border-radius: 10px;
+    }
+    
+    /* Elegant Buttons inside App */
+    #career-app .btn-primary { background: linear-gradient(135deg, #6366f1, #ec4899); border: none; font-family: 'Outfit', sans-serif; font-weight: 700; border-radius: 50px; padding: 0.8rem 2rem; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3); }
+    #career-app .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(99, 102, 241, 0.4); color: white; }
+    
+    #career-app .btn-success { background: linear-gradient(135deg, #10b981, #059669); border: none; font-family: 'Outfit', sans-serif; font-weight: 700; border-radius: 50px; padding: 0.8rem 2rem; box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3); }
+    #career-app .btn-success:hover { transform: translateY(-3px); box-shadow: 0 15px 30px rgba(16, 185, 129, 0.4); color: white; }
+    
+    #career-app .btn-outline-secondary { border-radius: 50px; font-weight: 600; padding: 0.8rem 2rem; }
+    
+</style>
+
+<script>
+let currentQuestion = 1;
+const totalQuestions = 12;
+let responses = {};
+
+// Set total questions
+if (document.getElementById('totalQ')) {
+    document.getElementById('totalQ').textContent = totalQuestions;
+}
+
+// Enable next button when option selected
+document.querySelectorAll('input[type="radio"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const nextBtn = document.getElementById('nextBtn');
+        if (nextBtn) {
+            nextBtn.disabled = false;
+        }
+    });
+});
+
+function updateProgressBar() {
+    const progressBar = document.getElementById('progressBar');
+    if (progressBar) {
+        const progress = (currentQuestion / totalQuestions) * 100;
+        progressBar.style.width = progress + '%';
+    }
+}
+
+function updateButtons() {
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (prevBtn) prevBtn.disabled = currentQuestion === 1;
+    
+    const currentSlide = document.querySelector(`.question-slide[data-question="${currentQuestion}"]`);
+    const hasAnswer = currentSlide && currentSlide.querySelector('input[type="radio"]:checked') !== null;
+    if (nextBtn) nextBtn.disabled = !hasAnswer;
+    
+    if (currentQuestion === totalQuestions) {
+        if (nextBtn) nextBtn.style.display = 'none';
+        if (submitBtn) submitBtn.style.display = 'block';
+    } else {
+        if (nextBtn) nextBtn.style.display = 'block';
+        if (submitBtn) submitBtn.style.display = 'none';
+    }
+}
+
+function nextQuestion() {
+    const currentSlide = document.querySelector(`.question-slide[data-question="${currentQuestion}"]`);
+    const selected = currentSlide ? currentSlide.querySelector('input[type="radio"]:checked') : null;
+    
+    if (selected) {
+        responses[`q${currentQuestion}`] = selected.value;
+        currentSlide.classList.remove('active');
+        
+        currentQuestion++;
+        
+        if (currentQuestion <= totalQuestions) {
+            const nextSlide = document.querySelector(`.question-slide[data-question="${currentQuestion}"]`);
+            if (nextSlide) nextSlide.classList.add('active');
+            
+            const currentQEl = document.getElementById('currentQ');
+            if (currentQEl) currentQEl.textContent = currentQuestion;
+            
+            updateProgressBar();
+            updateButtons();
+        }
+    }
+}
+
+function previousQuestion() {
+    if (currentQuestion > 1) {
+        const currentSlide = document.querySelector(`.question-slide[data-question="${currentQuestion}"]`);
+        if (currentSlide) currentSlide.classList.remove('active');
+        
+        currentQuestion--;
+        
+        const prevSlide = document.querySelector(`.question-slide[data-question="${currentQuestion}"]`);
+        if (prevSlide) prevSlide.classList.add('active');
+        
+        const currentQEl = document.getElementById('currentQ');
+        if (currentQEl) currentQEl.textContent = currentQuestion;
+        
+        updateProgressBar();
+        updateButtons();
+    }
+}
+
+function submitQuiz() {
+    const currentSlide = document.querySelector(`.question-slide[data-question="${currentQuestion}"]`);
+    const selected = currentSlide ? currentSlide.querySelector('input[type="radio"]:checked') : null;
+    
+    if (!selected) {
+        alert('Please select an option');
+        return;
+    }
+    
+    responses[`q${currentQuestion}`] = selected.value;
+    
+    // Count categories
+    const categoryScores = {
+        technical: 0,
+        creative: 0,
+        social: 0,
+        analytical: 0,
+        entrepreneurial: 0
+    };
+    
+    Object.values(responses).forEach(value => {
+        if (categoryScores.hasOwnProperty(value)) {
+            categoryScores[value]++;
+        }
+    });
+    
+    // Show loading
+    const quizContainer = document.getElementById('quizContainer');
+    const loadingState = document.getElementById('loadingState');
+    if (quizContainer) quizContainer.style.display = 'none';
+    if (loadingState) loadingState.style.display = 'block';
+    
+    // Send to backend
+    fetch('/career/quiz', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(categoryScores)
+    })
+    .then(response => response.json())
+    .then(data => {
+        sessionStorage.setItem('quizResults', JSON.stringify(data));
+        window.location.href = '/career/results';
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Something went wrong. Please try again.');
+        if (quizContainer) quizContainer.style.display = 'block';
+        if (loadingState) loadingState.style.display = 'none';
+    });
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateButtons();
+    updateProgressBar();
+});
+</script>
+{% endblock %}

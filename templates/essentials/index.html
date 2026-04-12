@@ -1,0 +1,693 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Section Header -->
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold text-primary">📱💻 Student Essentials – Smart Buying Guide</h1>
+        <p class="lead text-muted">"Paise bachao, sahi cheez chuno."</p>
+    </div>
+
+    <!-- Section Introduction -->
+    <div class="card mb-5 shadow-sm">
+        <div class="card-body">
+            <h2 class="card-title h4 mb-3">🙋‍♂️ क्यों बनाया गया यह सेक्शन?</h2>
+            <p class="mb-3">
+                College के पहले साल में, जब पहली बार laptop या mobile खरीदने का समय आता है, तो बहुत confusion होती है। 
+                "कौन सा best है?", "कितने में?", "क्या features चाहिए?" – ऐसे सवालों से दिमाग घूम जाता है।
+            </p>
+            <p class="mb-3">
+                गलत choice करने से हजारों रुपये waste हो जाते हैं। जैसे, gaming laptop ले लिया लेकिन सिर्फ notes बनाने के लिए, 
+                या expensive phone खरीदा जो सिर्फ calls के लिए काफी था।
+            </p>
+            <p class="mb-3">
+                यह सेक्शन सिर्फ students के लिए है। हमने honest, practical suggestions दिए हैं – no hype, no brand bias. 
+                सिर्फ real student needs पर focus करके।
+            </p>
+            <p class="text-success fw-bold">
+                Goal: खरीदारी के बाद कह सको – "Ab mujhe pata hai kaunsa laptop ya mobile mere liye sahi hai bina paise waste kiye."
+            </p>
+        </div>
+    </div>
+
+    <!-- Price Filter -->
+    <div class="card mb-5 shadow-sm">
+        <div class="card-body">
+            <h3 class="card-title h5 mb-3">🔍 Filter by Price Range</h3>
+            <div class="row">
+                <div class="col-md-6">
+                    <select id="priceFilter" class="form-select">
+                        <option value="all">All Products</option>
+                        <option value="under-15000">Under ₹15,000</option>
+                        <option value="15000-25000">₹15,000 - ₹25,000</option>
+                        <option value="25000-50000">₹25,000 - ₹50,000</option>
+                        <option value="50000-65000">₹50,000 - ₹65,000</option>
+                        <option value="65000-70000">₹65,000 - ₹70,000</option>
+                        <option value="under-3000">Under ₹3,000 (Accessories)</option>
+                    </select>
+                </div>
+                <div class="col-md-6 d-flex align-items-center">
+                    <small class="text-muted">Select price range to filter products easily!</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Categories -->
+    <!-- Best Laptops for Students -->
+    <div class="mb-5 product-category" data-category="laptops">
+        <h2 class="h3 mb-4 text-primary">💻 Best Laptops for Students</h2>
+        
+        <!-- Category Introduction -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <h3 class="card-title h5 mb-3">कौन इस्तेमाल कर सकता है?</h3>
+                <p class="mb-2"><strong>Target:</strong> 1st & 2nd year college students, beginners in coding, online classes, assignments.</p>
+                <p class="mb-2"><strong>Use-case:</strong> Notes banane, online lectures dekhne, basic coding (Python, Java), presentations, light gaming.</p>
+                <p class="mb-2"><strong>Budget Tip:</strong> ₹30,000-₹70,000 में best options मिलती हैं। ज्यादा expensive laptop लेने से सिर्फ show-off बढ़ता है, learning नहीं।</p>
+            </div>
+        </div>
+
+        <!-- Products -->
+        <div class="row">
+            <!-- Top 5 Laptops Under ₹50,000 -->
+            <div class="col-12 mb-4">
+                <h4 class="h5 mb-3">💰 Top 5 Laptops Under ₹50,000</h4>
+                <div class="row">
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="50000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Acer Aspire 7 – i5‑12450H</h5>
+                                <p class="card-text flex-grow-1">Powerful processor for student tasks</p>
+                                <a href="https://amzn.to/3LES8Vv" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="50000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">MSI GF63 Thin – i5‑11400H / 12450H</h5>
+                                <p class="card-text flex-grow-1">Gaming performance for light gaming</p>
+                                <a href="https://amzn.to/3NAUbud" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="50000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">HP Victus – i5‑12450H</h5>
+                                <p class="card-text flex-grow-1">Older RTX/GTX variants available</p>
+                                <a href="https://amzn.to/3NaAbyC" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="50000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Lenovo IdeaPad Gaming 3 – i5‑12450H</h5>
+                                <p class="card-text flex-grow-1">Great for coding and gaming</p>
+                                <a href="https://amzn.to/4qjmAne" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="50000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">ASUS TUF FX506 – i5‑11400H</h5>
+                                <p class="card-text flex-grow-1">Durable build for students</p>
+                                <a href="https://amzn.to/49MOmCD" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- UNDER ₹65,000 (12th / 13th Gen H‑Series ) -->
+            <div class="col-12 mb-4">
+                <h4 class="h5 mb-3">🔥 UNDER ₹65,000 (12th / 13th Gen H‑Series )</h4>
+                <div class="row">
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="65000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Acer Nitro V – i5‑13420H (13th Gen)</h5>
+                                <p class="card-text flex-grow-1">Latest generation performance</p>
+                                <a href="https://amzn.to/3NbGAcO" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="65000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">HP Victus – i5‑12500H</h5>
+                                <p class="card-text flex-grow-1">Smooth multitasking</p>
+                                <a href="https://amzn.to/4aMSvHR" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="65000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Lenovo LOQ – i5‑12450H</h5>
+                                <p class="card-text flex-grow-1">Gaming and productivity</p>
+                                <a href="https://amzn.to/4jyZzu2" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="65000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">ASUS Vivobook 16, Intel Core i5-13500H</h5>
+                                <p class="card-text flex-grow-1">Large screen for work</p>
+                                <a href="https://amzn.to/4pH68w8" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="65000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">ASUS Vivobook 16, OLED Display</h5>
+                                <p class="card-text flex-grow-1">Crystal clear visuals</p>
+                                <a href="https://amzn.to/4aLD6rf" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- UNDER ₹70,000 (BEST YOU CAN GET) -->
+            <div class="col-12 mb-4">
+                <h4 class="h5 mb-3">⭐ UNDER ₹70,000 (BEST YOU CAN GET)</h4>
+                <div class="row">
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="70000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Lenovo LOQ – i5‑13450H (13th Gen) ⭐ BEST</h5>
+                                <p class="card-text flex-grow-1">Top performance for students</p>
+                                <a href="https://amzn.to/49IeDSF" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="70000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Acer SmartChoice ALG, 13th Gen</h5>
+                                <p class="card-text flex-grow-1">Latest tech at great price</p>
+                                <a href="https://amzn.to/4pxMyCj" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="70000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">HP Victus – i5‑13500H</h5>
+                                <p class="card-text flex-grow-1">Rare deals available</p>
+                                <a href="https://amzn.to/49LoC9L" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="70000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">ASUS Vivobook 16X (2025)</h5>
+                                <p class="card-text flex-grow-1">Future-ready laptop</p>
+                                <a href="https://amzn.to/49sJKjF" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="70000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">ASUS Vivobook S14, Intel Core Ultra 5</h5>
+                                <p class="card-text flex-grow-1">Ultra performance</p>
+                                <a href="https://amzn.to/49pEEET" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Best Mobiles for Students -->
+    <div class="mb-5 product-category" data-category="mobiles">
+        <h2 class="h3 mb-4 text-primary">📱 Best Mobiles for Students</h2>
+        
+        <!-- Category Introduction -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <h3 class="card-title h5 mb-3">कौन इस्तेमाल कर सकता है?</h3>
+                <p class="mb-2"><strong>Target:</strong> Daily use students – calls, WhatsApp, online classes, photos, basic apps.</p>
+                <p class="mb-2"><strong>Use-case:</strong> Video calls on Zoom/Google Meet, social media, music, camera for notes/photos, battery for full day.</p>
+                <p class="mb-2"><strong>Budget Tip:</strong> ₹10,000-₹25,000 में perfect mobiles मिलते हैं। Flagship phones लेने की जरूरत नहीं, जब तक gaming या pro photography न हो।</p>
+            </div>
+        </div>
+
+        <!-- Products -->
+        <div class="row">
+            <!-- Under ₹15,000 -->
+            <div class="col-12 mb-4">
+                <h4 class="h5 mb-3">💰 Under ₹15,000</h4>
+                <div class="row">
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="15000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">REDMI 15C 5G</h5>
+                                <p class="card-text flex-grow-1">Good battery, camera for daily use</p>
+                                <a href="https://amzn.to/4qavbZh" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="15000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Samsung Galaxy M17</h5>
+                                <p class="card-text flex-grow-1">Long lasting battery</p>
+                                <a href="https://amzn.to/4aLaoXw" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="15000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">VIVO T4x</h5>
+                                <p class="card-text flex-grow-1">Fast charging technology</p>
+                                <a href="https://amzn.to/4qecUKR" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Under ₹25,000 -->
+            <div class="col-12 mb-4">
+                <h4 class="h5 mb-3">🔥 Under ₹25,000</h4>
+                <div class="row">
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="25000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">realme 15T 5G</h5>
+                                <p class="card-text flex-grow-1">Smooth performance</p>
+                                <a href="https://amzn.to/3Ni3Y8r" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="25000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Samsung Galaxy A35 5G</h5>
+                                <p class="card-text flex-grow-1">Reliable brand quality</p>
+                                <a href="https://amzn.to/3LlG0bY" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="25000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">OnePlus Nord CE5</h5>
+                                <p class="card-text flex-grow-1">If you want iOS ecosystem</p>
+                                <a href="https://amzn.to/3Laj13z" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accessories -->
+    <div class="mb-5 product-category" data-category="accessories">
+        <h2 class="h3 mb-4 text-primary">🎧🖱️ Accessories for Students</h2>
+        
+        <!-- Category Introduction -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <h3 class="card-title h5 mb-3">कौन इस्तेमाल कर सकता है?</h3>
+                <p class="mb-2"><strong>Target:</strong> Students who study long hours, code, or attend online classes.</p>
+                <p class="mb-2"><strong>Use-case:</strong> Better audio for lectures, comfortable typing, laptop cooling, reading books.</p>
+                <p class="mb-2"><strong>Budget Tip:</strong> ₹500-₹3,000 में quality accessories मिलते हैं। Premium brands की जरूरत नहीं।</p>
+            </div>
+        </div>
+
+        <!-- Products -->
+        <div class="row">
+            <!-- Wireless Earphones -->
+            <div class="col-12 mb-4">
+                <h4 class="h5 mb-3">🎧 Wireless Earphones (Budget + Branded)</h4>
+                <div class="row">
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">boAt Airdopes 141 / 170</h5>
+                                <p class="card-text flex-grow-1">Students ka no.1 choice</p>
+                                <a href="https://amzn.to/49vjkhx" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Noise Buds VS104 / VS402</h5>
+                                <p class="card-text flex-grow-1">Stylish + reliable</p>
+                                <a href="https://amzn.to/4bnLu0e" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Noise Buds N1 Pro</h5>
+                                <p class="card-text flex-grow-1">Pro features at budget price</p>
+                                <a href="https://amzn.to/3LydSSZ" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Boult Audio Z40</h5>
+                                <p class="card-text flex-grow-1">Gaming low-latency</p>
+                                <a href="https://amzn.to/3LaeVsd" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Keyboard and Mouse -->
+            <div class="col-12 mb-4">
+                <h4 class="h5 mb-3">⌨️🖱️ Keyboard and Mouse Combo (Typing + Coding + Gaming)</h4>
+                <div class="row">
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Logitech K120 / MK215</h5>
+                                <p class="card-text flex-grow-1">Best for students</p>
+                                <a href="https://amzn.to/3Lm1dCE" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">HP KM290 Wireless</h5>
+                                <p class="card-text flex-grow-1">Comfortable wireless combo</p>
+                                <a href="https://amzn.to/4pzSniL" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Redragon K552</h5>
+                                <p class="card-text flex-grow-1">RGB gaming keyboard</p>
+                                <a href="https://amzn.to/4juRiai" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Laptop Stand -->
+            <div class="col-12 mb-4">
+                <h4 class="h5 mb-3">🪑 Laptop Stand (Health + Cooling)</h4>
+                <div class="row">
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Amazon Basics Aluminum Stand</h5>
+                                <p class="card-text flex-grow-1">Strong & premium</p>
+                                <a href="https://amzn.to/49jQhx2" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Zebronics Adjustable Stand</h5>
+                                <p class="card-text flex-grow-1">Best budget option</p>
+                                <a href="https://amzn.to/4aNuoZD" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Portronics My Buddy</h5>
+                                <p class="card-text flex-grow-1">Student favorite</p>
+                                <a href="https://amzn.to/4aMZq3K" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Books -->
+            <div class="col-12 mb-4">
+                <h4 class="h5 mb-3">📚 Affordable, popular & life‑changing books</h4>
+                <div class="row">
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Bhagavad Gita (Student Friendly)</h5>
+                                <p class="card-text flex-grow-1">Spiritual wisdom</p>
+                                <a href="https://amzn.to/4qJc0FV" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Rich Dad Poor Dad</h5>
+                                <p class="card-text flex-grow-1">Financial wisdom</p>
+                                <a href="https://amzn.to/4pH8Rpm" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">The Psychology of Money</h5>
+                                <p class="card-text flex-grow-1">Money management</p>
+                                <a href="https://amzn.to/4aLFtdD" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Think and Grow Rich</h5>
+                                <p class="card-text flex-grow-1">Success mindset</p>
+                                <a href="https://amzn.to/4aMVqAj" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">The Richest Man in Babylon</h5>
+                                <p class="card-text flex-grow-1">Wealth building</p>
+                                <a href="https://amzn.to/49p3hBG" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Atomic Habits</h5>
+                                <p class="card-text flex-grow-1">Habits & discipline</p>
+                                <a href="https://amzn.to/4pxegyW" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Don't Believe Everything You Think</h5>
+                                <p class="card-text flex-grow-1">Overthinking control</p>
+                                <a href="https://amzn.to/3Ne7AbA" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Deep Work</h5>
+                                <p class="card-text flex-grow-1">Concentration skills</p>
+                                <a href="https://amzn.to/4pAiqpY" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 product-card" data-price="3000">
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">Mindset</h5>
+                                <p class="card-text flex-grow-1">Growth mindset</p>
+                                <a href="https://amzn.to/3LsKduf" class="btn btn-success mt-auto" target="_blank">Buy Now</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Added Essentials -->
+    <div class="mb-5 product-category" data-category="user-essentials">
+        <h2 class="h3 mb-4 text-primary">⭐ Community Essentials</h2>
+        
+        <!-- Add New Essential Button -->
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body text-center">
+                <h3 class="card-title h5 mb-3">Add Your Own Essential</h3>
+                <p class="mb-3">Share your favorite student essentials with the community!</p>
+                <a href="{{ url_for('add_essential') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus"></i> Add Essential
+                </a>
+            </div>
+        </div>
+
+        <!-- User Added Products -->
+        {% if user_essentials %}
+        <div class="row">
+            {% for essential in user_essentials %}
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100 product-card user-essential-card" data-price="{{ essential.price or 0 }}">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-0">{{ essential.name }}</h5>
+                            <button class="btn btn-sm btn-outline-danger delete-essential" 
+                                    data-id="{{ essential.id }}" 
+                                    title="Delete this essential">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <p class="card-text flex-grow-1">
+                            <small class="text-muted">{{ essential.category }}</small><br>
+                            {{ essential.description or 'No description provided' }}
+                        </p>
+                        {% if essential.price %}
+                        <p class="text-success fw-bold mb-2">₹{{ essential.price }}</p>
+                        {% endif %}
+                        {% if essential.link %}
+                        <a href="{{ essential.link }}" class="btn btn-success mt-auto" target="_blank">
+                            <i class="fas fa-external-link-alt"></i> View Product
+                        </a>
+                        {% else %}
+                        <span class="text-muted mt-auto">No link provided</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <h4 class="text-muted mb-3">No community essentials yet</h4>
+                <p class="text-muted">Be the first to add your favorite student essential!</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Transparency & Trust Note -->
+    <div class="card mb-5 shadow-sm bg-light">
+        <div class="card-body">
+            <h3 class="card-title h5 mb-3 text-warning">🔍 Transparency Note</h3>
+            <p class="mb-0">
+                Some links in this section are affiliate links. If you purchase using these links, we may earn a small commission at no extra cost to you. This helps us keep the platform free and useful for students.
+            </p>
+        </div>
+    </div>
+
+    <!-- Student Buying Guidelines -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h3 class="card-title h5 mb-3">📋 Student Buying Guidelines</h3>
+            <ul class="list-unstyled">
+                <li class="mb-2">✅ <strong>Buy based on need, not hype:</strong> Pehle socho tumhe kya chahiye – coding, notes, ya gaming?</li>
+                <li class="mb-2">✅ <strong>Avoid unnecessary expensive products:</strong> Brand ka naam नहीं, features देखो।</li>
+                <li class="mb-2">✅ <strong>Wait for discounts and sales:</strong> Amazon Great Indian Sale, Flipkart Big Billion Days में best deals मिलते हैं।</li>
+                <li class="mb-2">✅ <strong>Focus on learning, not brand show-off:</strong> Paise bachao, knowledge बढ़ाओ।</li>
+            </ul>
+            <p class="text-primary fw-bold mt-3">
+                Happy Shopping! 🎉 Ab confidently choose karo bina paise waste kiye.
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('priceFilter').addEventListener('change', function() {
+    const selectedRange = this.value;
+    const productCards = document.querySelectorAll('.product-card');
+
+    productCards.forEach(card => {
+        const price = parseInt(card.getAttribute('data-price'));
+        let show = false;
+
+        switch(selectedRange) {
+            case 'all':
+                show = true;
+                break;
+            case 'under-15000':
+                show = price <= 15000;
+                break;
+            case '15000-25000':
+                show = price > 15000 && price <= 25000;
+                break;
+            case '25000-50000':
+                show = price > 25000 && price <= 50000;
+                break;
+            case '50000-65000':
+                show = price > 50000 && price <= 65000;
+                break;
+            case '65000-70000':
+                show = price > 65000 && price <= 70000;
+                break;
+            case 'under-3000':
+                show = price <= 3000;
+                break;
+        }
+
+        card.style.display = show ? 'block' : 'none';
+    });
+});
+
+// Delete essential functionality
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.delete-essential').forEach(button => {
+        button.addEventListener('click', function() {
+            const essentialId = this.getAttribute('data-id');
+            if (confirm('Are you sure you want to delete this essential?')) {
+                fetch(`/essentials/delete/${essentialId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remove the card from the DOM
+                        this.closest('.col-md-6').remove();
+                        // If no essentials left, show empty message
+                        const remainingEssentials = document.querySelectorAll('.user-essential-card');
+                        if (remainingEssentials.length === 1) { // This one will be removed
+                            location.reload(); // Reload to show empty state
+                        }
+                    } else {
+                        alert('Error deleting essential: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error deleting essential');
+                });
+            }
+        });
+    });
+});
+</script>
+
+{% endblock %}

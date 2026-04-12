@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Panel - Marg Darshak{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row">
+    <div class="col-12">
+      <div class="card shadow">
+        <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+          <h3 class="mb-0">🔧 Admin Panel - User Management</h3>
+          <div>
+            <a href="/mentor-connect" class="btn btn-light btn-sm me-2">
+              <i class="fas fa-arrow-left me-1"></i>Back to Mentor
+            </a>
+            <a href="/admin/logout" class="btn btn-outline-light btn-sm">
+              <i class="fas fa-sign-out-alt me-1"></i>Logout
+            </a>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <!-- Users Table -->
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Premium</th>
+                  <th>Mentor Access</th>
+                  <th>Joined</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for user in users %}
+                <tr>
+                  <td>{{ user[0] }}</td>
+                  <td>{{ user[1] }}</td>
+                  <td>{{ user[2] }}</td>
+                  <td>
+                    {% if user[3] %}
+                      <span class="badge bg-success">Yes</span>
+                    {% else %}
+                      <span class="badge bg-secondary">No</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if user[4] %}
+                      <span class="badge bg-success">Yes</span>
+                    {% else %}
+                      <span class="badge bg-secondary">No</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ user[5] }}</td>
+                  <td>
+                    <a href="/admin/user/{{ user[0] }}/toggle_premium" class="btn btn-sm btn-warning me-1">
+                      Toggle Premium
+                    </a>
+                    <a href="/admin/user/{{ user[0] }}/toggle_mentor" class="btn btn-sm btn-info">
+                      Toggle Mentor
+                    </a>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Mentor Requests Section -->
+          <div class="mt-5">
+            <h4 class="mb-3">🎓 Mentor Payment Requests</h4>
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>UTR</th>
+                    <th>Requested</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for request in requests %}
+                  <tr>
+                    <td>{{ request[0] }}</td>
+                    <td>{{ request[1] }}</td>
+                    <td>{{ request[2] }}</td>
+                    <td><code>{{ request[3] }}</code></td>
+                    <td>{{ request[4] }}</td>
+                    <td>
+                      {% if request[5] == 'pending' %}
+                        <span class="badge bg-warning">Pending</span>
+                      {% elif request[5] == 'approved' %}
+                        <span class="badge bg-success">Approved</span>
+                      {% else %}
+                        <span class="badge bg-danger">Rejected</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if request[5] == 'pending' %}
+                        <a href="/admin/mentor-request/{{ request[0] }}/approve" class="btn btn-sm btn-success me-1">
+                          <i class="fas fa-check"></i> Approve
+                        </a>
+                        <a href="/admin/mentor-request/{{ request[0] }}/reject" class="btn btn-sm btn-danger">
+                          <i class="fas fa-times"></i> Reject
+                        </a>
+                      {% else %}
+                        <span class="text-muted">Processed</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+
+                  {% if not requests %}
+                  <tr>
+                    <td colspan="7" class="text-center text-muted">No mentor requests pending</td>
+                  </tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="card border-primary">
+                  <div class="card-body">
+                    <h6>💰 Payment Verification</h6>
+                    <p class="small">Check emails for payment screenshots and manually activate premium access.</p>
+                    <p class="small text-muted">UPI IDs: PhonePe (7620260012@ibl), Paytm (7620260012@ptyes), GPay (mryashu9300@okaxis)</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="card border-success">
+                  <div class="card-body">
+                    <h6>📊 Statistics</h6>
+                    <p class="small">Total Users: {{ users|length }}</p>
+                    <p class="small">Premium Users: {{ users|selectattr('3')|list|length }}</p>
+                    <p class="small">Mentor Access: {{ users|selectattr('4')|list|length }}</p>
+                    <p class="small">Pending Requests: {{ requests|selectattr('5', 'equalto', 'pending')|list|length }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

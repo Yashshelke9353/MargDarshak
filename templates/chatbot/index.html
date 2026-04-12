@@ -1,0 +1,453 @@
+{% extends 'base.html' %}
+
+{% block title %}Chatbot - Marg Darshak{% endblock %}
+
+{% block content %}
+<div class="container py-8 md:py-12">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="glass-card overflow-hidden">
+        <div class="p-6 text-center" style="background: var(--gradient-primary); color: white;">
+          <img src="/static/icon-192.png" alt="MargDarshak Logo" class="mx-auto shadow-lg" style="width: 56px; height: 56px; border-radius: 16px; margin-bottom: 12px; border: 2px solid rgba(255,255,255,0.4);">
+          <h3 class="mb-1 text-2xl font-bold font-sans">Marg Darshak AI</h3>
+          <p class="text-white/80 m-0 devanagari-text">आपका व्यक्तिगत मार्गदर्शन साथी</p>
+        </div>
+
+        <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900/50">
+          <!-- Chat Messages Container -->
+          <div id="chat-messages" class="chat-messages mb-6 p-4 md:p-6 rounded-2xl bg-white/50 dark:bg-slate-800/50 shadow-inner" style="height: 500px; overflow-y: auto; border: 1px solid rgba(0,0,0,0.05);">
+            <!-- Welcome Message -->
+            <div class="message bot-message mb-3 opacity-0 motion-preset-slide-up motion-duration-500">
+              <div class="message-avatar">
+                <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-brand-100 text-brand-600 shadow-sm text-xl">🤖</span>
+              </div>
+              <div class="message-content">
+                <div class="message-text">
+                  नमस्ते! मैं आपका मार्गदर्शक हूं। मैं आपकी career, education, mental health, wisdom, skills, और overall development में मदद कर सकता हूं।<br><br>
+                  आप क्या जानना चाहेंगे? कोई भी question पूछ सकते हैं! 😊
+                </div>
+                <small class="text-slate-400 mt-2 block">Marg Darshak Agent</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="quick-actions mb-4 overflow-x-auto pb-2 custom-scrollbar">
+            <div class="flex gap-2 min-w-max">
+                <button class="px-4 py-2 rounded-full border border-brand-200 bg-white dark:bg-slate-800 text-brand-700 hover:bg-brand-50 hover:border-brand-300 transition-all text-sm font-medium shadow-sm quick-btn" data-message="career quiz कैसे दें?">🎓 Career Quiz</button>
+                <button class="px-4 py-2 rounded-full border border-green-200 bg-white dark:bg-slate-800 text-green-700 hover:bg-green-50 hover:border-green-300 transition-all text-sm font-medium shadow-sm quick-btn" data-message="mental health tips">💚 Mental Health</button>
+                <button class="px-4 py-2 rounded-full border border-blue-200 bg-white dark:bg-slate-800 text-blue-700 hover:bg-blue-50 hover:border-blue-300 transition-all text-sm font-medium shadow-sm quick-btn" data-message="AI tools recommendations">🛠 AI Tools</button>
+                <button class="px-4 py-2 rounded-full border border-orange-200 bg-white dark:bg-slate-800 text-orange-700 hover:bg-orange-50 hover:border-orange-300 transition-all text-sm font-medium shadow-sm quick-btn" data-message="daily wisdom कैसे पाएं?">🕉 Daily Wisdom</button>
+            </div>
+          </div>
+
+          <!-- Chat Input -->
+          <div class="relative">
+            <div class="flex items-center gap-2 bg-white dark:bg-slate-800 p-2 rounded-FULL border border-slate-200 dark:border-slate-700 shadow-sm transition-all focus-within:ring-2 focus-within:ring-brand-500/50">
+              <button class="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:text-brand-600 hover:bg-brand-50 transition-colors" id="voice-input-btn" type="button" title="Voice Input">
+                <i class="fas fa-microphone"></i>
+              </button>
+              <input type="text" id="message-input" class="flex-1 bg-transparent border-none outline-none px-2 text-slate-700 dark:text-slate-200" placeholder="Ask me anything... (यहाँ टाइप करें)" maxlength="500">
+              <button class="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:text-green-600 hover:bg-green-50 transition-colors" id="voice-output-btn" type="button" title="Speak Last Response">
+                <i class="fas fa-volume-up"></i>
+              </button>
+              <button class="h-10 px-6 rounded-full bg-brand-600 text-white font-medium hover:bg-brand-700 transition-colors shadow-md flex items-center gap-2" id="send-button" type="button">
+                <span>Send</span>
+                <i class="fas fa-paper-plane text-xs"></i>
+              </button>
+            </div>
+            <div class="text-center mt-3">
+              <span id="voice-status" class="text-sm text-brand-600 font-medium"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.chat-messages {
+  scroll-behavior: smooth;
+}
+
+.message {
+  display: flex;
+  margin-bottom: 20px;
+}
+
+.message-avatar {
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.user-message {
+  justify-content: flex-end;
+}
+
+.user-message .message-content {
+  background: var(--gradient-primary);
+  color: white;
+  border-radius: 20px 20px 4px 20px;
+  padding: 12px 18px;
+  max-width: 75%;
+  word-wrap: break-word;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
+}
+
+.bot-message .message-content {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 20px 20px 20px 4px;
+  padding: 12px 18px;
+  max-width: 80%;
+  word-wrap: break-word;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+body.dark-mode .bot-message .message-content {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.message-text {
+  margin-bottom: 5px;
+  line-height: 1.5;
+}
+
+.typing-indicator {
+  display: none;
+}
+.typing-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brand-500);
+  margin-right: 4px;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const chatMessages = document.getElementById('chat-messages');
+    const quickButtons = document.querySelectorAll('.quick-btn');
+
+    // Send message function
+    function sendMessage() {
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        // Add user message
+        addMessage(message, 'user');
+        messageInput.value = '';
+
+        // Show typing indicator
+        showTypingIndicator();
+
+        // Send to server
+        fetch('/chatbot/message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message: message })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideTypingIndicator();
+            if (data.success) {
+                addMessage(data.response, 'bot');
+            } else {
+                addMessage('Sorry, I encountered an error. Please try again!', 'bot');
+            }
+        })
+        .catch(error => {
+            hideTypingIndicator();
+            console.error('Error:', error);
+            addMessage('Network error. Please check your connection and try again.', 'bot');
+        });
+    }
+
+    // Add message to chat
+    function addMessage(text, sender) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}-message`;
+
+        const avatar = sender === 'user' ? '👤' : '🤖';
+        const avatarClass = sender === 'user' ? 'bg-success' : 'bg-primary';
+
+        messageDiv.innerHTML = `
+            <div class="message-avatar">
+                <span class="badge ${avatarClass}">${avatar}</span>
+            </div>
+            <div class="message-content">
+                <div class="message-text">${text.replace(/\n/g, '<br>')}</div>
+                <small class="text-muted">${sender === 'user' ? 'You' : 'Marg Darshak Bot'}</small>
+            </div>
+        `;
+
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Typing indicator functions
+    function showTypingIndicator() {
+        const indicator = document.createElement('div');
+        indicator.className = 'message bot-message typing-indicator motion-preset-fade';
+        indicator.style.display = 'flex';
+        indicator.id = 'typing-indicator';
+        indicator.innerHTML = `
+            <div class="message-avatar">
+                <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-brand-100 text-brand-600 shadow-sm text-xl animate-pulse">🤖</span>
+            </div>
+            <div class="message-content">
+                <div class="message-text">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                </div>
+                <small class="text-slate-400 mt-2 block">Thinking...</small>
+            </div>
+        `;
+        chatMessages.appendChild(indicator);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function hideTypingIndicator() {
+        const indicator = document.getElementById('typing-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
+    }
+
+    // Event listeners
+    sendButton.addEventListener('click', sendMessage);
+
+    messageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+
+    // Voice functionality
+    let recognition = null;
+    let isListening = false;
+    let lastBotResponse = '';
+    const voiceStatus = document.getElementById('voice-status');
+    const voiceInputBtn = document.getElementById('voice-input-btn');
+    const voiceOutputBtn = document.getElementById('voice-output-btn');
+
+    // Initialize speech recognition
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'hi-IN,en-US'; // Support Hindi and English
+
+        recognition.onstart = function() {
+            isListening = true;
+            voiceInputBtn.classList.add('bg-red-500', 'text-white', 'border-red-500');
+            voiceInputBtn.innerHTML = '<i class="fas fa-stop"></i>';
+            voiceInputBtn.title = 'Click to stop listening';
+            voiceStatus.textContent = '🎤 Listening... Speak now!';
+            voiceStatus.className = 'text-sm text-red-500 font-bold';
+        };
+
+        recognition.onresult = function(event) {
+            const transcript = event.results[0][0].transcript;
+            messageInput.value = transcript;
+            voiceStatus.textContent = `✅ Heard: "${transcript}"`;
+            voiceStatus.className = 'text-success';
+            resetVoiceInput();
+            // Don't auto-send, let user review and send manually
+        };
+
+        recognition.onerror = function(event) {
+            console.error('Speech recognition error:', event.error);
+            voiceStatus.textContent = '❌ Voice input error. Try again.';
+            voiceStatus.className = 'text-warning';
+            resetVoiceInput();
+        };
+
+        recognition.onend = function() {
+            resetVoiceInput();
+        };
+    } else {
+        voiceInputBtn.disabled = true;
+        voiceInputBtn.title = 'Voice input not supported in this browser';
+        voiceStatus.textContent = '🎤 Voice input not available';
+        voiceStatus.className = 'text-muted';
+    }
+
+    function resetVoiceInput() {
+        isListening = false;
+        voiceInputBtn.classList.remove('bg-red-500', 'text-white', 'border-red-500');
+        voiceInputBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+        voiceInputBtn.title = 'Voice Input';
+        setTimeout(() => {
+            if (!isListening) {
+                voiceStatus.textContent = '';
+            }
+        }, 3000);
+    }
+
+    // Voice input button
+    voiceInputBtn.addEventListener('click', function() {
+        if (!recognition) {
+            alert('Voice input is not supported in your browser. Please use Chrome, Edge, or Safari.');
+            return;
+        }
+
+        if (isListening) {
+            // Stop listening
+            recognition.stop();
+            voiceStatus.textContent = '⏹️ Stopped listening';
+            voiceStatus.className = 'text-info';
+        } else {
+            // Start listening
+            try {
+                recognition.start();
+            } catch (error) {
+                console.error('Error starting recognition:', error);
+                voiceStatus.textContent = '❌ Error starting voice input';
+                voiceStatus.className = 'text-warning';
+            }
+        }
+    });
+
+    // Voice output functionality
+    let isSpeaking = false;
+
+    // Voice output button
+    voiceOutputBtn.addEventListener('click', function() {
+        if (!lastBotResponse) {
+            voiceStatus.textContent = '📝 No response to speak yet!';
+            voiceStatus.className = 'text-warning';
+            setTimeout(() => voiceStatus.textContent = '', 2000);
+            return;
+        }
+
+        if (isSpeaking) {
+            // Stop speaking
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+            isSpeaking = false;
+            voiceOutputBtn.classList.remove('btn-success');
+            voiceOutputBtn.classList.add('btn-outline-success');
+            voiceOutputBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+            voiceOutputBtn.title = 'Voice Output (Last Response)';
+            voiceStatus.textContent = '⏹️ Stopped speaking';
+            voiceStatus.className = 'text-info';
+            setTimeout(() => voiceStatus.textContent = '', 2000);
+            return;
+        }
+
+        // Start speaking
+        speakText(lastBotResponse);
+    });
+
+    function speakText(text) {
+        if (!('speechSynthesis' in window)) {
+            alert('Text-to-speech is not supported in your browser.');
+            return;
+        }
+
+        // Cancel any ongoing speech
+        window.speechSynthesis.cancel();
+
+        // Remove HTML tags for speech
+        const cleanText = text.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ');
+
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = 'hi-IN'; // Hindi
+        utterance.rate = 0.9;
+        utterance.pitch = 1;
+
+        // Try to find a Hindi voice
+        const voices = speechSynthesis.getVoices();
+        const hindiVoice = voices.find(voice => voice.lang.startsWith('hi'));
+        if (hindiVoice) {
+            utterance.voice = hindiVoice;
+        }
+
+        utterance.onstart = function() {
+            isSpeaking = true;
+            voiceOutputBtn.classList.add('btn-success');
+            voiceOutputBtn.classList.remove('btn-outline-success');
+            voiceOutputBtn.innerHTML = '<i class="fas fa-stop"></i>';
+            voiceOutputBtn.title = 'Stop speaking';
+            voiceStatus.textContent = '🔊 Speaking...';
+            voiceStatus.className = 'text-info';
+        };
+
+        utterance.onend = function() {
+            isSpeaking = false;
+            voiceOutputBtn.classList.remove('btn-success');
+            voiceOutputBtn.classList.add('btn-outline-success');
+            voiceOutputBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+            voiceOutputBtn.title = 'Voice Output (Last Response)';
+            voiceStatus.textContent = '';
+        };
+
+        utterance.onerror = function() {
+            isSpeaking = false;
+            voiceOutputBtn.classList.remove('btn-success');
+            voiceOutputBtn.classList.add('btn-outline-success');
+            voiceOutputBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
+            voiceOutputBtn.title = 'Voice Output (Last Response)';
+            voiceStatus.textContent = '❌ Speech synthesis error';
+            voiceStatus.className = 'text-warning';
+            setTimeout(() => voiceStatus.textContent = '', 3000);
+        };
+
+        speechSynthesis.speak(utterance);
+    }
+
+    // Store last bot response for voice output
+    function addMessage(text, sender) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}-message motion-preset-slide-up motion-duration-300`;
+
+        const avatar = sender === 'user' ? '👤' : '🤖';
+        const avatarSpan = sender === 'user' 
+            ? '<span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-brand-600 text-white shadow-sm text-xl">' + avatar + '</span>'
+            : '<span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-brand-100 text-brand-600 shadow-sm text-xl">' + avatar + '</span>';
+
+        messageDiv.innerHTML = `
+            <div class="message-avatar">
+                ${avatarSpan}
+            </div>
+            <div class="message-content">
+                <div class="message-text">${text.replace(/\n/g, '<br>')}</div>
+                <small class="text-slate-400 mt-2 block">${sender === 'user' ? 'You' : 'Marg Darshak Agent'}</small>
+            </div>
+        `;
+
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // Store last bot response
+        if (sender === 'bot') {
+            lastBotResponse = text;
+        }
+    }
+
+    // Auto-focus input
+    messageInput.focus();
+});
+</script>
+{% endblock %}

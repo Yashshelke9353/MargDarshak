@@ -1,0 +1,371 @@
+{% extends 'base.html' %}
+
+{% block title %}Explore Wisdom - Gyan Kosh{% endblock %}
+
+{% block content %}
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Poppins:wght@300;400;500;600&family=Noto+Sans+Devanagari:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+    /* Theme Variables bridging base.html and landing.html aesthetics */
+    .explore-container {
+        /* Default: Bright Theme (landing.html inspired) */
+        --theme-bg: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        --theme-text-h: #4c1d95; /* Deep Purple */
+        --theme-text-p: #334155;
+        --theme-text-sub: #64748b;
+        --theme-accent: #6b21a8;
+        --theme-accent-glow: rgba(107, 33, 168, 0.15);
+        
+        --theme-card-bg: rgba(255, 255, 255, 0.7);
+        --theme-card-border: rgba(255, 255, 255, 0.8);
+        --theme-card-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        --theme-card-hover: rgba(255, 255, 255, 0.9);
+        
+        --theme-input-bg: rgba(255, 255, 255, 0.8);
+        --theme-input-border: #cbd5e1;
+        --theme-input-text: #1e293b;
+        --theme-input-placeholder: rgba(15, 23, 42, 0.4);
+        
+        --theme-btn-bg: rgba(255,255,255,0.6);
+        --theme-btn-hover: #6b21a8;
+        --theme-btn-border: #6b21a8;
+        --theme-btn-text: #6b21a8;
+        --theme-btn-hover-text: #fff;
+        
+        --theme-invert-img: invert(0.8) sepia(1) hue-rotate(220deg);
+        --theme-blend: multiply; 
+        
+        font-family: 'Poppins', sans-serif;
+        background: var(--theme-bg);
+        color: var(--theme-text-p);
+        min-height: 100vh;
+        margin: -1.5rem; /* Negate base.html container padding */
+        padding: 4rem 2rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.4s ease;
+    }
+
+    body.dark-mode .explore-container {
+        /* Optional: Dark Theme (Previous premium dark design) */
+        --theme-bg: radial-gradient(circle at top, #0a1128 0%, #02060D 100%);
+        --theme-text-h: #FFD700;
+        --theme-text-p: #FFFFFF;
+        --theme-text-sub: #94a3b8;
+        --theme-accent: #FFD700;
+        --theme-accent-glow: rgba(255, 215, 0, 0.25);
+        
+        --theme-card-bg: rgba(10, 15, 26, 0.6);
+        --theme-card-border: rgba(255, 215, 0, 0.15);
+        --theme-card-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+        --theme-card-hover: rgba(15, 23, 42, 0.8);
+        
+        --theme-input-bg: rgba(255, 255, 255, 0.05);
+        --theme-input-border: rgba(255, 215, 0, 0.3);
+        --theme-input-text: #fff;
+        --theme-input-placeholder: rgba(255, 255, 255, 0.4);
+        
+        --theme-btn-bg: linear-gradient(135deg, rgba(255, 215, 0, 0.2), transparent);
+        --theme-btn-hover: #FFD700;
+        --theme-btn-border: #FFD700;
+        --theme-btn-text: #FFD700;
+        --theme-btn-hover-text: #02060D;
+        
+        --theme-invert-img: invert(0);
+        --theme-blend: screen; 
+    }
+
+    .explore-container h1, .explore-container h2, .explore-container h3, .explore-container h4, .explore-container h6 {
+        font-family: 'Cinzel', serif;
+        color: var(--theme-text-h);
+        transition: color 0.4s ease;
+    }
+
+    .devanagari {
+        font-family: 'Noto Sans Devanagari', sans-serif;
+    }
+
+    /* Top Decor */
+    .decor-mandala {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 150vw;
+        max-width: 1200px;
+        opacity: 0.05;
+        pointer-events: none;
+        z-index: 0;
+        filter: var(--theme-invert-img);
+        transition: filter 0.4s ease;
+    }
+
+
+    /* Header */
+    .page-header {
+        text-align: center;
+        margin-bottom: 4rem;
+        position: relative;
+        z-index: 2;
+        animation: fadeInDown 1s ease;
+    }
+
+    .page-title {
+        font-size: 3.5rem;
+        font-weight: 700;
+        text-shadow: 0 4px 20px var(--theme-accent-glow);
+        margin-bottom: 1rem;
+    }
+
+    /* Search Bar */
+    .search-wrapper {
+        max-width: 600px;
+        margin: 0 auto 4rem auto;
+        position: relative;
+        z-index: 2;
+        animation: fadeIn 1.2s ease 0.3s both;
+    }
+
+    .search-input-group {
+        display: flex;
+        border-radius: 50px;
+        background: var(--theme-input-bg);
+        border: 1px solid var(--theme-input-border);
+        padding: 0.5rem;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        transition: all 0.4s ease;
+    }
+
+    .search-input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: var(--theme-input-text);
+        padding: 0.8rem 1.5rem;
+        font-size: 1.1rem;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .search-input:focus {
+        outline: none;
+    }
+
+    .search-input::placeholder {
+        color: var(--theme-input-placeholder);
+    }
+
+    .search-btn {
+        background: var(--theme-btn-bg);
+        color: var(--theme-btn-text);
+        border: 1px solid var(--theme-btn-border);
+        border-radius: 40px;
+        padding: 0.5rem 2rem;
+        font-family: 'Cinzel', serif;
+        font-weight: 600;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+
+    .search-btn:hover {
+        background: var(--theme-btn-hover);
+        color: var(--theme-btn-hover-text);
+        box-shadow: 0 0 20px var(--theme-accent-glow);
+    }
+
+    /* Grid Layout */
+    .wisdom-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 2.5rem;
+        max-width: 1300px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* Cards */
+    .wisdom-card {
+        background: var(--theme-card-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--theme-card-border);
+        border-radius: 16px;
+        padding: 2rem;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        text-decoration: none;
+        color: inherit;
+        box-shadow: var(--theme-card-shadow);
+        animation: fadeInUp 0.8s ease both;
+    }
+
+    .wisdom-card:nth-child(2) { animation-delay: 0.1s; }
+    .wisdom-card:nth-child(3) { animation-delay: 0.2s; }
+    .wisdom-card:nth-child(4) { animation-delay: 0.3s; }
+    .wisdom-card:nth-child(5) { animation-delay: 0.4s; }
+    .wisdom-card:nth-child(6) { animation-delay: 0.5s; }
+
+    .wisdom-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--theme-accent), transparent);
+        opacity: 0;
+        transition: opacity 0.4s;
+    }
+
+    .wisdom-card:hover {
+        transform: translateY(-10px) scale(1.02);
+        border-color: var(--theme-accent);
+        box-shadow: 0 15px 35px var(--theme-accent-glow), var(--theme-card-shadow);
+        background: var(--theme-card-hover);
+    }
+
+    .wisdom-card:hover::before {
+        opacity: 1;
+    }
+
+    .card-source {
+        font-size: 0.85rem;
+        color: var(--theme-accent);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 1.2rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        opacity: 0.9;
+    }
+
+    .card-shlok {
+        font-size: 1.25rem;
+        line-height: 1.6;
+        color: var(--theme-text-p);
+        margin-bottom: 1.2rem;
+        flex-grow: 1;
+        font-weight: 500;
+    }
+
+    .card-meaning {
+        font-size: 0.95rem;
+        color: var(--theme-text-sub);
+        border-top: 1px solid var(--theme-card-border);
+        padding-top: 1rem;
+        line-height: 1.5;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .card-action {
+        margin-top: 1.5rem;
+        color: var(--theme-accent);
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-weight: 600;
+        opacity: 0.7;
+        transition: opacity 0.3s;
+    }
+
+    .wisdom-card:hover .card-action {
+        opacity: 1;
+    }
+
+    .action-icon {
+        transition: transform 0.3s;
+    }
+
+    .wisdom-card:hover .action-icon {
+        transform: translateX(5px);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 5rem 2rem;
+        grid-column: 1 / -1;
+    }
+
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @media (max-width: 768px) {
+        .page-title { font-size: 2.5rem; }
+        .explore-container { padding: 3rem 1rem; }
+        .wisdom-grid { gap: 1.5rem; }
+    }
+</style>
+
+<div class="explore-container">
+    <div class="page-header">
+        <h1 class="page-title">Explore Wisdom</h1>
+        <p class="devanagari" style="color: var(--theme-text-sub); font-size: 1.2rem;">ज्ञान का अनन्त सागर</p>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-wrapper">
+        <form action="/gyan/search" method="get">
+            <div class="search-input-group">
+                <input type="text" class="search-input" name="q" 
+                       placeholder="Search by topic, keyword, or chapter..." 
+                       value="{{ query }}">
+                <button class="search-btn" type="submit">
+                    <i class="fas fa-search me-2"></i> Seek
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Grid Results -->
+    <div class="wisdom-grid">
+        {% if shlokas %}
+            {% for shloka in shlokas %}
+            <a href="/gyan/detail/{{ shloka.id }}" class="wisdom-card">
+                <div class="card-source">
+                    <i class="fas fa-book-open"></i> {{ shloka.source }} {{ shloka.chapter }}.{{ shloka.verse_number }}
+                </div>
+                <div class="card-shlok devanagari">
+                    {{ shloka.sanskrit_text[:120] }}{% if shloka.sanskrit_text|length > 120 %}...{% endif %}
+                </div>
+                <div class="card-meaning">
+                    {{ shloka.english_meaning }}
+                </div>
+                <div class="card-action">
+                    Read Full Verse <i class="fas fa-arrow-right action-icon"></i>
+                </div>
+            </a>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-search mb-4" style="font-size: 3rem; color: var(--theme-accent-glow); opacity: 0.8;"></i>
+                <h3 style="color: var(--theme-text-h);">No verses found</h3>
+                <p style="color: var(--theme-text-sub); max-width: 400px; margin: 1rem auto 2rem;">We couldn't find any wisdom matching your current search. Please try different keywords.</p>
+                <a href="/gyan" class="search-btn" style="text-decoration: none; display: inline-block;">
+                    <i class="fas fa-om me-2"></i> Return to Daily Wisdom
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

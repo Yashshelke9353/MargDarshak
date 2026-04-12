@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Section Header -->
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold text-primary">➕ Add Your Essential</h1>
+        <p class="lead text-muted">Add your own essential items with links and details</p>
+    </div>
+
+    <!-- Add Form -->
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Product Name *</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Category *</label>
+                            <select class="form-select" id="category" name="category" required>
+                                <option value="">Select Category</option>
+                                <option value="laptops">Laptops</option>
+                                <option value="phones">Phones</option>
+                                <option value="accessories">Accessories</option>
+                                <option value="books">Books</option>
+                                <option value="software">Software</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="price" class="form-label">Price (₹)</label>
+                            <input type="number" class="form-control" id="price" name="price" step="0.01" placeholder="e.g., 25000">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="link" class="form-label">Purchase Link</label>
+                            <input type="url" class="form-control" id="link" name="link" placeholder="https://...">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3" placeholder="Why do you recommend this?"></textarea>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">Add Essential</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Back Button -->
+    <div class="text-center mt-4">
+        <a href="{{ url_for('essentials') }}" class="btn btn-outline-secondary">← Back to Essentials</a>
+    </div>
+</div>
+{% endblock %}

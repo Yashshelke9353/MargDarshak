@@ -1,0 +1,1179 @@
+{% extends 'base.html' %}
+
+{% block title %}MargDarshak AI - Student Success Platform{% endblock %}
+
+{% block content %}
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+
+<style>
+    /* Hide the default base.html header to use our custom premium landing page navbar */
+    .header-top {
+        display: none !important;
+    }
+
+    :root {
+        --font-outfit: 'Outfit', sans-serif;
+        --font-inter: 'Inter', sans-serif;
+        --color-primary: #6366f1;
+        /* Indigo */
+        --color-secondary: #8b5cf6;
+        /* Violet */
+        --color-dark: #0f172a;
+        --color-light: #f8fafc;
+        --color-muted: #64748b;
+    }
+
+    body {
+        font-family: var(--font-inter);
+        background-color: var(--color-light);
+        color: var(--color-dark);
+        overflow-x: hidden;
+    }
+
+    body.dark-mode {
+        background-color: #0b0f19;
+        color: #f1f5f9;
+        --color-dark: #f1f5f9;
+        --color-light: #0b0f19;
+        --color-muted: #94a3b8;
+    }
+
+    /* =========================================
+       CUSTOM NAVBAR
+       ========================================= */
+    .premium-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1050;
+        padding: 1.25rem 0;
+        transition: all 0.3s ease;
+        background: transparent;
+    }
+
+    .premium-nav.scrolled {
+        padding: 0.75rem 0;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+    }
+
+    body.dark-mode .premium-nav.scrolled {
+        background: rgba(11, 15, 25, 0.85);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .nav-brand-text {
+        font-family: var(--font-outfit);
+        font-weight: 800;
+        font-size: 1.5rem;
+        letter-spacing: -0.03em;
+        color: var(--color-dark);
+        text-decoration: none;
+    }
+
+    /* =========================================
+       HERO SECTION w/ 3D LOGO
+       ========================================= */
+    .hero-section {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        padding-top: 80px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .hero-bg-blobs {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        z-index: -1;
+        overflow: hidden;
+    }
+
+    .blob {
+        position: absolute;
+        filter: blur(80px);
+        border-radius: 50%;
+        opacity: 0.15;
+        animation: float 10s ease-in-out infinite;
+    }
+
+    .blob-1 {
+        top: -10%;
+        left: -10%;
+        width: 50vw;
+        height: 50vw;
+        background: var(--color-primary);
+    }
+
+    .blob-2 {
+        bottom: -10%;
+        right: -10%;
+        width: 40vw;
+        height: 40vw;
+        background: #ec4899;
+        animation-delay: -5s;
+    }
+
+    @keyframes float {
+
+        0%,
+        100% {
+            transform: translateY(0) scale(1);
+        }
+
+        50% {
+            transform: translateY(-30px) scale(1.05);
+        }
+    }
+
+    .hero-title {
+        font-family: var(--font-outfit);
+        font-size: clamp(3rem, 6vw, 5rem);
+        font-weight: 900;
+        line-height: 1.1;
+        letter-spacing: -0.04em;
+        margin-bottom: 1.5rem;
+        color: var(--color-dark);
+    }
+
+    .hero-title span {
+        background: linear-gradient(135deg, var(--color-primary), #ec4899);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+        font-size: 1.25rem;
+        color: var(--color-muted);
+        line-height: 1.7;
+        margin-bottom: 2.5rem;
+        max-width: 600px;
+    }
+
+    .btn-premium {
+        background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+        color: white;
+        font-family: var(--font-outfit);
+        font-weight: 700;
+        padding: 1rem 2.5rem;
+        border-radius: 50px;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        text-decoration: none;
+        box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+    }
+
+    .btn-premium:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 35px rgba(99, 102, 241, 0.4);
+        color: white;
+    }
+
+    .hero-logo-wrapper {
+        position: relative;
+        perspective: 1000px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .hero-logo-img {
+        width: 100%;
+        max-width: 400px;
+        filter: drop-shadow(0 30px 40px rgba(0, 0, 0, 0.15));
+        animation: subtlePulse 4s infinite alternate;
+        transform-style: preserve-3d;
+    }
+
+    body.dark-mode .hero-logo-img {
+        filter: drop-shadow(0 30px 40px rgba(255, 255, 255, 0.05));
+    }
+
+    @keyframes subtlePulse {
+        0% {
+            transform: scale(1) translateY(0);
+        }
+
+        100% {
+            transform: scale(1.02) translateY(-15px);
+        }
+    }
+
+    /* =========================================
+       WHAT IS MARGDARSHAK SECTION
+       ========================================= */
+    .explainer-section {
+        padding: 6rem 0;
+        background: #ffffff;
+        position: relative;
+        z-index: 2;
+    }
+
+    body.dark-mode .explainer-section {
+        background: #111827;
+    }
+
+    .section-title {
+        font-family: var(--font-outfit);
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 1rem;
+        letter-spacing: -0.02em;
+        text-align: center;
+    }
+
+    .section-subtitle {
+        text-align: center;
+        color: var(--color-muted);
+        font-size: 1.15rem;
+        max-width: 700px;
+        margin: 0 auto 4rem auto;
+    }
+
+    .pillar-box {
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .pillar-icon {
+        width: 80px;
+        height: 80px;
+        background: rgba(99, 102, 241, 0.1);
+        color: var(--color-primary);
+        font-size: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 20px;
+        margin: 0 auto 1.5rem auto;
+    }
+
+    .pillar-title {
+        font-family: var(--font-outfit);
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .pillar-desc {
+        color: var(--color-muted);
+        line-height: 1.6;
+    }
+
+    /* =========================================
+       FLOWING FEATURES / VERTICAL MENU
+       ========================================= */
+    .features-arena {
+        padding: 5rem 0;
+        position: relative;
+        background: var(--color-light);
+    }
+
+    /* Using Bootstrap sticky-top for reliability */
+    .vertical-menu-container {
+        position: sticky;
+        top: 100px;
+        height: calc(100vh - 120px);
+        overflow-y: auto;
+        padding-right: 2rem;
+    }
+
+    /* Hide scrollbar */
+    .vertical-menu-container::-webkit-scrollbar {
+        display: none;
+    }
+
+    .menu-link {
+        display: flex;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        font-family: var(--font-outfit);
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: var(--color-muted);
+        text-decoration: none;
+        border-radius: 16px;
+        margin-bottom: 0.75rem;
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        border: 1px solid transparent;
+        position: relative;
+        overflow: hidden;
+        background: transparent;
+    }
+
+    .menu-link::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, rgba(99, 102, 241, 0.1), transparent);
+        transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        z-index: -1;
+    }
+
+    .menu-link:hover {
+        color: var(--color-primary);
+        transform: translateX(10px);
+    }
+
+    .menu-link:hover::before {
+        width: 100%;
+    }
+
+    .menu-link.active {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: var(--color-primary);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.15);
+        transform: scale(1.02) translateX(5px);
+    }
+
+    body.dark-mode .menu-link.active {
+        background: rgba(15, 23, 42, 0.8);
+        border-color: rgba(255, 255, 255, 0.05);
+    }
+
+    /* Add animated glowing dot for active state */
+    .menu-link .active-dot {
+        width: 8px;
+        height: 8px;
+        background: #ec4899;
+        border-radius: 50%;
+        margin-right: 12px;
+        opacity: 0;
+        transform: scale(0);
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .menu-link.active .active-dot {
+        opacity: 1;
+        transform: scale(1);
+        animation: pulseDot 2s infinite;
+    }
+
+    @keyframes pulseDot {
+        0% {
+            box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.4);
+        }
+
+        70% {
+            box-shadow: 0 0 0 10px rgba(236, 72, 153, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(236, 72, 153, 0);
+        }
+    }
+
+    /* Right side flowing sections */
+    .flowing-feature {
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+        padding: 4rem 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        scroll-margin-top: 120px;
+        /* Native offset for fixed navbar */
+    }
+
+    body.dark-mode .flowing-feature {
+        border-bottom-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .feat-icon-3d {
+        width: 100px;
+        height: 100px;
+        background: var(--color-dark);
+        color: white;
+        border-radius: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    }
+
+    body.dark-mode .feat-icon-3d {
+        background: #fff;
+        color: var(--color-dark);
+        box-shadow: 0 20px 40px rgba(255, 255, 255, 0.1);
+    }
+
+    .feat-title {
+        font-family: var(--font-outfit);
+        font-size: clamp(2rem, 4vw, 3.5rem);
+        font-weight: 800;
+        margin-bottom: 1rem;
+        letter-spacing: -0.02em;
+    }
+
+    .feat-headline {
+        font-size: 1.5rem;
+        color: var(--color-primary);
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+    }
+
+    .feat-desc {
+        font-size: 1.15rem;
+        color: var(--color-muted);
+        line-height: 1.8;
+        margin-bottom: 2rem;
+    }
+
+    /* ========== FEATURE ACCESS BTN ========== */
+    .feature-access-btn {
+        display: inline-block;
+        text-decoration: none;
+        transform-style: preserve-3d;
+        margin-top: 1.5rem;
+    }
+
+    .feat-btn-inner {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 24px 10px 10px;
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        border-radius: 40px;
+        box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+        color: white;
+        font-family: var(--font-outfit);
+        font-weight: 700;
+        font-size: 1.1rem;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .feat-btn-inner img {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        transform: translateZ(20px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .feat-btn-inner span {
+        transform: translateZ(10px);
+    }
+
+    .feat-btn-inner i {
+        transform: translateZ(10px);
+        transition: transform 0.3s ease;
+    }
+
+    .feature-access-btn:hover .feat-btn-inner {
+        background: linear-gradient(135deg, #8b5cf6, #ec4899);
+        box-shadow: 0 15px 30px rgba(236, 72, 153, 0.4);
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    .feature-access-btn:hover .feat-btn-inner img {
+        transform: translateZ(30px) rotate(-10deg) scale(1.1);
+    }
+
+    .feature-access-btn:hover .feat-btn-inner i {
+        transform: translateZ(10px) translateX(6px);
+    }
+
+    .feature-access-btn:active .feat-btn-inner {
+        transform: scale(0.95);
+    }
+
+    /* Override padding for mobile UX */
+    @media (max-width: 991.98px) {
+        .hero-section {
+            text-align: center;
+        }
+
+        .hero-logo-wrapper {
+            margin-top: 3rem;
+        }
+
+        .flowing-feature {
+            min-height: auto;
+            padding: 4rem 0;
+            text-align: center;
+        }
+
+        .feat-icon-3d {
+            margin: 0 auto 2rem auto;
+        }
+
+        .menu-link {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            margin-bottom: 0;
+            white-space: nowrap;
+        }
+
+        .vertical-menu-container {
+            display: flex;
+            height: auto;
+            position: relative;
+            top: 0;
+            padding-right: 0;
+            overflow-x: auto;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .menu-link.active {
+            border-left: none;
+            border-bottom: 3px solid var(--color-primary);
+            background: transparent;
+        }
+    }
+</style>
+
+<!-- Navbar -->
+<nav class="premium-nav" id="mainNav">
+    <div class="container d-flex justify-content-between align-items-center">
+        <a href="/" class="d-flex align-items-center text-decoration-none">
+            <img src="/static/icon-192.png" alt="MargDarshak Logo"
+                style="width: 36px; height: 36px; border-radius: 8px; margin-right: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+            <span class="nav-brand-text">MargDarshak AI</span>
+        </a>
+        <div class="d-flex gap-3 align-items-center">
+            {% if g.current_user %}
+            <a href="/progress" class="text-decoration-none d-none d-md-block"
+                style="color: var(--color-muted); font-weight: 600;">My Progress</a>
+            <span class="badge rounded-pill"
+                style="background: rgba(99, 102, 241, 0.1); color: var(--color-primary); font-size: 0.9rem; padding: 0.5rem 1rem;">
+                {{ g.current_user.username }}
+            </span>
+            <a href="/auth/logout" class="btn btn-sm btn-outline-danger"
+                style="border-radius: 20px; font-family: var(--font-outfit); font-weight: 600; padding: 0.35rem 1rem;">
+                Logout
+            </a>
+            {% else %}
+            <a href="{{ url_for('login') }}" class="text-decoration-none"
+                style="color: var(--color-muted); font-weight: 600;">Login</a>
+            <a href="{{ url_for('signup') }}" class="btn btn-sm"
+                style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; border-radius: 20px; font-family: var(--font-outfit); font-weight: 600; padding: 0.4rem 1.25rem; box-shadow: 0 4px 10px rgba(99,102,241,0.2);">
+                Sign Up Free
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<!-- 1. Hero Section -->
+<section class="hero-section">
+    <div class="hero-bg-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+    </div>
+    <div class="container">
+        <div class="row align-items-center">
+            <!-- Text Content -->
+            <div class="col-lg-6 mb-5 mb-lg-0" style="z-index: 2;">
+                <div class="d-inline-flex align-items-center mb-4 px-3 py-2 rounded-pill"
+                    style="background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2);">
+                    <i class="fas fa-sparkles text-primary me-2"></i>
+                    <span
+                        style="font-family: var(--font-outfit); font-weight: 600; color: var(--color-primary); letter-spacing: 0.05em; text-transform: uppercase; font-size: 0.85rem;">Version
+                        2.0 Now Live</span>
+                </div>
+                <h1 class="hero-title">
+                    Empower your<br>
+                    <span>Student Journey</span><br>
+                    with AI.
+                </h1>
+                <p class="hero-subtitle">
+                    Are you confused about your career? Stressed with studies? <strong>MargDarshak AI</strong> is your
+                    ultra-smart companion that provides exact career maps, mental wellness tools, and curated syllabus
+                    resources—all in one place!
+                </p>
+                <div class="d-flex gap-3 flex-wrap mt-2">
+                    {% if g.current_user %}
+                    <a href="#about" class="btn btn-primary btn-lg"
+                        style="padding-top: 12px !important; padding-bottom: 12px !important; padding-right: 32px !important; border-radius: 50px !important; box-shadow: 0 15px 35px rgba(99,102,241,0.25) !important;">
+                        Explore Platform <i class="fas fa-arrow-down ms-2"></i>
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('signup') }}" class="btn btn-primary btn-lg"
+                        style="padding-top: 12px !important; padding-bottom: 12px !important; padding-right: 32px !important; border-radius: 50px !important; box-shadow: 0 15px 35px rgba(99,102,241,0.25) !important;">
+                        Create Free Account <i class="fas fa-rocket ms-2"></i>
+                    </a>
+                    {% endif %}
+
+                    <a href="/static/MargDarshak-App.apk" download class="btn btn-lg d-inline-flex align-items-center"
+                        style="padding: 12px 30px; border-radius: 50px; font-family: 'Outfit', sans-serif; font-weight: 700; border: 2px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.5); backdrop-filter: blur(10px); color: #475569; transition: all 0.3s ease; box-shadow: 0 10px 25px rgba(0,0,0,0.05);"
+                        onmouseover="this.style.background='rgba(99,102,241,0.05)'; this.style.borderColor='rgba(99,102,241,0.2)'; this.style.color='#6366f1'; this.style.transform='translateY(-2px)';"
+                        onmouseout="this.style.background='rgba(255,255,255,0.5)'; this.style.borderColor='rgba(0,0,0,0.1)'; this.style.color='#475569'; this.style.transform='translateY(0)';">
+                        <i class="fab fa-android me-2"></i> Get Android App
+                    </a>
+                </div>
+            </div>
+            <!-- Logo Floating Visual -->
+            <div class="col-lg-6 text-center hero-logo-wrapper">
+                <!-- Data tilt applied for 3D effect on mouse movement -->
+                <div data-tilt data-tilt-max="10" data-tilt-speed="400" data-tilt-perspective="1000" data-tilt-glare
+                    data-tilt-max-glare="0.5" style="transform-style: preserve-3d;">
+                    <img src="/static/icon-512.png" alt="MargDarshak Large Logo" class="hero-logo-img rounded-circle"
+                        style="transform: translateZ(50px);">
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Bar (Under Hero) -->
+<div style="background: var(--color-dark); color: var(--color-light); padding: 2rem 0;">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-6 col-md-3 mb-3 mb-md-0">
+                <div style="font-family: var(--font-outfit); font-size: 2.5rem; font-weight: 800;">{{ stats['careers'] }}</div>
+                <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--color-light); opacity: 0.7;">
+                    Career Paths</div>
+            </div>
+            <div class="col-6 col-md-3 mb-3 mb-md-0">
+                <div style="font-family: var(--font-outfit); font-size: 2.5rem; font-weight: 800;">{{ stats['shlokas'] }}</div>
+                <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--color-light); opacity: 0.7;">
+                    Wisdom Verses</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div style="font-family: var(--font-outfit); font-size: 2.5rem; font-weight: 800;">{{ stats['resources'] }}</div>
+                <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--color-light); opacity: 0.7;">
+                    Learning Resources</div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div style="font-family: var(--font-outfit); font-size: 2.5rem; font-weight: 800;">{{ stats['tools'] }}</div>
+                <div style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--color-light); opacity: 0.7;">
+                    AI Tools Curated</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2. What is MargDarshak Section -->
+<section id="about" class="explainer-section">
+    <div class="container">
+        <h2 class="section-title">What is MargDarshak AI?</h2>
+        <p class="section-subtitle">It's incredibly simple. We understand that student life is chaotic. So, we replaced
+            guesswork with artificial intelligence. We built an ecosystem holding exactly what you need to succeed.</p>
+
+        <div class="row mt-5">
+            <div class="col-md-4 pillar-box" data-tilt data-tilt-max="5" data-tilt-scale="1.05">
+                <div class="pillar-icon"><i class="fas fa-route"></i></div>
+                <h3 class="pillar-title">1. Discover Your Path</h3>
+                <p class="pillar-desc">Are you lost? Take our AI Career Assessment. It analyzes your unique interests
+                    mathematically to map out perfect job roles and exact salaries.</p>
+            </div>
+            <div class="col-md-4 pillar-box" data-tilt data-tilt-max="5" data-tilt-scale="1.05">
+                <div class="pillar-icon"><i class="fas fa-brain"></i></div>
+                <h3 class="pillar-title">2. Master Your Mind</h3>
+                <p class="pillar-desc">Burnout stops progress. Access daily spiritual wisdom from Gyan Kosh, brain
+                    exercises, and a clinical mental health tracker directly in the app.</p>
+            </div>
+            <div class="col-md-4 pillar-box" data-tilt data-tilt-max="5" data-tilt-scale="1.05">
+                <div class="pillar-icon"><i class="fas fa-tools"></i></div>
+                <h3 class="pillar-title">3. Equip Your Arsenal</h3>
+                <p class="pillar-desc">Never study blindly again. Connect with human mentors, utilize our curated AI
+                    Tools directory, and access premium learning guides automatically.</p>
+            </div>
+        </div>
+
+        <!-- Video Explainer Box -->
+        <div class="text-center mt-5 pt-5 mb-5 border-top position-relative video-expand-container"
+            style="border-color: rgba(0,0,0,0.05) !important;">
+            <div
+                style="max-width: 900px; margin: 0 auto; position: relative; min-height: 400px; display: flex; flex-direction: column; align-items: center;">
+                <!-- Glowing background -->
+                <div
+                    style="position: absolute; top: -10%; left: 0%; width: 100%; height: 110%; background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(236,72,153,0.1)); filter: blur(60px); z-index: -1; border-radius: 50%;">
+                </div>
+
+                <h3
+                    style="font-family: var(--font-outfit); font-weight: 800; font-size: clamp(1.8rem, 4vw, 2.5rem); margin-bottom: 0.5rem; letter-spacing: -0.02em;">
+                    See how it works in 15 seconds</h3>
+                <p style="font-size: 1.15rem; color: var(--color-muted); margin-bottom: 3rem;">Hover over the preview
+                    below to auto-play and expand.</p>
+
+                <!-- 3D Expanding Video Card -->
+                <div class="video-3d-card" data-tilt data-tilt-max="10" data-tilt-speed="400"
+                    data-tilt-perspective="1000" data-tilt-glare="true" data-tilt-max-glare="0.2"
+                    onmouseover="this.classList.add('video-expanded'); const v = this.querySelector('video'); v.play();"
+                    onmouseout="this.classList.remove('video-expanded'); const v = this.querySelector('video'); v.pause();">
+
+                    <!-- Mock Browser Window Frame -->
+                    <div
+                        style="background: var(--color-light); border-radius: 20px; box-shadow: 0 40px 80px rgba(0,0,0,0.2); border: 1px solid rgba(0,0,0,0.08); overflow: hidden; transform-style: preserve-3d; transform: translateZ(20px);">
+
+                        <!-- Browser Bar -->
+                        <div
+                            style="background: rgba(0,0,0,0.03); border-bottom: 1px solid rgba(0,0,0,0.05); padding: 12px 20px; display: flex; align-items: center; gap: 8px;">
+                            <span
+                                style="width: 12px; height: 12px; background: #ff5f56; border-radius: 50%; box-shadow: inset 0 0 4px rgba(0,0,0,0.1);"></span>
+                            <span
+                                style="width: 12px; height: 12px; background: #ffbd2e; border-radius: 50%; box-shadow: inset 0 0 4px rgba(0,0,0,0.1);"></span>
+                            <span
+                                style="width: 12px; height: 12px; background: #27c93f; border-radius: 50%; box-shadow: inset 0 0 4px rgba(0,0,0,0.1);"></span>
+                        </div>
+
+                        <!-- Actual Video (muted for auto-play policy) -->
+                        <video src="/static/videos/how-it-works.mp4" muted loop
+                            style="width: 100%; display: block; background: #000; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; object-fit: cover;"></video>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .video-expand-container {
+                perspective: 2000px;
+            }
+
+            .video-3d-card {
+                width: 350px;
+                /* Small Card State */
+                transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s ease;
+                cursor: pointer;
+                position: relative;
+                z-index: 10;
+            }
+
+            .video-3d-card::after {
+                content: '▶ HOVER TO EXPLORE';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) translateZ(40px);
+                background: rgba(255, 255, 255, 0.9);
+                backdrop-filter: blur(10px);
+                color: var(--color-primary);
+                padding: 12px 24px;
+                border-radius: 30px;
+                font-weight: 800;
+                font-size: 0.9rem;
+                letter-spacing: 1px;
+                font-family: var(--font-outfit);
+                opacity: 1;
+                transition: opacity 0.4s ease;
+                pointer-events: none;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+                border: 1px solid rgba(0, 0, 0, 0.05);
+            }
+
+            .video-3d-card.video-expanded {
+                width: 850px;
+                /* Massive Pop-up State */
+                z-index: 50;
+            }
+
+            .video-3d-card.video-expanded::after {
+                opacity: 0;
+            }
+
+            @media (max-width: 900px) {
+                .video-3d-card {
+                    width: 250px;
+                }
+
+                .video-3d-card.video-expanded {
+                    width: 95vw;
+                }
+            }
+        </style>
+    </div>
+</section>
+
+<!-- 3. Vertical Menu Features Arena -->
+<section class="features-arena">
+    <div class="container">
+
+        <div class="text-center mb-5 d-block d-lg-none">
+            <h2 class="section-title" style="font-size: 2rem;">Platform Features</h2>
+            <p style="color: var(--color-muted);">Scroll to explore all 11 modules</p>
+        </div>
+
+        <div class="row">
+            <!-- Left Side: Sticky Vertical Menu (Visible strongly on desktop) -->
+            <div class="col-lg-3">
+                <div class="vertical-menu-container">
+                    <h4 style="font-family: var(--font-outfit); font-weight: 800; margin-bottom: 1.5rem; display: none; "
+                        class="d-lg-block">The Modules</h4>
+                    <a href="#f-career" class="menu-link active">
+                        <div class="active-dot"></div>Career Compass
+                    </a>
+                    <a href="#f-gyan" class="menu-link">
+                        <div class="active-dot"></div>Gyan Kosh
+                    </a>
+                    <a href="#f-skill" class="menu-link">
+                        <div class="active-dot"></div>Skill Saathi
+                    </a>
+                    <!-- 4th Position as requested -->
+                    <a href="#f-mentor" class="menu-link" style="color: #ec4899; font-weight: 700;">
+                        <div class="active-dot" style="background:#6366f1;"></div>Mentor Connect ✨
+                    </a>
+                    <a href="#f-mental" class="menu-link">
+                        <div class="active-dot"></div>Mental Health
+                    </a>
+                    <a href="#f-mindfresh" class="menu-link">
+                        <div class="active-dot"></div>Mind Fresh
+                    </a>
+                    <a href="#f-ai" class="menu-link">
+                        <div class="active-dot"></div>AI Tools
+                    </a>
+                    <a href="#f-guide" class="menu-link">
+                        <div class="active-dot"></div>Learning Guides
+                    </a>
+                    <a href="#f-chat" class="menu-link">
+                        <div class="active-dot"></div>AI Chatbot
+                    </a>
+                    <a href="#f-essent" class="menu-link">
+                        <div class="active-dot"></div>Essentials
+                    </a>
+                    <a href="#f-todo" class="menu-link">
+                        <div class="active-dot"></div>To-Do List
+                    </a>
+                </div>
+            </div>
+
+            <!-- Right Side: Flowing Sections -->
+            <div class="col-lg-9 ps-lg-5">
+
+                <!-- 1. Career Compass -->
+                <div id="f-career" class="flowing-feature">
+                    <div>
+                        <div class="feat-icon-3d" style="background:#8b5cf6;" data-tilt data-tilt-scale="1.1"><i
+                                class="fas fa-briefcase"></i></div>
+                        <h2 class="feat-title">Career Compass</h2>
+                        <h3 class="feat-headline">Stop guessing your future.</h3>
+                        <p class="feat-desc">Take our intelligent quiz. We analyze your creative, technical, and social
+                            interests to formulate a distinct list of career paths perfectly tailored for you,
+                            completely with salary insights and required degrees.</p>
+                        <a href="{% if g.current_user %}/career{% else %}{{ url_for('login') }}{% endif %}"
+                            class="feature-access-btn" data-tilt data-tilt-max="15" data-tilt-scale="1.05">
+                            <div class="feat-btn-inner">
+                                <img src="/static/icon-192.png" alt="Logo">
+                                <span>Take the Quiz</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 2. Gyan Kosh -->
+                <div id="f-gyan" class="flowing-feature">
+                    <div>
+                        <div class="feat-icon-3d" style="background:#3b82f6;" data-tilt data-tilt-scale="1.1"><i
+                                class="fas fa-om"></i></div>
+                        <h2 class="feat-title">Gyan Kosh</h2>
+                        <h3 class="feat-headline">Ancient wisdom for modern peace.</h3>
+                        <p class="feat-desc">A stressful student life requires profound peace. Receive daily shlokas and
+                            ethical verses translated directly into modern practical applications you can use today.</p>
+                        <a href="{% if g.current_user %}/gyan{% else %}{{ url_for('login') }}{% endif %}"
+                            class="feature-access-btn" data-tilt data-tilt-max="15" data-tilt-scale="1.05">
+                            <div class="feat-btn-inner">
+                                <img src="/static/icon-192.png" alt="Logo">
+                                <span>Read Today's Wisdom</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 3. Skill Saathi -->
+                <div id="f-skill" class="flowing-feature">
+                    <div>
+                        <div class="feat-icon-3d" style="background:#10b981;" data-tilt data-tilt-scale="1.1"><i
+                                class="fas fa-graduation-cap"></i></div>
+                        <h2 class="feat-title">Skill Saathi</h2>
+                        <h3 class="feat-headline">The best resources, strictly curated.</h3>
+                        <p class="feat-desc">Don't waste time finding where to learn. We index the highest-rated
+                            frameworks and courses from YouTube, Coursera, and Udemy into a single, highly searchable
+                            ledger.</p>
+                        <a href="{% if g.current_user %}/skill{% else %}{{ url_for('login') }}{% endif %}"
+                            class="feature-access-btn" data-tilt data-tilt-max="15" data-tilt-scale="1.05">
+                            <div class="feat-btn-inner">
+                                <img src="/static/icon-192.png" alt="Logo">
+                                <span>Browse Resources</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 4. Mentor Connect -->
+                <div id="f-mentor" class="flowing-feature"
+                    style="background: rgba(236,72,153,0.03); border-radius: 30px; padding: 4rem 3rem;">
+                    <div>
+                        <div class="feat-icon-3d"
+                            style="background: linear-gradient(135deg, #ec4899, #8b5cf6); box-shadow: 0 20px 50px rgba(236,72,153,0.4);"
+                            data-tilt data-tilt-scale="1.2">
+                            <i class="fas fa-user-astronaut"></i>
+                        </div>
+                        <h2 class="feat-title" style="color: #ec4899;">Mentor Connect ✨</h2>
+                        <h3 class="feat-headline" style="color: var(--color-dark);">Learn directly from the veterans.
+                        </h3>
+                        <p class="feat-desc" style="color: var(--color-dark);">Sometimes algorithms aren't enough.
+                            Establish 1-on-1 intensive tactical sessions with industry experts who will personally
+                            navigate the roadblocks in your academic journey.</p>
+                        <a href="{% if g.current_user %}/mentor{% else %}{{ url_for('login') }}{% endif %}"
+                            class="feature-access-btn" data-tilt data-tilt-max="15" data-tilt-scale="1.05">
+                            <div class="feat-btn-inner">
+                                <img src="/static/icon-192.png" alt="Logo">
+                                <span>Request a Mentor</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 5. Mental Health -->
+                <div id="f-mental" class="flowing-feature">
+                    <div>
+                        <div class="feat-icon-3d" style="background:#f43f5e;" data-tilt data-tilt-scale="1.1"><i
+                                class="fas fa-heartbeat"></i></div>
+                        <h2 class="feat-title">Mental Health Tracker</h2>
+                        <h3 class="feat-headline">Your mind is your engine. Maintain it.</h3>
+                        <p class="feat-desc">Log your emotional flux daily. Utilize guided breathing mechanics when
+                            anxious, and visualize your mood stabilization mapped against your study patterns.</p>
+                        <a href="{% if g.current_user %}/mental{% else %}{{ url_for('login') }}{% endif %}"
+                            class="feature-access-btn" data-tilt data-tilt-max="15" data-tilt-scale="1.05">
+                            <div class="feat-btn-inner">
+                                <img src="/static/icon-192.png" alt="Logo">
+                                <span>Track Health</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 6. Mind Fresh -->
+                <div id="f-mindfresh" class="flowing-feature">
+                    <div>
+                        <div class="feat-icon-3d" style="background:#14b8a6;" data-tilt data-tilt-scale="1.1"><i
+                                class="fas fa-gamepad"></i></div>
+                        <h2 class="feat-title">Mind Fresh</h2>
+                        <h3 class="feat-headline">Flush cognitive fatigue instantly.</h3>
+                        <p class="feat-desc">Engage with minimalist brain-teasers and logical arrays precisely
+                            formulated to reset your attention span during intense study marathons.</p>
+                        <a href="{% if g.current_user %}/mindfresh{% else %}{{ url_for('login') }}{% endif %}"
+                            class="feature-access-btn" data-tilt data-tilt-max="15" data-tilt-scale="1.05">
+                            <div class="feat-btn-inner">
+                                <img src="/static/icon-192.png" alt="Logo">
+                                <span>Play Brain Games</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 7. AI Tools -->
+                <div id="f-ai" class="flowing-feature">
+                    <div>
+                        <div class="feat-icon-3d" style="background:#06b6d4;" data-tilt data-tilt-scale="1.1"><i
+                                class="fas fa-microchip"></i></div>
+                        <h2 class="feat-title">AI Tool Registry</h2>
+                        <h3 class="feat-headline">Weaponize modern technology.</h3>
+                        <p class="feat-desc">We filter out the internet's noise to index only the highest-fidelity AI
+                            models available for text generation, coding, and productivity so you stay ahead of the
+                            curve.</p>
+                        <a href="{% if g.current_user %}/ai/tools{% else %}{{ url_for('login') }}{% endif %}"
+                            class="feature-access-btn" data-tilt data-tilt-max="15" data-tilt-scale="1.05">
+                            <div class="feat-btn-inner">
+                                <img src="/static/icon-192.png" alt="Logo">
+                                <span>View Registry</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 8. Learning Guides -->
+                <div id="f-guide" class="flowing-feature">
+                    <div>
+                        <div class="feat-icon-3d" style="background:#f59e0b;" data-tilt data-tilt-scale="1.1"><i
+                                class="fas fa-book-open"></i></div>
+                        <h2 class="feat-title">Learning Guides</h2>
+                        <h3 class="feat-headline">The ultimate academic cheat codes.</h3>
+                        <p class="feat-desc">Deep-dive handbooks containing end-to-end setups for GitHub, LinkedIn
+                            optimizations, and specific domain roadmaps for BCA and engineering students.</p>
+                        <a href="{% if g.current_user %}/learn{% else %}{{ url_for('login') }}{% endif %}"
+                            class="feature-access-btn" data-tilt data-tilt-max="15" data-tilt-scale="1.05">
+                            <div class="feat-btn-inner">
+                                <img src="/static/icon-192.png" alt="Logo">
+                                <span>Read Guides</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 9. AI Chatbot -->
+                <div id="f-chat" class="flowing-feature">
+                    <div>
+                        <div class="feat-icon-3d" style="background:#8b5cf6;" data-tilt data-tilt-scale="1.1"><i
+                                class="fas fa-robot"></i></div>
+                        <h2 class="feat-title">Neural Chatbot</h2>
+                        <h3 class="feat-headline">Ask anything. Anytime.</h3>
+                        <p class="feat-desc">Your native interface to our master LLM. Ask for coding help, request
+                            syllabus routing, or engage for generalized mental health support securely.</p>
+                        <a href="{% if g.current_user %}/chatbot{% else %}{{ url_for('login') }}{% endif %}"
+                            class="feature-access-btn" data-tilt data-tilt-max="15" data-tilt-scale="1.05">
+                            <div class="feat-btn-inner">
+                                <img src="/static/icon-192.png" alt="Logo">
+                                <span>Chat Now</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 10. Essentials -->
+                <div id="f-essent" class="flowing-feature">
+                    <div>
+                        <div class="feat-icon-3d" style="background:#10b981;" data-tilt data-tilt-scale="1.1"><i
+                                class="fas fa-laptop-code"></i></div>
+                        <h2 class="feat-title">Hardware Essentials</h2>
+                        <h3 class="feat-headline">Don't buy the wrong laptop.</h3>
+                        <p class="feat-desc">An algorithmically curated ledger of maximum-value tech gear rigorously
+                            chosen for heavy student workloads without breaking the budget.</p>
+                        <a href="/essentials" class="feature-access-btn" data-tilt data-tilt-max="15"
+                            data-tilt-scale="1.05">
+                            <div class="feat-btn-inner">
+                                <img src="/static/icon-192.png" alt="Logo">
+                                <span>View Hardware Picks</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 11. To-Do List -->
+                <div id="f-todo" class="flowing-feature" style="border:none;">
+                    <div>
+                        <div class="feat-icon-3d" style="background:#6366f1;" data-tilt data-tilt-scale="1.1"><i
+                                class="fas fa-layer-group"></i></div>
+                        <h2 class="feat-title">Priority Task Planner</h2>
+                        <h3 class="feat-headline">Execution starts with discipline.</h3>
+                        <p class="feat-desc">A highly structured logic planner. Inject tasks, set temporal deadlines,
+                            and let our system push critical notifications before you miss an assignment.</p>
+                        <a href="{% if g.current_user %}/todo{% else %}{{ url_for('login') }}{% endif %}"
+                            class="feature-access-btn" data-tilt data-tilt-max="15" data-tilt-scale="1.05">
+                            <div class="feat-btn-inner">
+                                <img src="/static/icon-192.png" alt="Logo">
+                                <span>Open Planner</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- 4. Final Footer CTA -->
+<section style="background: var(--color-dark); color: var(--color-light); padding: 6rem 0; text-align: center;">
+    <div class="container">
+        <h2 style="font-family: var(--font-outfit); font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 800; margin-bottom: 2rem;">
+            Ready to upgrade your student life?</h2>
+        <p style="font-size: 1.25rem; color: var(--color-light); opacity: 0.7; max-width: 600px; margin: 0 auto 3rem auto;">Join
+            the thousands of students utilizing MargDarshak AI out in the real world.</p>
+        <a href="{% if g.current_user %}/progress{% else %}{{ url_for('signup') }}{% endif %}"
+            class="feature-access-btn" data-tilt data-tilt-max="15" data-tilt-scale="1.05">
+            <div class="feat-btn-inner">
+                <img src="/static/icon-192.png" alt="Logo">
+                <span>View My Progress</span>
+                <i class="fas fa-arrow-right"></i>
+            </div>
+        </a>
+    </div>
+</section>
+
+<!-- Feedback Floating Badge (Moved to Left Side to prevent overlap with base.html toggles) -->
+<a href="https://wa.me/917620260012?text=Feedback%20from%20Marg%20Darshak%20user" target="_blank"
+    style="position: fixed; bottom: 30px; left: 30px; background: #25D366; color: white; border-radius: 50px; padding: 10px 20px; font-weight: 600; text-decoration: none; box-shadow: 0 10px 20px rgba(37, 211, 102, 0.3); z-index: 1050; transition: transform 0.3s; display: flex; align-items: center;"
+    onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+    <i class="fab fa-whatsapp me-2" style="font-size: 1.5rem;"></i> Give Feedback
+</a>
+
+<!-- Logic for Navbar and ScrollSpy -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // Navbar Scroll Transition
+        const nav = document.getElementById('mainNav');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                nav.classList.add('scrolled');
+            } else {
+                nav.classList.remove('scrolled');
+            }
+        });
+
+        // Native Vertical Menu Scroll Spy Setup
+        const sections = document.querySelectorAll('.flowing-feature');
+        const navLinks = document.querySelectorAll('.menu-link');
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.getAttribute('id');
+
+                    navLinks.forEach(link => {
+                        if (link.getAttribute('href') === '#' + id) {
+                            link.classList.add('active');
+                            // On mobile, scroll the horizontal menu to show active item
+                            if (window.innerWidth < 992) {
+                                link.parentNode.scrollTo({
+                                    left: link.offsetLeft - 20,
+                                    behavior: 'smooth'
+                                });
+                            }
+                        } else {
+                            link.classList.remove('active');
+                        }
+                    });
+                }
+            });
+        }, { rootMargin: '-20% 0px -70% 0px' });
+
+        sections.forEach(section => observer.observe(section));
+
+        // Smooth Scrolling for Menu Links
+        navLinks.forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElem = document.querySelector(targetId);
+                if (targetElem) {
+                    // Utilizing native CSS scroll-margin-top defined earlier
+                    targetElem.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+    });
+</script>
+
+{% endblock %}

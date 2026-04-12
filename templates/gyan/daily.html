@@ -1,0 +1,563 @@
+{% extends 'base.html' %}
+
+{% block title %}Daily Wisdom - Gyan Kosh{% endblock %}
+
+{% block content %}
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Poppins:wght@300;400;500;600&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+    /* Theme Variables */
+    .gyan-container {
+        /* Default: Bright Spiritual Theme */
+        --theme-bg: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+        --theme-text-h: #8c4c1a; /* Rich spiritual brown/copper */
+        --theme-text-p: #2d3748;
+        --theme-text-sub: #4a5568;
+        --theme-accent: #d69e2e; /* Golden yellow */
+        --theme-accent-glow: rgba(214, 158, 46, 0.4);
+        --theme-card-bg: rgba(255, 255, 255, 0.65);
+        --theme-card-border: rgba(214, 158, 46, 0.3);
+        --theme-card-shadow: 0 25px 50px rgba(140, 76, 26, 0.1);
+        --theme-hero-overlay: linear-gradient(to bottom, rgba(255,255,255,0.3) 0%, rgba(253,251,251,0.9) 80%, #fdfbfb 100%);
+        --theme-btn-bg: rgba(255,255,255,0.7);
+        --theme-btn-border: #d69e2e;
+        --theme-btn-text: #8c4c1a;
+        --theme-divider: linear-gradient(90deg, transparent, rgba(214, 158, 46, 0.5), transparent);
+        
+        font-family: 'Poppins', sans-serif;
+        background: var(--theme-bg);
+        color: var(--theme-text-p);
+        min-height: 100vh;
+        overflow-x: hidden;
+        margin: -1.5rem; 
+        padding-bottom: 4rem;
+        transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        perspective: 1500px;
+    }
+
+    body.dark-mode .gyan-container {
+        /* Dark Theme: Deep Cosmic/Premium Spiritual */
+        --theme-bg: radial-gradient(circle at center, #0B0F19 0%, #02060D 100%);
+        --theme-text-h: #FFD700; 
+        --theme-text-p: #e2e8f0;
+        --theme-text-sub: #94a3b8;
+        --theme-accent: #FFD700;
+        --theme-accent-glow: rgba(255, 215, 0, 0.35);
+        --theme-card-bg: rgba(11, 15, 25, 0.5);
+        --theme-card-border: rgba(255, 215, 0, 0.2);
+        --theme-card-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 40px rgba(255,215,0,0.05);
+        --theme-hero-overlay: linear-gradient(to bottom, rgba(2,6,13,0.2) 0%, rgba(2,6,13,0.85) 80%, #02060D 100%);
+        --theme-btn-bg: rgba(20, 25, 40, 0.5);
+        --theme-btn-border: rgba(255, 215, 0, 0.5);
+        --theme-btn-text: #FFD700;
+        --theme-divider: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.6), transparent);
+    }
+
+    .gyan-container h1, .gyan-container h2, .gyan-container h3, .gyan-container h4, .gyan-container h5 {
+        font-family: 'Cinzel', serif;
+        color: var(--theme-text-h);
+        transition: color 0.6s ease;
+    }
+
+    .gyan-container .devanagari {
+        font-family: 'Noto Sans Devanagari', sans-serif;
+    }
+
+    /* 3D Hero Section */
+    .hero-section {
+        position: relative;
+        height: 85vh;
+        min-height: 600px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        overflow: hidden;
+    }
+
+    .hero-bg-zoom {
+        position: absolute;
+        inset: -10%;
+        background: url('/static/gyan/temple.png') center/cover no-repeat;
+        z-index: 0;
+        animation: ambientZoom 35s alternate infinite linear;
+        filter: contrast(1.1) saturate(1.2);
+    }
+
+    @keyframes ambientZoom {
+        0% { transform: scale(1) translate(0, 0); }
+        100% { transform: scale(1.15) translate(2%, 2%); }
+    }
+
+    .hero-overlay {
+        position: absolute;
+        inset: 0;
+        background: var(--theme-hero-overlay);
+        z-index: 1;
+        transition: background 0.6s ease;
+    }
+
+    .hero-content {
+        position: relative;
+        z-index: 2;
+        padding: 2rem;
+        animation: dropFade 2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    @keyframes dropFade {
+        0% { opacity: 0; transform: translateY(-30px); }
+        100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-title {
+        font-size: 5.5rem;
+        font-weight: 700;
+        color: #FFD700; 
+        text-shadow: 2px 2px 8px rgba(0,0,0,0.8), 0 0 30px rgba(255, 215, 0, 0.4);
+        margin-bottom: 1rem;
+        letter-spacing: 4px;
+    }
+
+    .hero-subtitle {
+        font-size: 1.8rem;
+        font-weight: 400;
+        margin-bottom: 3rem;
+        color: var(--theme-text-p);
+        opacity: 0.9;
+        text-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .btn-gold {
+        background: var(--theme-btn-bg);
+        backdrop-filter: blur(10px);
+        color: var(--theme-btn-text);
+        border: 1px solid var(--theme-btn-border);
+        padding: 1.2rem 3.5rem;
+        border-radius: 50px;
+        font-size: 1.1rem;
+        font-family: 'Cinzel', serif;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 0 25px var(--theme-accent-glow), inset 0 0 15px rgba(255,255,255,0.1);
+        text-decoration: none;
+        display: inline-block;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-gold::before {
+        content: '';
+        position: absolute;
+        top: 0; left: -100%; width: 50%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        transform: skewX(-20deg);
+        transition: left 0.7s;
+    }
+
+    .btn-gold:hover::before {
+        left: 150%;
+    }
+
+    .btn-gold:hover {
+        background: var(--theme-accent);
+        color: #fff;
+        box-shadow: 0 10px 40px var(--theme-accent-glow);
+        transform: translateY(-5px) scale(1.02);
+        border-color: transparent;
+    }
+
+    /* Holy Particles using Pure JS / CSS Blur */
+    .spiritual-particles {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    .orb {
+        position: absolute;
+        border-radius: 50%;
+        background: radial-gradient(circle, var(--theme-accent) 0%, transparent 70%);
+        mix-blend-mode: screen;
+        animation: floatOrb 15s infinite infinite cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes floatOrb {
+        0% { transform: translateY(110vh) translateX(0) scale(0); opacity: 0; }
+        20% { opacity: 0.8; transform: translateY(80vh) translateX(20px) scale(1); }
+        80% { opacity: 0.5; transform: translateY(20vh) translateX(-20px) scale(1.2); }
+        100% { transform: translateY(-10vh) translateX(0) scale(0); opacity: 0; }
+    }
+
+    /* Professional Wisdom Card Section */
+    .wisdom-section {
+        padding: 2rem;
+        max-width: 1250px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 5;
+        margin-top: -150px;
+    }
+
+    .glass-card {
+        background: var(--theme-card-bg);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid var(--theme-card-border);
+        border-radius: 20px;
+        padding: 4rem;
+        box-shadow: var(--theme-card-shadow);
+        display: flex;
+        gap: 4rem;
+        align-items: center;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.4s ease, box-shadow 0.4s ease;
+    }
+    
+    .glass-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 30px 60px rgba(0,0,0,0.15), 0 0 20px var(--theme-accent-glow);
+    }
+    
+    .glass-card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.05) 100%);
+        pointer-events: none;
+        border-radius: 24px;
+    }
+
+    .wisdom-image-col {
+        flex: 1;
+        text-align: center;
+        position: relative;
+    }
+
+    .divine-aura {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 120%;
+        height: 120%;
+        background: radial-gradient(circle, var(--theme-accent-glow) 0%, transparent 70%);
+        animation: pulseAura 4s infinite alternate;
+        z-index: -1;
+        border-radius: 50%;
+    }
+
+    @keyframes pulseAura {
+        0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.5; }
+        100% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+    }
+
+    .wisdom-image {
+        width: 100%;
+        max-width: 420px;
+        border-radius: 20px;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2), 0 0 20px var(--theme-accent-glow);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        object-fit: cover;
+        position: relative;
+        transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    
+    .glass-card:hover .wisdom-image {
+        transform: scale(1.02);
+    }
+
+    .wisdom-content {
+        flex: 1.5;
+    }
+
+    .verse-ref {
+        font-family: 'Cinzel', serif;
+        color: var(--theme-accent);
+        font-size: 1rem;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        font-weight: 700;
+        text-shadow: 0 2px 10px var(--theme-accent-glow);
+    }
+
+    .sanskrit-shlok {
+        font-size: 2.2rem;
+        line-height: 1.8;
+        margin-bottom: 2.5rem;
+        text-align: left;
+        position: relative;
+        font-weight: 700;
+    }
+
+    .glow-divider {
+        height: 1px;
+        width: 100%;
+        background: var(--theme-divider);
+        margin: 3rem 0;
+        border: none;
+        box-shadow: 0 0 10px var(--theme-accent-glow);
+    }
+
+    .meaning-block {
+        margin-bottom: 2.5rem;
+        position: relative;
+    }
+
+    .meaning-title {
+        font-size: 1.2rem;
+        color: var(--theme-text-h);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: 'Cinzel', serif;
+        font-weight: 700;
+        letter-spacing: 1px;
+    }
+
+    .meaning-text {
+        font-size: 1.2rem;
+        color: var(--theme-text-p);
+        line-height: 1.8;
+        font-weight: 400;
+    }
+
+    .practical-box {
+        background: linear-gradient(135deg, var(--theme-accent-glow), transparent);
+        border-left: 5px solid var(--theme-accent);
+        padding: 2rem;
+        border-radius: 0 12px 12px 0;
+        margin-top: 3rem;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+        backdrop-filter: blur(5px);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1.5rem;
+        margin-top: 3.5rem;
+        flex-wrap: wrap;
+    }
+
+    .btn-action {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--theme-text-p);
+        border: 1px solid var(--theme-btn-border);
+        padding: 1rem 2.2rem;
+        border-radius: 12px;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        font-size: 1.05rem;
+        backdrop-filter: blur(8px);
+        font-weight: 600;
+    }
+
+    .btn-action:hover {
+        background: var(--theme-accent);
+        color: white;
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px var(--theme-accent-glow);
+        border-color: transparent;
+    }
+    
+    .btn-action:hover i {
+        color: white !important;
+    }
+
+    .explore-section {
+        text-align: center;
+        padding: 8rem 2rem 6rem;
+        max-width: 1000px;
+        margin: 0 auto;
+        position: relative;
+    }
+
+    @media (max-width: 992px) {
+        .glass-card {
+            flex-direction: column;
+            padding: 3rem 2rem;
+            gap: 3rem;
+            margin-top: -60px;
+            transform: none !important; /* Disable 3D tilt on mobile */
+        }
+        .hero-title { font-size: 3.8rem; }
+        .hero-subtitle { font-size: 1.4rem; }
+        .sanskrit-shlok { text-align: center; font-size: 1.8rem; }
+        .meaning-title { justify-content: center; }
+        .meaning-text { text-align: center; }
+        .practical-box { text-align: center; border-left: none; border-top: 5px solid var(--theme-accent); border-radius: 0 0 16px 16px; }
+        .action-buttons { justify-content: center; }
+        .verse-ref { justify-content: center; }
+    }
+</style>
+
+<div class="gyan-container">
+    <div class="spiritual-particles" id="spiritualParticles"></div>
+
+    <!-- 1. HERO SECTION -->
+    <section class="hero-section">
+        <div class="hero-bg-zoom"></div>
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <h1 class="hero-title">Gyan Kosh</h1>
+            <p class="hero-subtitle devanagari">दैनिक ज्ञान, जीवन मार्गदर्शन और आत्म चिंतन</p>
+            <button class="btn-gold" onclick="toggleGitaMp4()">
+                <i class="fas fa-om me-2"></i> Listen Chant
+            </button>
+        </div>
+    </section>
+
+    <!-- Chant Video Modal -->
+    <div id="gitaMp4Box" style="display:none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.95); backdrop-filter: blur(15px); flex-direction: column; align-items: center; justify-content: center;">
+        <!-- Top Navigation Bar -->
+        <div style="position: absolute; top: 0; left: 0; width: 100%; padding: 1.5rem; display: flex; justify-content: flex-start; z-index: 1001;">
+            <button onclick="toggleGitaMp4()" onmouseover="this.style.background='rgba(255,255,255,0.2)';" onmouseout="this.style.background='rgba(255,255,255,0.1)';" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 0.8rem 1.5rem; border-radius: 50px; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; gap: 10px; backdrop-filter: blur(5px); transition: all 0.3s ease;">
+                <i class="fas fa-arrow-left"></i> Back
+            </button>
+        </div>
+
+        <div style="position: relative; width: 90%; max-width: 1000px; animation: dropFade 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); margin-top: 3rem;">
+            <video id="gitaMp4" width="100%" controls style="border-radius: 20px; box-shadow: 0 0 60px rgba(255,215,0,0.15), 0 20px 50px rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1);">
+                <source src="/static/videos/gita-recitation.mp4" type="video/mp4">
+            </video>
+        </div>
+    </div>
+
+    <!-- 2. DAILY WISDOM SECTION -->
+    <section class="wisdom-section">
+        <div class="glass-card" id="wisdomCard">
+            
+            <div class="wisdom-image-col">
+                <div class="divine-aura"></div>
+                <img src="/static/gyan/krishna.png" class="wisdom-image" alt="Wisdom Image">
+            </div>
+
+            <div class="wisdom-content">
+                <div class="verse-ref">
+                    <i class="fas fa-book-open"></i>
+                    {{ shloka.source }} &bull; Chapter {{ shloka.chapter }} &bull; Verse {{ shloka.verse_number }}
+                </div>
+                
+                <h3 class="sanskrit-shlok devanagari">
+                    {{ shloka.sanskrit_text }}
+                </h3>
+                
+                <hr class="glow-divider">
+
+                <div class="meaning-block">
+                    <div class="meaning-title">
+                        <i class="fas fa-om"></i> हिंदी अर्थ
+                    </div>
+                    <div class="meaning-text devanagari">{{ shloka.hindi_meaning }}</div>
+                </div>
+
+                <div class="meaning-block">
+                    <div class="meaning-title">
+                        <i class="fas fa-globe"></i> English Meaning
+                    </div>
+                    <div class="meaning-text">{{ shloka.english_meaning }}</div>
+                </div>
+
+                <div class="practical-box">
+                    <div class="meaning-title"><i class="fas fa-leaf"></i> Practical Implementation</div>
+                    <div class="meaning-text" style="font-size: 1.1rem;">
+                        {{ shloka.practical_application }}
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <a href="https://www.youtube.com/results?search_query=bhagavad+gita+chapter+{{ shloka.chapter }}+verse+{{ shloka.verse_number }}+recitation" target="_blank" class="btn-action">
+                        <i class="fab fa-youtube text-danger text-xl"></i> Watch on YouTube
+                    </a>
+                    <a href="/gyan/search" class="btn-action">
+                        <i class="fas fa-compass"></i> Explore More
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. EXPLORE PREVIEW -->
+    <section class="explore-section">
+        <div style="position: relative; z-index: 2;">
+            <h2 class="mb-4" style="font-size: 3rem; text-shadow: 0 4px 15px var(--theme-accent-glow);">Deepen Your Knowledge</h2>
+            <p class="mb-5" style="font-size: 1.3rem;">Discover the timeless wisdom across all chapters and verses.</p>
+            <a href="/gyan/search" class="btn-gold" style="padding: 1.2rem 3rem; font-size: 1.1rem;">
+                Explore All Quotes <i class="fas fa-arrow-right ms-2"></i>
+            </a>
+        </div>
+    </section>
+
+</div>
+
+<div class="container my-4" style="position: relative; z-index: 10;">
+    <div class="ads-wrapper text-center">
+        <!-- margDarshak AdSense -->
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-1148087533432609"
+             data-ad-slot="3420368586"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>
+            (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+    </div>
+</div>
+
+<script>
+    // Subtle Particle Background System
+    document.addEventListener("DOMContentLoaded", function() {
+        // Holy Particles System (creates floating orbs)
+        const container = document.getElementById('spiritualParticles');
+        const particleCount = window.innerWidth < 768 ? 15 : 35;
+        
+        for(let i = 0; i < particleCount; i++) {
+            let p = document.createElement('div');
+            p.className = 'orb';
+            p.style.left = Math.random() * 100 + 'vw';
+            
+            // Random animation variance
+            p.style.animationDelay = (Math.random() * 10) + 's';
+            p.style.animationDuration = (15 + Math.random() * 15) + 's';
+            
+            // Random sizes for depth perception
+            let size = Math.random() * 8 + 3;
+            p.style.width = size + 'px';
+            p.style.height = size + 'px';
+            
+            // Varying opacity and blur for depth
+            let blur = Math.random() * 3 + 1;
+            p.style.filter = `blur(${blur}px)`;
+            
+            container.appendChild(p);
+        }
+    });
+
+    function toggleGitaMp4() {
+        const box = document.getElementById("gitaMp4Box");
+        const video = document.getElementById("gitaMp4");
+
+        if (box.style.display === "none" || !box.style.display) {
+            box.style.display = "flex";
+            video.play();
+        } else {
+            video.pause();
+            video.currentTime = 0;
+            box.style.display = "none";
+        }
+    }
+</script>
+{% endblock %}

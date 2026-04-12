@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ guide.title }} - Learning Guide{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row mb-4">
+    <div class="col-12">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="{{ url_for('learn_home') }}">Learning Guides</a></li>
+          <li class="breadcrumb-item active">{{ guide.title }}</li>
+        </ol>
+      </nav>
+      <h2>{{ guide.title }}</h2>
+      <p class="text-muted">A friendly guide for beginners - Hindi + English mixed</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          {{ guide.content | safe }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row mt-4">
+    <div class="col-12 text-center">
+      <a href="{{ url_for('learn_home') }}" class="btn btn-outline-secondary">← Back to All Guides</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

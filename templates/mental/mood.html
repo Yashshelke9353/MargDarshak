@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Mood Assessment - Marg Darshak{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header text-center">
+                    <h2>🧠 Mood Assessment</h2>
+                    <p class="text-muted">Answer a few questions to help us understand your current mood</p>
+                </div>
+                <div class="card-body">
+                    {% if mood %}
+                    <div class="alert alert-info mb-4">
+                        <h4 class="alert-heading">Your mood is: <strong>{{ mood }}</strong></h4>
+                        <p>{{ suggestion }}</p>
+                        {% if features %}
+                        <p class="mb-2"><strong>Recommended next features:</strong></p>
+                        <div>
+                            {% for feature in features %}
+                                <a href="{{ feature.url }}" class="btn btn-outline-primary btn-sm me-2 mb-2">{{ feature.name }}</a>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    <form method="POST" id="mood-form">
+                        <div class="mb-4">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control" id="date" name="date" required
+                                   value="{{ form_data.date if form_data else (request.form.date or '') }}">
+                        </div>
+
+                        <!-- Question 1 -->
+                        <div class="mb-4">
+                            <h5>1. How are you feeling right now?</h5>
+                            <div class="row">
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q1" id="q1-1" value="1" required>
+                                    <label class="btn btn-outline-danger w-100" for="q1-1">Very Bad</label>
+                                </div>
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q1" id="q1-2" value="2">
+                                    <label class="btn btn-outline-warning w-100" for="q1-2">Bad</label>
+                                </div>
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q1" id="q1-3" value="3">
+                                    <label class="btn btn-outline-secondary w-100" for="q1-3">Neutral</label>
+                                </div>
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q1" id="q1-4" value="4">
+                                    <label class="btn btn-outline-info w-100" for="q1-4">Good</label>
+                                </div>
+                                <div class="col-12 col-md-3 mb-2 mx-auto">
+                                    <input type="radio" class="btn-check" name="q1" id="q1-5" value="5">
+                                    <label class="btn btn-outline-success w-100" for="q1-5">Very Good</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Question 2 -->
+                        <div class="mb-4">
+                            <h5>2. How would you rate your energy level?</h5>
+                            <div class="row">
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q2" id="q2-1" value="1" required>
+                                    <label class="btn btn-outline-danger w-100" for="q2-1">Very Low</label>
+                                </div>
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q2" id="q2-2" value="2">
+                                    <label class="btn btn-outline-warning w-100" for="q2-2">Low</label>
+                                </div>
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q2" id="q2-3" value="3">
+                                    <label class="btn btn-outline-secondary w-100" for="q2-3">Moderate</label>
+                                </div>
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q2" id="q2-4" value="4">
+                                    <label class="btn btn-outline-info w-100" for="q2-4">High</label>
+                                </div>
+                                <div class="col-12 col-md-3 mb-2 mx-auto">
+                                    <input type="radio" class="btn-check" name="q2" id="q2-5" value="5">
+                                    <label class="btn btn-outline-success w-100" for="q2-5">Very High</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Question 3 -->
+                        <div class="mb-4">
+                            <h5>3. How stressed do you feel?</h5>
+                            <div class="row">
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q3" id="q3-1" value="1" required>
+                                    <label class="btn btn-outline-success w-100" for="q3-1">Not at all</label>
+                                </div>
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q3" id="q3-2" value="2">
+                                    <label class="btn btn-outline-info w-100" for="q3-2">A little</label>
+                                </div>
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q3" id="q3-3" value="3">
+                                    <label class="btn btn-outline-secondary w-100" for="q3-3">Moderately</label>
+                                </div>
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q3" id="q3-4" value="4">
+                                    <label class="btn btn-outline-warning w-100" for="q3-4">Very</label>
+                                </div>
+                                <div class="col-12 col-md-3 mb-2 mx-auto">
+                                    <input type="radio" class="btn-check" name="q3" id="q3-5" value="5">
+                                    <label class="btn btn-outline-danger w-100" for="q3-5">Extremely</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Question 4 -->
+                        <div class="mb-4">
+                            <h5>4. How anxious do you feel?</h5>
+                            <div class="row">
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q4" id="q4-1" value="1" required>
+                                    <label class="btn btn-outline-success w-100" for="q4-1">Not at all</label>
+                                </div>
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q4" id="q4-2" value="2">
+                                    <label class="btn btn-outline-info w-100" for="q4-2">A little</label>
+                                </div>
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q4" id="q4-3" value="3">
+                                    <label class="btn btn-outline-secondary w-100" for="q4-3">Moderately</label>
+                                </div>
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q4" id="q4-4" value="4">
+                                    <label class="btn btn-outline-warning w-100" for="q4-4">Very</label>
+                                </div>
+                                <div class="col-12 col-md-3 mb-2 mx-auto">
+                                    <input type="radio" class="btn-check" name="q4" id="q4-5" value="5">
+                                    <label class="btn btn-outline-danger w-100" for="q4-5">Extremely</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Question 5 -->
+                        <div class="mb-4">
+                            <h5>5. How optimistic are you about the future?</h5>
+                            <div class="row">
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q5" id="q5-1" value="1" required>
+                                    <label class="btn btn-outline-danger w-100" for="q5-1">Very Pessimistic</label>
+                                </div>
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q5" id="q5-2" value="2">
+                                    <label class="btn btn-outline-warning w-100" for="q5-2">Pessimistic</label>
+                                </div>
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q5" id="q5-3" value="3">
+                                    <label class="btn btn-outline-secondary w-100" for="q5-3">Neutral</label>
+                                </div>
+                                <div class="col-6 col-md-3 mb-2">
+                                    <input type="radio" class="btn-check" name="q5" id="q5-4" value="4">
+                                    <label class="btn btn-outline-info w-100" for="q5-4">Optimistic</label>
+                                </div>
+                                <div class="col-12 col-md-3 mb-2 mx-auto">
+                                    <input type="radio" class="btn-check" name="q5" id="q5-5" value="5">
+                                    <label class="btn btn-outline-success w-100" for="q5-5">Very Optimistic</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Additional Notes (Optional)</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"
+                                      placeholder="Any additional thoughts or context about how you're feeling?">{{ request.form.notes or '' }}</textarea>
+                        </div>
+
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary btn-lg">Analyze My Mood</button>
+                            <a href="{{ url_for('mental_home') }}" class="btn btn-secondary btn-lg ms-2">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-set today's date
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('date');
+    if (!dateInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+    }
+});
+</script>
+{% endblock %}

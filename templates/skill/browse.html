@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}Browse Resources - Skill Saathi{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+  <h1 class="text-center mb-3">📚 Curated Learning Resources</h1>
+<p class="text-center text-muted mb-3">Handpicked content to help you learn faster and smarter</p>
+
+<!-- Video Button -->
+<div class="text-center mb-4">
+  <button class="btn btn-outline-primary btn-sm" onclick="toggleLearningVideo()">
+    <i class="fas fa-play"></i> Watch Overview
+  </button>
+</div>
+
+<!-- Video Box -->
+<div id="learningVideoBox" class="text-center mb-5" style="display:none;">
+  <video id="learningVideo" width="60%" controls>
+    <source src="/static/videos/ai-tools-guide.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+
+  <div class="mt-2">
+    <button class="btn btn-outline-danger btn-sm" onclick="toggleLearningVideo()">Close</button>
+  </div>
+</div>
+
+<script>
+function toggleLearningVideo() {
+  const box = document.getElementById("learningVideoBox");
+  const video = document.getElementById("learningVideo");
+
+  if (box.style.display === "none") {
+    box.style.display = "block";
+    video.play();
+  } else {
+    video.pause();
+    video.currentTime = 0;
+    box.style.display = "none";
+  }
+}
+</script>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <form action="/skill/browse" method="get" class="row g-3">
+                <div class="col-md-4">
+                    <input type="search" name="search" class="form-control" placeholder="Search resources, topics, platforms..." value="{{ search }}">
+                </div>
+                <div class="col-md-2">
+                    <select name="topic" class="form-select">
+                        <option value="all">All Fields</option>
+                        {% for topic in topics %}
+                        <option value="{{ topic }}" {% if selected_topic == topic %}selected{% endif %}>{{ topic }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="platform" class="form-select">
+                        <option value="all">All Platforms</option>
+                        {% for platform in platforms %}
+                        <option value="{{ platform }}" {% if selected_platform == platform %}selected{% endif %}>{{ platform }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="resource_type" class="form-select">
+                        <option value="all">All Types</option>
+                        {% for rtype in resource_types %}
+                        <option value="{{ rtype }}" {% if selected_resource_type == rtype %}selected{% endif %}>{{ rtype }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                </div>
+                <div class="col-md-3">
+                    <select name="difficulty" class="form-select">
+                        <option value="all">All Levels</option>
+                        <option value="Beginner" {% if selected_difficulty == 'Beginner' %}selected{% endif %}>Beginner</option>
+                        <option value="Intermediate" {% if selected_difficulty == 'Intermediate' %}selected{% endif %}>Intermediate</option>
+                        <option value="Advanced" {% if selected_difficulty == 'Advanced' %}selected{% endif %}>Advanced</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="language" class="form-select">
+                        <option value="all">All Languages</option>
+                        {% for language in languages %}
+                        <option value="{{ language }}" {% if selected_language == language %}selected{% endif %}>{{ language }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" name="free" value="true" id="freeOnly" {% if free_only %}checked{% endif %}>
+                        <label class="form-check-label" for="freeOnly">Free Only</label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <a href="/skill/browse" class="btn btn-outline-secondary w-100">Reset</a>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="row mb-3">
+        <div class="col text-end text-muted">
+            Showing {{ resources|length }} resource{{ 's' if resources|length != 1 else '' }}
+        </div>
+    </div>
+    <!-- Resources Grid -->
+    <div class="row">
+        {% if resources %}
+            {% for resource in resources %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 hover-card">
+                    <div class="card-body">
+                        <span class="badge bg-primary mb-2">{{ resource.platform }}</span>
+                        {% if resource.is_free %}
+                        <span class="badge bg-success mb-2">FREE</span>
+                        {% endif %}
+                        
+                        <h5 class="card-title">{{ resource.title }}</h5>
+                        <p class="text-muted small">{{ resource.topic }}</p>
+                        
+                        <div class="mb-2">
+                            <i class="fas fa-star text-warning"></i> {{ resource.quality_score }}/5
+                        </div>
+                        
+                        <div class="mb-2">
+                            <i class="fas fa-clock"></i> {{ resource.duration_hours }}h
+                            <span class="badge bg-secondary ms-2">{{ resource.difficulty }}</span>
+                        </div>
+                        
+                        <a href="{{ resource.url }}" target="_blank" class="btn btn-primary w-100 mt-3">
+                            Open Resource <i class="fas fa-external-link-alt"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12 text-center">
+                <p class="lead">No resources found. Try different filters.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

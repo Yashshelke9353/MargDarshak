@@ -1,0 +1,558 @@
+{% extends "base.html" %}
+
+{% block title %}Mental Health Dashboard - Marg Darshak{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+       <div class="col-12 text-center">
+    <h1 class="mb-4">🧘 Mental Health Module</h1>
+    <p class="text-muted">
+        Track your mood and practice guided breathing for better mental well-being
+    </p>
+
+    <!-- Video Button -->
+    <button class="btn btn-outline-success btn-sm mt-2" onclick="toggleMentalVideo()">
+        <i class="fas fa-play"></i> 
+        How This Helps You
+    </button>
+
+    <!-- Video Box -->
+    <div id="mentalVideoBox" class="mt-4" style="display:none;">
+        <video id="mentalVideo" width="60%" controls>
+            <source src="/static/videos/mental-guide.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+
+        <div class="mt-2">
+            <button class="btn btn-outline-danger btn-sm" onclick="toggleMentalVideo()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleMentalVideo() {
+    const box = document.getElementById("mentalVideoBox");
+    const video = document.getElementById("mentalVideo");
+
+    if (box.style.display === "none") {
+        box.style.display = "block";
+        video.play();
+    } else {
+        video.pause();
+        video.currentTime = 0;
+        box.style.display = "none";
+    }
+}
+
+function showWellnessTip() {
+    // Get user's recent mood for personalization
+    const recentMood = '{{ recent_moods[0].mood if recent_moods else "Neutral" }}';
+    const moodStats = {{ mood_stats|tojson }};
+
+    // Get previously seen tips from localStorage
+    const seenTips = JSON.parse(localStorage.getItem('seenWellnessTips') || '[]');
+
+    // Enhanced wellness tips with categories and detailed information
+    const wellnessTips = {
+        breathing: [
+            {
+                title: "4-7-8 Breathing Technique",
+                tip: "Inhale quietly through your nose for 4 seconds, hold your breath for 7 seconds, and exhale through your mouth for 8 seconds.",
+                benefits: ["Reduces anxiety", "Improves sleep", "Calms nervous system"],
+                duration: "4-5 minutes",
+                difficulty: "Beginner"
+            },
+            {
+                title: "Box Breathing",
+                tip: "Inhale for 4 counts, hold for 4 counts, exhale for 4 counts, hold for 4 counts. Repeat 4-5 times.",
+                benefits: ["Reduces stress", "Improves focus", "Controls emotional responses"],
+                duration: "2-3 minutes",
+                difficulty: "Beginner"
+            },
+            {
+                title: "Alternate Nostril Breathing",
+                tip: "Close right nostril with thumb, inhale through left. Close left with ring finger, exhale through right. Switch sides.",
+                benefits: ["Balances energy", "Reduces anxiety", "Improves concentration"],
+                duration: "5-10 minutes",
+                difficulty: "Intermediate"
+            }
+        ],
+        mindfulness: [
+            {
+                title: "Body Scan Meditation",
+                tip: "Lie down comfortably and slowly bring awareness to different parts of your body, starting from your toes and moving up to your head.",
+                benefits: ["Reduces physical tension", "Improves body awareness", "Promotes relaxation"],
+                duration: "10-15 minutes",
+                difficulty: "Beginner"
+            },
+            {
+                title: "Gratitude Practice",
+                tip: "Write down or mentally note 5 things you're grateful for. Focus on why they matter to you and how they positively impact your life.",
+                benefits: ["Increases optimism", "Reduces depression", "Improves relationships"],
+                duration: "5-10 minutes",
+                difficulty: "Beginner"
+            },
+            {
+                title: "Mindful Walking",
+                tip: "Take a 10-minute walk while focusing on the sensations in your feet, the rhythm of your breath, and the sounds around you.",
+                benefits: ["Reduces rumination", "Improves present-moment awareness", "Boosts mood"],
+                duration: "10-15 minutes",
+                difficulty: "Beginner"
+            }
+        ],
+        physical: [
+            {
+                title: "Progressive Muscle Relaxation",
+                tip: "Tense and then slowly release different muscle groups in your body, starting from your toes and working up to your head.",
+                benefits: ["Reduces physical tension", "Improves sleep quality", "Manages chronic pain"],
+                duration: "10-15 minutes",
+                difficulty: "Beginner"
+            },
+            {
+                title: "Nature Connection",
+                tip: "Spend time in nature observing the colors, textures, and sounds around you. Notice how the natural world moves and changes.",
+                benefits: ["Reduces stress hormones", "Improves mood", "Enhances creativity"],
+                duration: "15-30 minutes",
+                difficulty: "Beginner"
+            },
+            {
+                title: "Gentle Movement",
+                tip: "Practice slow, deliberate movements like tai chi or gentle yoga. Focus on how your body feels rather than perfect form.",
+                benefits: ["Improves flexibility", "Reduces anxiety", "Builds mind-body connection"],
+                duration: "15-20 minutes",
+                difficulty: "Intermediate"
+            }
+        ],
+        social: [
+            {
+                title: "Loving-Kindness Meditation",
+                tip: "Send well-wishes to yourself, loved ones, acquaintances, and even difficult people. Repeat phrases like 'May you be happy, may you be healthy.'",
+                benefits: ["Increases compassion", "Reduces self-criticism", "Improves relationships"],
+                duration: "10-15 minutes",
+                difficulty: "Intermediate"
+            },
+            {
+                title: "Active Listening Practice",
+                tip: "In conversations, focus completely on the other person. Put away distractions, maintain eye contact, and ask open-ended questions.",
+                benefits: ["Strengthens relationships", "Reduces misunderstandings", "Builds empathy"],
+                duration: "Ongoing practice",
+                difficulty: "Beginner"
+            },
+            {
+                title: "Random Acts of Kindness",
+                tip: "Perform small, unexpected acts of kindness for others - hold a door, give a genuine compliment, or help someone with a task.",
+                benefits: ["Increases happiness", "Reduces isolation", "Creates positive social connections"],
+                duration: "5-10 minutes",
+                difficulty: "Beginner"
+            }
+        ],
+        sleep: [
+            {
+                title: "Sleep Hygiene Routine",
+                tip: "Create a consistent bedtime routine: dim lights 1 hour before bed, avoid screens, keep room cool (65-68°F), and establish regular sleep/wake times.",
+                benefits: ["Improves sleep quality", "Enhances daytime energy", "Supports mental health"],
+                duration: "Ongoing routine",
+                difficulty: "Beginner"
+            },
+            {
+                title: "Evening Wind-Down Ritual",
+                tip: "Spend the last hour before bed doing calming activities: read a book, take a warm bath, practice gentle stretching, or write in a gratitude journal.",
+                benefits: ["Reduces insomnia", "Lowers stress", "Improves next-day mood"],
+                duration: "30-60 minutes",
+                difficulty: "Beginner"
+            },
+            {
+                title: "Sleep Restriction Therapy",
+                tip: "If struggling with insomnia, limit time in bed to actual sleep time plus 30 minutes. Get out of bed if unable to sleep and return only when sleepy.",
+                benefits: ["Consolidates sleep", "Improves sleep efficiency", "Reduces daytime fatigue"],
+                duration: "Ongoing practice",
+                difficulty: "Advanced"
+            }
+        ]
+    };
+
+    // Get all tips from all categories
+    let allTips = Object.values(wellnessTips).flat();
+
+    // Personalize tips based on recent mood
+    let filteredTips = allTips;
+    if (recentMood) {
+        switch(recentMood.toLowerCase()) {
+            case 'anxious':
+            case 'stressed':
+                // Prioritize breathing and mindfulness for anxiety/stress
+                filteredTips = [
+                    ...wellnessTips.breathing,
+                    ...wellnessTips.mindfulness,
+                    ...wellnessTips.sleep
+                ];
+                break;
+            case 'sad':
+            case 'angry':
+                // Prioritize social connection and physical activity for low mood
+                filteredTips = [
+                    ...wellnessTips.social,
+                    ...wellnessTips.physical,
+                    ...wellnessTips.mindfulness
+                ];
+                break;
+            case 'tired':
+            case 'exhausted':
+                // Prioritize sleep and gentle practices for fatigue
+                filteredTips = [
+                    ...wellnessTips.sleep,
+                    ...wellnessTips.mindfulness,
+                    ...wellnessTips.physical.filter(tip => tip.difficulty === 'Beginner')
+                ];
+                break;
+            case 'happy':
+            case 'excited':
+            case 'calm':
+            case 'content':
+                // All tips are good for positive moods
+                filteredTips = allTips;
+                break;
+            default:
+                filteredTips = allTips;
+        }
+    }
+
+    // Filter out recently seen tips (keep last 5 seen tips)
+    const availableTips = filteredTips.filter(tip => !seenTips.includes(tip.title));
+
+    // If all tips have been seen recently, reset and use all tips
+    const tipsToChooseFrom = availableTips.length > 0 ? availableTips : filteredTips;
+
+    // Select random tip from filtered list
+    const randomTip = tipsToChooseFrom[Math.floor(Math.random() * tipsToChooseFrom.length)];
+
+    // Add to seen tips and save to localStorage
+    seenTips.push(randomTip.title);
+    if (seenTips.length > 5) {
+        seenTips.shift(); // Remove oldest seen tip
+    }
+    localStorage.setItem('seenWellnessTips', JSON.stringify(seenTips));
+
+    // Create enhanced modal content
+    const moodContext = recentMood ? `<div class="alert alert-info mb-3">
+        <i class="fas fa-brain me-2"></i>
+        <strong>Personalized for your recent mood:</strong> ${recentMood}
+    </div>` : '';
+
+    const modalContent = `
+        ${moodContext}
+        <div class="wellness-tip-modal">
+            <div class="tip-header text-center mb-4">
+                <div class="tip-icon mb-3">
+                    <i class="fas fa-lightbulb text-warning" style="font-size: 3rem;"></i>
+                </div>
+                <h4 class="tip-title">${randomTip.title}</h4>
+                <div class="tip-meta">
+                    <span class="badge bg-primary me-2">${randomTip.difficulty}</span>
+                    <span class="badge bg-info">${randomTip.duration}</span>
+                </div>
+            </div>
+
+            <div class="tip-content mb-4">
+                <h6><i class="fas fa-star text-warning me-2"></i>Practice:</h6>
+                <p class="tip-text">${randomTip.tip}</p>
+            </div>
+
+            <div class="tip-benefits mb-4">
+                <h6><i class="fas fa-heart text-danger me-2"></i>Benefits:</h6>
+                <ul class="benefits-list">
+                    ${randomTip.benefits.map(benefit => `<li><i class="fas fa-check-circle text-success me-2"></i>${benefit}</li>`).join('')}
+                </ul>
+            </div>
+
+            <div class="tip-actions text-center">
+                <button class="btn btn-success me-2" onclick="markTipHelpful('${randomTip.title}')">
+                    <i class="fas fa-thumbs-up me-1"></i>Helpful
+                </button>
+                <button class="btn btn-outline-primary" onclick="showWellnessTip()">
+                    <i class="fas fa-random me-1"></i>Try Another
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('wellnessTipModal'));
+    document.getElementById('wellnessTipContent').innerHTML = modalContent;
+    modal.show();
+}
+
+function markTipHelpful(tipTitle) {
+    // Here you could send feedback to the server
+    alert('Thank you for the feedback! 💚');
+}
+</script>
+
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">🌬️ Guided Breathing</h5>
+                    <p class="card-text">Practice deep breathing exercises for relaxation</p>
+                    <a href="{{ url_for('mental_breathing') }}" class="btn btn-primary">Start Breathing</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">🧘 Meditation</h5>
+                    <p class="card-text">Guided meditation sessions for mindfulness</p>
+                    <a href="{{ url_for('mental_meditation') }}" class="btn btn-success">Start Meditation</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">🧘‍♀️ Yoga</h5>
+                    <p class="card-text">Yoga poses and sequences for mental clarity</p>
+                    <a href="{{ url_for('mental_yoga') }}" class="btn btn-warning">Start Yoga</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">📝 Track Mood</h5>
+                    <p class="card-text">Record your daily mood and thoughts</p>
+                    <a href="{{ url_for('mental_mood') }}" class="btn btn-info">Log Mood</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Actions Row -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">📊 View History</h5>
+                    <p class="card-text">Review your mood patterns over time</p>
+                    <a href="{{ url_for('mental_history') }}" class="btn btn-secondary">View History</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card text-center h-100 shadow-sm wellness-card">
+                <div class="card-body d-flex flex-column">
+                    <div class="wellness-icon mb-3">
+                        <i class="fas fa-lightbulb text-warning" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <h5 class="card-title text-gradient">🎯 Daily Wellness Tips</h5>
+                    <p class="card-text flex-grow-1">Get personalized mental health tips tailored to your needs</p>
+                    <div class="tip-categories mb-3">
+                        <small class="text-muted">
+                            <i class="fas fa-wind me-1"></i>Breathing • 
+                            <i class="fas fa-brain me-1"></i>Mindfulness • 
+                            <i class="fas fa-running me-1"></i>Physical • 
+                            <i class="fas fa-users me-1"></i>Social • 
+                            <i class="fas fa-moon me-1"></i>Sleep
+                        </small>
+                    </div>
+                    <div class="mt-auto">
+                        <button class="btn btn-outline-primary btn-lg px-4" onclick="showWellnessTip()">
+                            <i class="fas fa-magic me-2"></i>Get Daily Tip
+                        </button>
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>2-15 minutes • All levels • 
+                                <span class="text-primary fw-bold">15+ tips available</span>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mood Statistics -->
+    {% if total_entries > 0 %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Mood Statistics ({{ total_entries }} entries)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for mood, count in mood_stats.items() %}
+                        <div class="col-md-3 mb-3">
+                            <div class="text-center">
+                                <h4>{{ count }}</h4>
+                                <p class="text-muted">{{ mood }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Recent Mood Entries -->
+    {% if recent_moods %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Recent Mood Entries</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for mood in recent_moods %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">
+                                    <span class="badge 
+                                        {% if mood.mood == 'Happy' %}bg-success
+                                        {% elif mood.mood == 'Excited' %}bg-primary
+                                        {% elif mood.mood == 'Calm' %}bg-info
+                                        {% elif mood.mood == 'Content' %}bg-success
+                                        {% elif mood.mood == 'Neutral' %}bg-secondary
+                                        {% elif mood.mood == 'Tired' %}bg-dark
+                                        {% elif mood.mood == 'Anxious' %}bg-warning
+                                        {% elif mood.mood == 'Sad' %}bg-secondary
+                                        {% elif mood.mood == 'Angry' %}bg-danger
+                                        {% else %}bg-light text-dark{% endif %}">
+                                        {{ mood.mood }}
+                                    </span>
+                                </h6>
+                                <small>{{ mood.date }}</small>
+                            </div>
+                            {% if mood.notes %}
+                            <p class="mb-1">{{ mood.notes.split('.')[0] if mood.notes.startswith('Assessment:') else mood.notes }}</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <h5>No mood entries yet</h5>
+                <p>Start tracking your mood to see insights here!</p>
+                <a href="{{ url_for('mental_mood') }}" class="btn btn-primary">Log Your First Mood</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Wellness Tip Modal -->
+<div class="modal fade" id="wellnessTipModal" tabindex="-1" aria-labelledby="wellnessTipModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-gradient-primary text-white">
+                <h5 class="modal-title" id="wellnessTipModalLabel">
+                    <i class="fas fa-sparkles me-2"></i>Daily Wellness Tip
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="wellnessTipContent">
+                <!-- Content will be dynamically inserted -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.wellness-card {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.05) 100%);
+    border: 2px solid rgba(255, 193, 7, 0.3);
+    transition: all 0.3s ease;
+}
+
+.wellness-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
+    border-color: rgba(255, 193, 7, 0.6);
+}
+
+.wellness-card .wellness-icon {
+    animation: glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+    from { filter: drop-shadow(0 0 5px rgba(255, 193, 7, 0.5)); }
+    to { filter: drop-shadow(0 0 15px rgba(255, 193, 7, 0.8)); }
+}
+
+.text-gradient {
+    background: linear-gradient(45deg, #ffc107, #ff8c00);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.wellness-tip-modal {
+    padding: 1rem;
+}
+
+.wellness-tip-modal .tip-header {
+    border-bottom: 2px solid #f8f9fa;
+    padding-bottom: 1rem;
+}
+
+.wellness-tip-modal .tip-icon {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.wellness-tip-modal .tip-meta {
+    margin-top: 0.5rem;
+}
+
+.wellness-tip-modal .tip-text {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: #495057;
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+}
+
+.wellness-tip-modal .benefits-list {
+    list-style: none;
+    padding: 0;
+}
+
+.wellness-tip-modal .benefits-list li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.wellness-tip-modal .benefits-list li:last-child {
+    border-bottom: none;
+}
+
+.wellness-tip-modal .tip-actions {
+    margin-top: 1.5rem;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+</style>
+
+{% endblock %}

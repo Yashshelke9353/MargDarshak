@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Header -->
+            <div class="text-center mb-4">
+                <h1 class="display-5 fw-bold text-primary">➕ नया Task Add करें</h1>
+                <p class="text-muted">आज का planning शुरू करें!</p>
+            </div>
+
+            <!-- Add Task Form -->
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="post">
+                        <div class="mb-3">
+                            <label for="title" class="form-label fw-bold">📝 Task Title <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="title" name="title" required
+                                   placeholder="Example: Study Data Structures for 30 minutes">
+                            <div class="form-text">Task का short और clear title लिखें</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label fw-bold">📖 Description (Optional)</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                      placeholder="Extra details about this task..."></textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="category" class="form-label fw-bold">🏷️ Category <span class="text-danger">*</span></label>
+                                <select class="form-select" id="category" name="category" required>
+                                    <option value="">Choose category</option>
+                                    <option value="Study">📚 Study</option>
+                                    <option value="Skill">💪 Skill Development</option>
+                                    <option value="Health">❤️ Health & Wellness</option>
+                                    <option value="Personal">🏠 Personal</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="priority" class="form-label fw-bold">⭐ Priority <span class="text-danger">*</span></label>
+                                <select class="form-select" id="priority" name="priority" required>
+                                    <option value="">Choose priority</option>
+                                    <option value="Low">🟢 Low - कर लेंगे जब समय मिलेगा</option>
+                                    <option value="Medium">🟡 Medium - आज जरूर करना है</option>
+                                    <option value="High">🔴 High - सबसे पहले करना है</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="deadline" class="form-label fw-bold">📅 Deadline <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="deadline" name="deadline" required>
+                            <div class="form-text">Task kab tak complete करना है</div>
+                        </div>
+
+                        <!-- Quick Task Suggestions -->
+                        <div class="card bg-light mb-4">
+                            <div class="card-header">
+                                <h6 class="mb-0">💡 Quick Suggestions (Click to fill)</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="mb-1 fw-bold text-primary">Study Tasks:</p>
+                                        <button type="button" class="btn btn-sm btn-outline-primary me-1 mb-1" onclick="fillTask('Study Data Structures for 30 minutes', 'Study', 'Medium')">Data Structures</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary me-1 mb-1" onclick="fillTask('Watch 1 educational video', 'Study', 'Low')">Watch Video</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary me-1 mb-1" onclick="fillTask('Revise yesterday\'s notes', 'Study', 'Medium')">Revise Notes</button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary me-1 mb-1" onclick="fillTask('Practice 5 math problems', 'Study', 'Low')">Math Practice</button>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p class="mb-1 fw-bold text-success">Health Tasks:</p>
+                                        <button type="button" class="btn btn-sm btn-outline-success me-1 mb-1" onclick="fillTask('Drink 8 glasses of water', 'Health', 'High')">Drink Water</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success me-1 mb-1" onclick="fillTask('10 minutes exercise', 'Health', 'Medium')">Exercise</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success me-1 mb-1" onclick="fillTask('Practice breathing exercise', 'Health', 'Low')">Breathing</button>
+                                        <button type="button" class="btn btn-sm btn-outline-success me-1 mb-1" onclick="fillTask('Sleep by 11 PM', 'Health', 'High')">Early Sleep</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Productivity Tips -->
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">📚 याद रखें:</h6>
+                            <ul class="mb-0 small">
+                                <li>एक दिन में सिर्फ 3-5 tasks रखें (overloading मत करें)</li>
+                                <li>बड़े tasks को छोटे steps में तोड़ें</li>
+                                <li>Priority का सही selection बहुत important है</li>
+                                <li>Deadline realistic रखें, बहुत दूर मत</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                ✅ Task Add करें
+                            </button>
+                            <a href="{{ url_for('todo') }}" class="btn btn-outline-secondary btn-lg">
+                                🔙 Back to Tasks
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function fillTask(title, category, priority) {
+    document.getElementById('title').value = title;
+    document.getElementById('category').value = category;
+    document.getElementById('priority').value = priority;
+
+    // Set default deadline to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('deadline').value = today;
+}
+
+// Set minimum date to today
+document.getElementById('deadline').min = new Date().toISOString().split('T')[0];
+</script>
+
+<style>
+    .card {
+        border: none;
+        border-radius: 10px;
+    }
+    .form-control, .form-select {
+        border-radius: 8px;
+    }
+    .btn-sm {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+</style>
+{% endblock %}

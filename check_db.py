@@ -1,0 +1,10 @@
+import sqlite3
+conn = sqlite3.connect('database/marg_darshak.db')
+cursor = conn.cursor()
+cursor.execute('SELECT COUNT(*) FROM careers WHERE category = "Technology"')
+print('Technology count:', cursor.fetchone()[0])
+cursor.execute('SELECT COUNT(*) FROM careers WHERE category = "Business"')
+print('Business count:', cursor.fetchone()[0])
+cursor.execute('SELECT COUNT(*) FROM careers WHERE category = "Creative"')
+print('Creative count:', cursor.fetchone()[0])
+conn.close()

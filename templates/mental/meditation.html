@@ -1,0 +1,416 @@
+{% extends "base.html" %}
+
+{% block title %}Guided Meditation - Mental Health{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="text-center mb-4">🧘 Guided Meditation</h1>
+            <p class="text-center text-muted mb-5">
+                Find peace and clarity through guided meditation sessions
+            </p>
+        </div>
+    </div>
+
+    <!-- Meditation Categories -->
+    <div class="row mb-5">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 meditation-card" data-duration="5">
+                <div class="card-body text-center">
+                    <div class="meditation-icon mb-3">
+                        <i class="fas fa-moon text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">Sleep Meditation</h5>
+                    <p class="card-text">Relax your mind and body for better sleep</p>
+                    <div class="mb-3">
+                        <span class="badge bg-primary">5 minutes</span>
+                        <span class="badge bg-success">Beginner</span>
+                    </div>
+                    <button class="btn btn-primary start-meditation" data-type="sleep">
+                        <i class="fas fa-play"></i> Start Session
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 meditation-card" data-duration="10">
+                <div class="card-body text-center">
+                    <div class="meditation-icon mb-3">
+                        <i class="fas fa-brain text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">Stress Relief</h5>
+                    <p class="card-text">Release tension and find inner calm</p>
+                    <div class="mb-3">
+                        <span class="badge bg-primary">10 minutes</span>
+                        <span class="badge bg-warning">Intermediate</span>
+                    </div>
+                    <button class="btn btn-success start-meditation" data-type="stress">
+                        <i class="fas fa-play"></i> Start Session
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 meditation-card" data-duration="15">
+                <div class="card-body text-center">
+                    <div class="meditation-icon mb-3">
+                        <i class="fas fa-heart text-danger" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title">Loving Kindness</h5>
+                    <p class="card-text">Cultivate compassion for yourself and others</p>
+                    <div class="mb-3">
+                        <span class="badge bg-primary">15 minutes</span>
+                        <span class="badge bg-danger">Advanced</span>
+                    </div>
+                    <button class="btn btn-danger start-meditation" data-type="loving-kindness">
+                        <i class="fas fa-play"></i> Start Session
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Sessions -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <h3 class="text-center mb-4">⚡ Quick Sessions</h3>
+        </div>
+    </div>
+
+    <div class="row mb-5">
+        <div class="col-md-3 mb-3">
+            <div class="card text-center quick-meditation" data-duration="2">
+                <div class="card-body">
+                    <h6 class="card-title">Morning Boost</h6>
+                    <p class="card-text small">Start your day positively</p>
+                    <button class="btn btn-outline-primary btn-sm start-meditation" data-type="morning">
+                        2 min
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card text-center quick-meditation" data-duration="3">
+                <div class="card-body">
+                    <h6 class="card-title">Focus & Clarity</h6>
+                    <p class="card-text small">Improve concentration</p>
+                    <button class="btn btn-outline-success btn-sm start-meditation" data-type="focus">
+                        3 min
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card text-center quick-meditation" data-duration="1">
+                <div class="card-body">
+                    <h6 class="card-title">Anxiety Relief</h6>
+                    <p class="card-text small">Quick calm technique</p>
+                    <button class="btn btn-outline-warning btn-sm start-meditation" data-type="anxiety">
+                        1 min
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-3">
+            <div class="card text-center quick-meditation" data-duration="5">
+                <div class="card-body">
+                    <h6 class="card-title">Body Scan</h6>
+                    <p class="card-text small">Release physical tension</p>
+                    <button class="btn btn-outline-info btn-sm start-meditation" data-type="body-scan">
+                        5 min
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meditation Player Modal -->
+    <div class="modal fade" id="meditationModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="meditationTitle">Meditation Session</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="meditation-player mb-4">
+                        <div class="breathing-circle" id="breathingCircle">
+                            <div class="inner-circle">
+                                <i class="fas fa-om" style="font-size: 2rem; color: white;"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <h6 id="instructionText">Get comfortable and close your eyes</h6>
+                        </div>
+                    </div>
+
+                    <div class="timer-display mb-3">
+                        <h4 id="timer">00:00</h4>
+                        <div class="progress mt-2">
+                            <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="controls">
+                        <button class="btn btn-primary me-2" id="playPauseBtn">
+                            <i class="fas fa-play"></i> Start
+                        </button>
+                        <button class="btn btn-secondary" id="resetBtn">
+                            <i class="fas fa-redo"></i> Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Benefits Section -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h4 class="card-title text-center mb-4">🌟 Benefits of Meditation</h4>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="text-center">
+                                <i class="fas fa-brain text-primary mb-2" style="font-size: 2rem;"></i>
+                                <h6>Reduced Stress</h6>
+                                <p class="small text-muted">Lower cortisol levels and anxiety</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="text-center">
+                                <i class="fas fa-moon text-success mb-2" style="font-size: 2rem;"></i>
+                                <h6>Better Sleep</h6>
+                                <p class="small text-muted">Improved sleep quality and duration</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="text-center">
+                                <i class="fas fa-heart text-danger mb-2" style="font-size: 2rem;"></i>
+                                <h6>Increased Focus</h6>
+                                <p class="small text-muted">Enhanced concentration and clarity</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.meditation-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+}
+
+.meditation-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.breathing-circle {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    animation: breathe 4s ease-in-out infinite;
+    box-shadow: 0 0 30px rgba(102, 126, 234, 0.3);
+}
+
+.inner-circle {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+}
+
+@keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.quick-meditation {
+    transition: all 0.3s ease;
+}
+
+.quick-meditation:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+</style>
+
+<script>
+let meditationTimer;
+let timeLeft;
+let totalTime;
+let isPlaying = false;
+let currentType = '';
+
+const instructions = {
+    'sleep': [
+        'Find a comfortable position and close your eyes',
+        'Take a deep breath in... and slowly exhale',
+        'Feel your body becoming heavy and relaxed',
+        'Let go of any tension in your muscles',
+        'Imagine yourself in a peaceful place',
+        'Allow your mind to drift into peaceful sleep'
+    ],
+    'stress': [
+        'Sit comfortably with your spine straight',
+        'Close your eyes and take a deep breath',
+        'Notice any areas of tension in your body',
+        'With each breath, release that tension',
+        'Focus on the present moment',
+        'Feel the stress melting away with each exhale',
+        'You are safe, calm, and in control'
+    ],
+    'loving-kindness': [
+        'Sit comfortably and close your eyes',
+        'Begin by sending love to yourself',
+        'May I be happy, may I be healthy',
+        'Now think of someone you care about',
+        'May they be happy, may they be healthy',
+        'Extend this love to all beings everywhere',
+        'Feel the warmth of compassion in your heart'
+    ],
+    'morning': [
+        'Start your day with positivity',
+        'Take a deep breath and smile',
+        'Set an intention for a great day',
+        'Feel grateful for this new beginning'
+    ],
+    'focus': [
+        'Clear your mind of distractions',
+        'Focus on your breath',
+        'Notice each inhale and exhale',
+        'Stay present in this moment'
+    ],
+    'anxiety': [
+        'Take a slow, deep breath',
+        'Hold it for a moment',
+        'Exhale slowly and completely',
+        'Repeat: You are safe right now'
+    ],
+    'body-scan': [
+        'Lie down comfortably',
+        'Start at your toes, tense and release',
+        'Move up through your feet, legs, torso',
+        'Release tension from each body part',
+        'Feel completely relaxed and at peace'
+    ]
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const startButtons = document.querySelectorAll('.start-meditation');
+
+    startButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            currentType = this.getAttribute('data-type');
+            const card = this.closest('.meditation-card') || this.closest('.quick-meditation');
+            totalTime = parseInt(card.getAttribute('data-duration')) * 60; // Convert to seconds
+            timeLeft = totalTime;
+
+            document.getElementById('meditationTitle').textContent =
+                this.closest('.card-body').querySelector('.card-title, h6').textContent;
+
+            const modal = new bootstrap.Modal(document.getElementById('meditationModal'));
+            modal.show();
+
+            resetMeditation();
+        });
+    });
+
+    document.getElementById('playPauseBtn').addEventListener('click', toggleMeditation);
+    document.getElementById('resetBtn').addEventListener('click', resetMeditation);
+});
+
+function toggleMeditation() {
+    const btn = document.getElementById('playPauseBtn');
+    const icon = btn.querySelector('i');
+
+    if (isPlaying) {
+        pauseMeditation();
+        icon.className = 'fas fa-play';
+        btn.innerHTML = '<i class="fas fa-play"></i> Resume';
+    } else {
+        startMeditation();
+        icon.className = 'fas fa-pause';
+        btn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+    }
+}
+
+function startMeditation() {
+    isPlaying = true;
+    let instructionIndex = 0;
+    const typeInstructions = instructions[currentType] || ['Focus on your breath', 'Stay present'];
+
+    meditationTimer = setInterval(() => {
+        timeLeft--;
+
+        // Update timer display
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        document.getElementById('timer').textContent =
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        // Update progress bar
+        const progress = ((totalTime - timeLeft) / totalTime) * 100;
+        document.getElementById('progressBar').style.width = `${progress}%`;
+
+        // Update instructions
+        const instructionTime = totalTime / typeInstructions.length;
+        const currentInstructionIndex = Math.floor((totalTime - timeLeft) / instructionTime);
+        if (currentInstructionIndex < typeInstructions.length && currentInstructionIndex !== instructionIndex) {
+            instructionIndex = currentInstructionIndex;
+            document.getElementById('instructionText').textContent = typeInstructions[instructionIndex];
+        }
+
+        if (timeLeft <= 0) {
+            completeMeditation();
+        }
+    }, 1000);
+}
+
+function pauseMeditation() {
+    isPlaying = false;
+    clearInterval(meditationTimer);
+}
+
+function resetMeditation() {
+    pauseMeditation();
+    timeLeft = totalTime;
+    document.getElementById('timer').textContent = '00:00';
+    document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('instructionText').textContent = 'Get comfortable and close your eyes';
+    document.getElementById('playPauseBtn').innerHTML = '<i class="fas fa-play"></i> Start';
+}
+
+function completeMeditation() {
+    pauseMeditation();
+    document.getElementById('instructionText').textContent = 'Well done! Take a moment to notice how you feel.';
+    document.getElementById('playPauseBtn').innerHTML = '<i class="fas fa-redo"></i> Complete';
+
+    // Show completion message
+    setTimeout(() => {
+        alert('🎉 Meditation session completed! How do you feel?');
+    }, 2000);
+}
+</script>
+
+{% endblock %}

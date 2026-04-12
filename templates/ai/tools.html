@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Tools - Marg Darshak{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row mb-4">
+    <div class="col-12 text-center">
+  <h2>AI Tools for Students</h2>
+  <p class="text-muted">
+    Helpful AI-powered resources and tools to support learning. Click a tool to open it (we'll log usage).
+  </p>
+
+  <!-- Video Button -->
+  <button class="btn btn-outline-primary btn-sm mt-2" onclick="toggleAiToolsVideo()">
+    <i class="fas fa-play"></i> Watch Overview
+  </button>
+
+  <!-- Video Box -->
+  <div id="aiToolsVideoBox" class="mt-4" style="display:none;">
+    <video id="aiToolsVideo" width="60%" controls>
+      <source src="/static/videos/ai-tools-guide.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
+
+    <div class="mt-2">
+      <button class="btn btn-outline-danger btn-sm" onclick="toggleAiToolsVideo()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleAiToolsVideo() {
+  const box = document.getElementById("aiToolsVideoBox");
+  const video = document.getElementById("aiToolsVideo");
+
+  if (box.style.display === "none") {
+    box.style.display = "block";
+    video.play();
+  } else {
+    video.pause();
+    video.currentTime = 0;
+    box.style.display = "none";
+  }
+}
+</script>
+
+
+  <div class="row">
+    {% for tid, tool in tools.items() %}
+    <div class="col-md-4 mb-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body d-flex flex-column">
+          <h5 class="card-title">{{ tool.name }}</h5>
+          <p class="card-text text-muted">{{ tool.description }}</p>
+          <div class="mt-auto">
+            <a href="{{ url_for('ai_launch', tool_id=tid) }}" target="_blank" class="btn btn-outline-primary">Open {{ tool.name }}</a>
+            <a href="{{ tool.url }}" target="_blank" class="btn btn-link small text-muted ms-2">Direct link</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Office Alternatives Section -->
+  <div class="row mb-5">
+    <div class="col-12">
+      <h3 class="text-center mb-4">Office Alternatives (Free)</h3>
+      <p class="text-center text-muted mb-4">You don't need MS Office to succeed in college. These free tools do the same work.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6 mb-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">MS Word → Google Docs, LibreOffice Writer</h5>
+          <p class="card-text">Write assignments, projects, and letters online for free.</p>
+          <p class="text-muted small">Works on mobile too</p>
+          <a href="https://docs.google.com" target="_blank" class="btn btn-primary">Open Now</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 mb-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">MS Excel → Google Sheets, LibreOffice Calc</h5>
+          <p class="card-text">Create marksheets, budgets, and data tables easily.</p>
+          <p class="text-muted small">Works on mobile too</p>
+          <a href="https://sheets.google.com" target="_blank" class="btn btn-primary">Open Now</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 mb-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">PowerPoint → Google Slides, Canva</h5>
+          <p class="card-text">Make beautiful presentations without any software.</p>
+          <p class="text-muted small">Works on mobile too</p>
+          <a href="https://slides.google.com" target="_blank" class="btn btn-primary">Open Now</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 mb-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">OneNote → Notion, Google Keep, Obsidian</h5>
+          <p class="card-text">Organize notes, tasks, and study plans.</p>
+          <p class="text-muted small">Works on mobile too</p>
+          <a href="https://notion.so" target="_blank" class="btn btn-primary">Open Now</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF & Document Tools Section -->
+  <div class="row mb-5">
+    <div class="col-12">
+      <h3 class="text-center mb-4">PDF & Document Tools (Free)</h3>
+      <p class="text-center text-muted mb-4">Handle all your PDF work without paid software.</p>
+    </div>
+  </div>
+
+  <div class="row">
+    {% set pdf_tools = [
+      {'name': 'Merge PDF', 'desc': 'Combine all assignment pages into one file', 'url': 'https://www.ilovepdf.com/merge_pdf'},
+      {'name': 'Split PDF', 'desc': 'Separate a large PDF into individual pages', 'url': 'https://www.ilovepdf.com/split_pdf'},
+      {'name': 'Compress PDF', 'desc': 'Reduce PDF file size for easy sharing', 'url': 'https://www.ilovepdf.com/compress_pdf'},
+      {'name': 'PDF to Word', 'desc': 'Convert PDF documents to editable Word files', 'url': 'https://www.ilovepdf.com/pdf_to_word'},
+      {'name': 'Word to PDF', 'desc': 'Convert Word documents to PDF format', 'url': 'https://www.ilovepdf.com/word_to_pdf'},
+      {'name': 'PDF to PowerPoint', 'desc': 'Transform PDF slides into PowerPoint presentations', 'url': 'https://www.ilovepdf.com/pdf_to_powerpoint'},
+      {'name': 'PDF to Excel', 'desc': 'Extract tables from PDF to Excel spreadsheets', 'url': 'https://www.ilovepdf.com/pdf_to_excel'},
+      {'name': 'JPG to PDF', 'desc': 'Convert images to PDF documents', 'url': 'https://www.ilovepdf.com/jpg_to_pdf'},
+      {'name': 'PDF to JPG', 'desc': 'Convert PDF pages to image files', 'url': 'https://www.ilovepdf.com/pdf_to_jpg'},
+      {'name': 'Rotate PDF', 'desc': 'Change the orientation of PDF pages', 'url': 'https://www.ilovepdf.com/rotate_pdf'},
+      {'name': 'Unlock PDF', 'desc': 'Remove password protection from PDF files', 'url': 'https://www.ilovepdf.com/unlock_pdf'},
+      {'name': 'Add Page Numbers', 'desc': 'Add page numbers to your PDF documents', 'url': 'https://www.ilovepdf.com/add_pdf_page_number'},
+      {'name': 'Watermark PDF', 'desc': 'Add text or image watermarks to PDFs', 'url': 'https://www.ilovepdf.com/pdf_add_watermark'},
+      {'name': 'Resize Image', 'desc': 'Resize images to your desired dimensions', 'url': 'https://www.iloveimg.com/resize-image'}
+    ] %}
+    {% for tool in pdf_tools %}
+    <div class="col-md-4 mb-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body d-flex flex-column">
+          <h5 class="card-title">{{ tool.name }}</h5>
+          <p class="card-text text-muted">{{ tool.desc }}</p>
+          <div class="mt-auto">
+            <a href="{{ tool.url }}" target="_blank" class="btn btn-outline-primary">Use Now</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Personal Finance Section -->
+  <div class="row mb-5">
+    <div class="col-12">
+      <h3 class="text-center mb-4">Personal Finance</h3>
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-md-6 mb-4">
+      <div class="card h-100 shadow-sm border-primary">
+        <div class="card-body">
+          <h5 class="card-title">Student Expense Tracker</h5>
+          <p class="card-text">Track your daily expenses, understand where your money goes, and build good financial habits from your first year.</p>
+          <p class="text-muted small">Perfect for hostel life and monthly pocket money planning.</p>
+          <p class="text-success font-weight-bold">Built for Students by MargDarshak</p>
+          <a href="https://expense-tracker-git-main-yashshelke9353s-projects.vercel.app" target="_blank" class="btn btn-primary">Open Tool</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Friendly Note -->
+  <div class="row">
+    <div class="col-12 text-center">
+      <p class="text-muted">Everything here is free and online. You don't need money to learn. You just need the right direction. MargDarshak is here to guide you.</p>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

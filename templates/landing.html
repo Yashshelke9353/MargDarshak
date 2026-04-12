@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MargDarshak AI - Your Intelligent Guide</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f5f3ff',
+                            100: '#ede9fe',
+                            400: '#a78bfa',
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                            900: '#4c1d95',
+                        },
+                        dark: {
+                            bg: '#0B0F1A',
+                            surface: '#151C2C',
+                        }
+                    },
+                    animation: {
+                        'blob': 'blob 7s infinite',
+                        'fade-in-up': 'fadeInUp 0.8s ease-out forwards',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Glassmorphism Utilities */
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.05);
+        }
+        
+        .dark .glass {
+            background: rgba(21, 28, 44, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Smooth reveal on scroll */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease-out;
+        }
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 3D Button */
+        .btn-3d {
+            transition: all 0.2s ease;
+            box-shadow: 0 6px 0 #5b21b6, 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .btn-3d:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #5b21b6, 0 5px 10px rgba(0,0,0,0.2);
+        }
+        
+        body {
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Multi-layered Hero Background */
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            z-index: -1;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        }
+        .dark .hero-bg {
+            background: linear-gradient(135deg, #0B0F1A 0%, #151C2C 100%);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-dark-bg dark:text-white antialiased transition-colors duration-300">
+
+    <!-- Theme Toggle -->
+    <div class="fixed top-6 right-6 z-50">
+        <button id="themeToggle" class="glass p-3 rounded-full hover:scale-110 transition-transform focus:outline-none">
+            <i class="fas fa-moon text-xl text-brand-600 dark:text-yellow-400 dark:hidden"></i>
+            <i class="fas fa-sun text-xl text-yellow-400 hidden dark:block"></i>
+        </button>
+    </div>
+
+    <!-- 1. HERO SECTION -->
+    <section class="relative min-h-screen flex items-center justify-center pt-20 pb-32 px-6 overflow-hidden">
+        <!-- Animated Background Blobs -->
+        <div class="hero-bg">
+            <div class="absolute top-0 -left-4 w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-[80px] opacity-40 animate-blob dark:opacity-20 dark:mix-blend-lighten"></div>
+            <div class="absolute top-0 -right-4 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-[80px] opacity-40 animate-blob animation-delay-2000 dark:opacity-20 dark:mix-blend-lighten"></div>
+            <div class="absolute -bottom-8 left-20 w-96 h-96 bg-indigo-400 rounded-full mix-blend-multiply filter blur-[80px] opacity-40 animate-blob animation-delay-4000 dark:opacity-20 dark:mix-blend-lighten"></div>
+        </div>
+
+        <div class="relative z-10 max-w-4xl mx-auto text-center">
+            <div class="inline-block mb-4 px-4 py-1.5 rounded-full glass animate-fade-in-up" style="animation-delay: 0.1s;">
+                <span class="text-sm font-semibold bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-blue-500 dark:from-brand-400 dark:to-blue-400">
+                    Built for simplicity. Powered by AI.
+                </span>
+            </div>
+            
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 animate-fade-in-up" style="animation-delay: 0.2s;">
+                Your Intelligent Guide for <br class="hidden md:block" />
+                <span class="bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-blue-500 dark:from-brand-400 dark:to-blue-400">
+                    Smarter Decisions
+                </span>
+            </h1>
+            
+            <p class="text-lg md:text-2xl text-slate-600 dark:text-slate-300 mb-10 max-w-2xl mx-auto animate-fade-in-up font-medium" style="animation-delay: 0.3s;">
+                Navigate your path with confidence. MargDarshak AI provides tailored guidance, actionable insights, and intelligent solutions.
+            </p>
+            
+            <div class="animate-fade-in-up" style="animation-delay: 0.4s;">
+                <!-- Adjust href to point to your main app. Using '/' assume the main app is there or '/dashboard' -->
+                <a href="/" class="btn-3d inline-block bg-gradient-to-r from-brand-600 to-blue-600 text-white font-bold text-lg px-8 py-4 rounded-full hover:scale-105 transition-transform">
+                    Get Started Now <i class="fas fa-arrow-right ml-2"></i>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Subtle Floating Element -->
+        <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-float text-slate-400 dark:text-slate-500">
+            <i class="fas fa-chevron-down text-2xl"></i>
+        </div>
+    </section>
+
+    <!-- 2. FEATURES SECTION -->
+    <section class="py-24 px-6 relative z-10" id="features">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16 reveal">
+                <h2 class="text-3xl md:text-5xl font-bold mb-4">Core Capabilities</h2>
+                <p class="text-slate-600 dark:text-slate-400 max-w-2xl mx-auto text-lg">Everything you need to analyze, understand, and decide with clarity.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Feature 1 -->
+                <div class="glass p-8 rounded-3xl hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(139,92,246,0.15)] dark:hover:shadow-[0_20px_40px_rgba(139,92,246,0.05)] transition-all duration-300 reveal group">
+                    <div class="w-14 h-14 rounded-2xl bg-brand-100 dark:bg-brand-900/50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-lightbulb text-2xl text-brand-600 dark:text-brand-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Smart Insights</h3>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+                        Uncover hidden patterns in your data instantly to guide your strategic planning.
+                    </p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="glass p-8 rounded-3xl hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(139,92,246,0.15)] dark:hover:shadow-[0_20px_40px_rgba(139,92,246,0.05)] transition-all duration-300 reveal delay-100 group">
+                    <div class="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-robot text-2xl text-blue-600 dark:text-blue-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">AI Recommendations</h3>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+                        Receive personalized, predictive suggestions tailored directly to your specific needs.
+                    </p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="glass p-8 rounded-3xl hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(139,92,246,0.15)] dark:hover:shadow-[0_20px_40px_rgba(139,92,246,0.05)] transition-all duration-300 reveal delay-200 group">
+                    <div class="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-bolt text-2xl text-emerald-600 dark:text-emerald-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Real-Time Information</h3>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+                        Stay ahead with lightning-fast data processing delivering the latest updates as they happen.
+                    </p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="glass p-8 rounded-3xl hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(139,92,246,0.15)] dark:hover:shadow-[0_20px_40px_rgba(139,92,246,0.05)] transition-all duration-300 reveal delay-300 group">
+                    <div class="w-14 h-14 rounded-2xl bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-chart-pie text-2xl text-orange-600 dark:text-orange-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Easy-to-Use Dashboard</h3>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+                        Navigate complex metrics through beautifully designed, intuitive visual interfaces.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. HOW IT WORKS -->
+    <section class="py-24 px-6 relative bg-white/30 dark:bg-dark-surface/50">
+        <div class="max-w-5xl mx-auto">
+            <div class="text-center mb-16 reveal">
+                <h2 class="text-3xl md:text-5xl font-bold mb-4">How It Works</h2>
+                <p class="text-slate-600 dark:text-slate-400 text-lg">Three simple steps to unlock intelligent insights.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+                <!-- Connecting Line -->
+                <div class="hidden md:block absolute top-1/2 left-[10%] right-[10%] h-1 bg-gradient-to-r from-brand-300 to-blue-300 dark:from-brand-800 dark:to-blue-800 -z-10 -translate-y-1/2 rounded-full"></div>
+
+                <!-- Step 1 -->
+                <div class="text-center reveal">
+                    <div class="w-20 h-20 mx-auto glass rounded-full flex items-center justify-center text-2xl font-bold text-brand-600 dark:text-brand-400 shadow-lg mb-6 border-4 border-white dark:border-dark-bg">
+                        1
+                    </div>
+                    <h4 class="text-xl font-bold mb-2">Provide Your Context</h4>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm">Enter your specific data, goals, or query into the system.</p>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="text-center reveal delay-100">
+                    <div class="w-20 h-20 mx-auto glass rounded-full flex items-center justify-center text-2xl font-bold text-blue-600 dark:text-blue-400 shadow-lg mb-6 border-4 border-white dark:border-dark-bg">
+                        2
+                    </div>
+                    <h4 class="text-xl font-bold mb-2">AI Analyzes</h4>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm">Our advanced engine processes and evaluates the information seamlessly.</p>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="text-center reveal delay-200">
+                    <div class="w-20 h-20 mx-auto glass rounded-full flex items-center justify-center text-2xl font-bold text-emerald-600 dark:text-emerald-400 shadow-lg mb-6 border-4 border-white dark:border-dark-bg">
+                        3
+                    </div>
+                    <h4 class="text-xl font-bold mb-2">Get Instant Clarity</h4>
+                    <p class="text-slate-600 dark:text-slate-400 text-sm">Receive smart insights and precise recommendations instantly.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. WHY CHOOSE US & VALUE SECTION -->
+    <section class="py-24 px-6">
+        <div class="max-w-6xl mx-auto flex flex-col lg:flex-row items-center gap-16">
+            <!-- Content -->
+            <div class="w-full lg:w-1/2 reveal">
+                <h2 class="text-3xl md:text-5xl font-bold mb-6">Why Choose Us?</h2>
+                <div class="space-y-4 mb-8">
+                    <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 transition-colors">
+                        <div class="text-brand-500"><i class="fas fa-check-circle text-xl"></i></div>
+                        <p class="font-medium">Simple and easy to use</p>
+                    </div>
+                    <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 transition-colors">
+                        <div class="text-brand-500"><i class="fas fa-bolt text-xl"></i></div>
+                        <p class="font-medium">Fast and accurate results</p>
+                    </div>
+                    <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 transition-colors">
+                        <div class="text-brand-500"><i class="fas fa-brain text-xl"></i></div>
+                        <p class="font-medium">AI-powered intelligence</p>
+                    </div>
+                    <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 transition-colors">
+                        <div class="text-brand-500"><i class="fas fa-clock text-xl"></i></div>
+                        <p class="font-medium">Saves time and effort</p>
+                    </div>
+                    <div class="flex items-center gap-4 p-3 rounded-xl hover:bg-white/50 dark:hover:bg-white/5 transition-colors">
+                        <div class="text-brand-500"><i class="fas fa-globe text-xl"></i></div>
+                        <p class="font-medium">Designed for real-world use</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Value Card (Glass) -->
+            <div class="w-full lg:w-1/2 reveal delay-200">
+                <div class="glass p-10 rounded-[2rem] relative overflow-hidden">
+                    <!-- Decor -->
+                    <div class="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/20 rounded-full blur-2xl"></div>
+                    <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-purple-500/20 rounded-full blur-2xl"></div>
+                    
+                    <i class="fas fa-quote-left text-4xl text-brand-400 mb-6 opacity-50"></i>
+                    <h3 class="text-2xl md:text-3xl font-bold mb-4 leading-tight">
+                        Transform the way you make decisions with AI-powered intelligence.
+                    </h3>
+                    <p class="text-slate-600 dark:text-slate-400 leading-relaxed">
+                        By automating complex analysis and delivering precise guidance, MargDarshak AI eliminates the guesswork from your daily processes. Save countless hours of mental effort and make smarter, confident choices instantly—empowering you to focus on what truly matters.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. FINAL CTA -->
+    <section class="py-24 px-6 mb-10">
+        <div class="max-w-4xl mx-auto align-center text-center">
+            <div class="glass p-12 md:p-16 rounded-[3rem] bg-gradient-to-br from-brand-500/10 to-blue-500/10 dark:from-brand-900/30 dark:to-blue-900/30 border border-brand-500/20 relative overflow-hidden reveal">
+                <!-- Abstract geometry -->
+                <div class="absolute top-0 right-0 w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM4YjVjZjYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djIwaDIwVjM0SDM2em0yIDIyaC00djRoNHYtNHptLTYtNGgtdjRoNHYtNHptMD00aC00djRoNHYtNHptLTYtNGgtdjRoNHYtNHptMC00aC00djRoNHYtNHptLTYtNGgtdjRoNHYtNHptMC00aC00djRoNHYtNHptLTYtNGgtdjRoNHYtNHptMC00aC00djRoNHYtNHptLTYtNGgtdjRoNHYtNHoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-50 dark:opacity-20 z-0"></div>
+                
+                <div class="relative z-10">
+                    <h2 class="text-4xl md:text-6xl font-extrabold mb-6 tracking-tight">
+                        Start your journey with MargDarshak AI today.
+                    </h2>
+                    <p class="text-lg text-slate-600 dark:text-slate-400 mb-10 font-medium max-w-xl mx-auto">
+                        Experience the clarity of AI-driven insights right at your fingertips.
+                    </p>
+                    <a href="/" class="btn-3d inline-block bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-lg px-10 py-5 rounded-full hover:scale-105 transition-transform shadow-[0_10px_30px_rgba(0,0,0,0.2)] dark:shadow-[0_10px_30px_rgba(255,255,255,0.1)]">
+                        Get Started Now <i class="fas fa-rocket ml-2"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="py-8 text-center border-t border-slate-200 dark:border-slate-800 text-slate-500 text-sm">
+        <p>&copy; 2026 MargDarshak AI. All rights reserved.</p>
+    </footer>
+
+    <!-- Scripts -->
+    <script>
+        // Theme Toggle Logic
+        const themeToggleBtn = document.getElementById('themeToggle');
+        
+        // Check local storage or system preference
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            if (document.documentElement.classList.contains('dark')) {
+                localStorage.theme = 'dark';
+            } else {
+                localStorage.theme = 'light';
+            }
+        });
+
+        // Scroll Reveal Logic
+        function reveal() {
+            var reveals = document.querySelectorAll(".reveal");
+            for (var i = 0; i < reveals.length; i++) {
+                var windowHeight = window.innerHeight;
+                var elementTop = reveals[i].getBoundingClientRect().top;
+                var elementVisible = 100;
+                if (elementTop < windowHeight - elementVisible) {
+                    reveals[i].classList.add("active");
+                }
+            }
+        }
+        window.addEventListener("scroll", reveal);
+        // Trigger once on load
+        reveal();
+    </script>
+</body>
+</html>

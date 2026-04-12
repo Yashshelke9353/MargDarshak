@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+
+{% block title %}Progress Dashboard - MargDarshak AI{% endblock %}
+
+{% block content %}
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+
+<style>
+    :root {
+        --font-outfit: 'Outfit', sans-serif;
+        --font-inter: 'Inter', sans-serif;
+        --color-primary: #6366f1;
+        --color-secondary: #8b5cf6;
+        --color-accent: #ec4899;
+        --color-dark: #0f172a;
+        --color-light: #f8fafc;
+        --color-muted: #64748b;
+    }
+
+    body {
+        font-family: var(--font-inter);
+        background-color: var(--color-light);
+        color: var(--color-dark);
+    }
+
+    body.dark-mode {
+        background-color: #0b0f19;
+        color: #f1f5f9;
+        --color-dark: #f1f5f9;
+        --color-light: #0b0f19;
+        --color-muted: #94a3b8;
+    }
+
+    /* Page Header */
+    .dashboard-header {
+        padding: 4rem 0 2rem 0;
+        text-align: center;
+        position: relative;
+    }
+    .dashboard-title {
+        font-family: var(--font-outfit);
+        font-size: clamp(2rem, 4vw, 3.5rem);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .dashboard-subtitle {
+        color: var(--color-muted);
+        font-size: 1.15rem;
+    }
+
+    /* Glass Panels */
+    .glass-panel {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: 20px;
+        padding: 1.25rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    body.dark-mode .glass-panel {
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    .glass-panel:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(99, 102, 241, 0.1);
+    }
+
+    /* Stat Blocks Top */
+    .stat-number {
+        font-family: var(--font-outfit);
+        font-size: clamp(2rem, 5vw, 3rem); /* Responsive sizing */
+        font-weight: 900;
+        margin-bottom: 0.2rem;
+        line-height: 1;
+    }
+    .stat-label {
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px; /* Reduced spacing to fit mobile */
+        font-size: clamp(0.65rem, 2vw, 0.8rem); /* Responsive sizing */
+        color: var(--color-muted);
+    }
+
+    /* Custom Gradients for Top Stats */
+    .stat-1 { background: linear-gradient(135deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .stat-2 { background: linear-gradient(135deg, #10b981, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .stat-3 { background: linear-gradient(135deg, #f59e0b, #ef4444); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .stat-4 { background: linear-gradient(135deg, #ec4899, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+    /* Timeline Override */
+    .premium-timeline {
+        position: relative;
+        padding-left: 30px;
+        margin-top: 1.5rem;
+    }
+    .premium-timeline::before {
+        content: '';
+        position: absolute;
+        left: 11px; top: 0; bottom: 0;
+        width: 2px;
+        background: linear-gradient(to bottom, rgba(99,102,241,0.5), transparent);
+    }
+    .timeline-node {
+        position: relative;
+        margin-bottom: 2rem;
+    }
+    .timeline-dot {
+        position: absolute;
+        left: -30px;
+        top: 6px;
+        width: 24px; height: 24px;
+        border-radius: 50%;
+        background: var(--color-light);
+        border: 4px solid var(--color-primary);
+        box-shadow: 0 0 0 4px rgba(99,102,241,0.1);
+    }
+    body.dark-mode .timeline-dot { background: var(--color-dark); }
+    
+    .timeline-content-box {
+        background: rgba(99,102,241,0.03);
+        border: 1px solid rgba(99,102,241,0.1);
+        border-radius: 16px;
+        padding: 1.25rem;
+        transition: all 0.3s ease;
+    }
+    body.dark-mode .timeline-content-box { background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.05); }
+    .timeline-content-box:hover {
+        background: rgba(99,102,241,0.08);
+        transform: translateX(5px);
+    }
+    
+    .panel-heading {
+        font-family: var(--font-outfit);
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    /* Badges */
+    .achievement-badge {
+        background: rgba(245, 158, 11, 0.1);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+        border-radius: 20px;
+        padding: 1.5rem 1rem;
+        text-align: center;
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+    .achievement-badge:hover {
+        transform: scale(1.05);
+        background: rgba(245, 158, 11, 0.15);
+        box-shadow: 0 10px 20px rgba(245, 158, 11, 0.1);
+    }
+    .achieve-icon { font-size: 2.5rem; margin-bottom: 0.5rem; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
+    .achieve-title { font-family: var(--font-outfit); font-weight: 700; font-size: 1rem; margin-bottom: 0.25rem; color: var(--color-dark); }
+    .achieve-desc { font-size: 0.8rem; color: var(--color-muted); line-height: 1.4; }
+
+    /* Module Stats Custom */
+    .module-stat-box {
+        text-align: center;
+        padding: 1rem;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.5), transparent);
+        border: 1px solid rgba(0,0,0,0.05);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    body.dark-mode .module-stat-box {
+        background: linear-gradient(135deg, rgba(255,255,255,0.03), transparent);
+        border-color: rgba(255,255,255,0.05);
+    }
+
+    /* Custom Progress Bar */
+    .custom-progress {
+        height: 10px;
+        border-radius: 10px;
+        background: rgba(0,0,0,0.05);
+        overflow: hidden;
+        margin-top: 0.5rem;
+    }
+    body.dark-mode .custom-progress { background: rgba(255,255,255,0.1); }
+    .custom-progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+        border-radius: 10px;
+    }
+
+    .fire-streak { animation: burn 1.5s infinite alternate; display: inline-block; }
+    @keyframes burn {
+        0% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(245,158,11,0.5)); }
+        100% { transform: scale(1.1); filter: drop-shadow(0 0 15px rgba(245,158,11,0.9)); }
+    }
+</style>
+
+<div class="container pb-5">
+    
+    <!-- Header -->
+    <div class="dashboard-header">
+        <h1 class="dashboard-title">Personal Command Center</h1>
+        <p class="dashboard-subtitle">Monitor your progression matrices across the MargDarshak ecosystem.</p>
+    </div>
+
+    <!-- 4 Core Metrics -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-3 col-6">
+            <div class="glass-panel text-center" data-tilt data-tilt-scale="1.05" data-tilt-max="10">
+                <div class="stat-number stat-1">{{ total_activities }}</div>
+                <div class="stat-label">Total Actions</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="glass-panel text-center" data-tilt data-tilt-scale="1.05" data-tilt-max="10">
+                <div class="stat-number stat-2">{{ current_streak }}</div>
+                <div class="stat-label">Day Streak</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="glass-panel text-center" data-tilt data-tilt-scale="1.05" data-tilt-max="10">
+                <div class="stat-number stat-3">{{ badges|length }}</div>
+                <div class="stat-label">Achievements</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="glass-panel text-center" data-tilt data-tilt-scale="1.05" data-tilt-max="10">
+                <div class="stat-number stat-4">{{ module_stats|length }}</div>
+                <div class="stat-label">Modules</div> <!-- Shortened from Modules Deployed to prevent wrap overlap -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Activity Matrix -->
+    {% if module_stats %}
+    <div class="glass-panel mb-5">
+        <h2 class="panel-heading"><i class="fas fa-network-wired text-primary"></i> Module Distribution Pattern</h2>
+        <div class="row g-4 mt-2">
+            {% for module, count in module_stats.items() %}
+            <div class="col-md-3 col-6">
+                <div class="module-stat-box">
+                    <h4 style="font-family: var(--font-outfit); font-weight: 800; font-size: 2.5rem; color: var(--color-primary); margin-bottom: 0;">{{ count }}</h4>
+                    <p style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0; color: var(--color-dark);">{{ module.title() }}</p>
+                    <small style="color: var(--color-muted); text-transform: uppercase; font-size: 0.7rem; letter-spacing: 1px;">Engagements</small>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-4">
+        <!-- Recent Timeline -->
+        <div class="col-lg-8">
+            <div class="glass-panel">
+                <h2 class="panel-heading"><i class="fas fa-history" style="color: var(--color-accent);"></i> Operational History</h2>
+                
+                {% if recent_activities %}
+                <div class="premium-timeline">
+                    {% for activity in recent_activities %}
+                    <div class="timeline-node">
+                        <div class="timeline-dot"></div>
+                        <div class="timeline-content-box">
+                            <h5 style="font-weight: 700; font-size: 1.1rem; color: var(--color-dark); margin-bottom: 0.25rem;">{{ activity.description }}</h5>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <span class="badge" style="background: rgba(139,92,246,0.1); color: #8b5cf6;">{{ activity.module.title() }}</span>
+                                <span class="badge" style="background: rgba(99,102,241,0.1); color: #6366f1;">{{ activity.activity_type.replace('_', ' ').title() }}</span>
+                            </div>
+                            <small style="color: var(--color-muted); font-weight: 500;"><i class="far fa-clock me-1"></i> {{ activity.timestamp[:16] }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <div style="font-size: 4rem; color: var(--color-muted); opacity: 0.3; margin-bottom: 1rem;"><i class="fas fa-ghost"></i></div>
+                    <p style="font-size: 1.2rem; color: var(--color-muted); font-weight: 500;">No operations detected yet.</p>
+                    <a href="/#feature-start" class="btn btn-primary rounded-pill px-4 mt-3" style="font-weight: 600; font-family: var(--font-outfit);">Deploy Modules</a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            
+            <!-- Streak -->
+            <div class="glass-panel mb-4 text-center pb-5">
+                <h2 class="panel-heading justify-content-center"><i class="fas fa-fire text-warning"></i> Current Streak</h2>
+                <div style="font-family: var(--font-outfit); font-size: 5rem; font-weight: 900; line-height: 1; color: var(--color-dark);">
+                    {{ current_streak }}
+                </div>
+                <div style="font-weight: 600; text-transform: uppercase; letter-spacing: 2px; color: var(--color-muted); margin-bottom: 1.5rem;">Consecutive Days</div>
+                
+                {% if current_streak > 0 %}
+                <div class="d-flex justify-content-center flex-wrap gap-2">
+                    {% for i in range(current_streak) %}
+                    <span class="fire-streak" style="font-size: 1.5rem;">🔥</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Badges -->
+            <div class="glass-panel text-center">
+                <h2 class="panel-heading justify-content-center"><i class="fas fa-trophy text-warning"></i> Trophies</h2>
+                
+                {% if badges %}
+                <div class="row g-3 mt-3">
+                    {% for badge in badges %}
+                    <div class="col-6">
+                        <div class="achievement-badge">
+                            <div class="achieve-icon">{{ badge.icon }}</div>
+                            <div class="achieve-title">{{ badge.name }}</div>
+                            <div class="achieve-desc">{{ badge.description }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="py-4">
+                    <div style="font-size: 3rem; color: rgba(245,158,11,0.2); margin-bottom: 1rem;"><i class="fas fa-award"></i></div>
+                    <p style="color: var(--color-muted); font-weight: 500;">No badges acquired.<br><small>Continue deploying modules to unlock.</small></p>
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Analytics -->
+    {% if activity_types %}
+    <div class="glass-panel mt-4">
+        <h2 class="panel-heading"><i class="fas fa-chart-pie text-secondary"></i> Engagement Analytics</h2>
+        <div class="row g-4">
+            {% for type_name, count in activity_types.items() %}
+            <div class="col-lg-4 col-md-6">
+                <div style="background: rgba(0,0,0,0.02); padding: 1.5rem; border-radius: 16px; border: 1px solid rgba(0,0,0,0.05);" class="dark:border-white/5 dark:bg-white/5">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span style="font-weight: 600; text-transform: capitalize; color: var(--color-dark);">{{ type_name.replace('_', ' ') }}</span>
+                        <span class="badge" style="background: var(--color-primary); font-size: 0.85rem;">{{ count }}</span>
+                    </div>
+                    <div class="custom-progress">
+                        <div class="custom-progress-bar" style="width: {{ (count / total_activities * 100)|round }}%"></div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

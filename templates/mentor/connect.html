@@ -1,0 +1,393 @@
+{% extends 'base.html' %}
+
+{% block title %}Mentor Connect - Marg Darshak{% endblock %}
+
+{% block content %}
+<style>
+.card-3d {
+  transform: perspective(1000px) rotateY(-5deg);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.card-3d:hover {
+  transform: perspective(1000px) rotateY(0deg);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+</style>
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow">
+        <div class="card-header bg-success text-white text-center">
+          <h3 class="mb-0">🎯 1-to-1 Mentor Connect</h3>
+          <small>Welcome to Premium Mentoring</small>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-success">
+            <h5>✅ Premium Access Active</h5>
+            <p class="mb-0">You have full access to personal mentoring services.</p>
+          </div>
+          
+          {% if is_admin %}
+          <div class="text-center mb-4">
+            <a href="/admin" class="btn btn-danger btn-lg">
+              <i class="fas fa-cog me-2"></i>Admin Panel
+            </a>
+          </div>
+          {% endif %}
+          
+          <div class="row g-4">
+            <div class="col-md-3">
+              <div class="card h-100 border-primary">
+                <div class="card-body text-center">
+                  <i class="fas fa-user-plus fa-2x text-primary mb-3"></i>
+                  <h5>Request a Mentor</h5>
+                  <p>Get matched with an experienced mentor in your field.</p>
+                  <button class="btn btn-primary" onclick="showMentorRequest()">
+                    <i class="fas fa-plus me-1"></i>Request Mentor
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-3">
+              <div class="card h-100 border-success">
+                <div class="card-body text-center">
+                  <i class="fas fa-calendar-check fa-2x text-success mb-3"></i>
+                  <h5>Book a Session</h5>
+                  <p>Schedule video/voice calls with your mentor.</p>
+                  <button class="btn btn-success" onclick="showBooking()">
+                    <i class="fas fa-calendar me-1"></i>Book Session
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-3">
+              <div class="card h-100 border-info">
+                <div class="card-body text-center">
+                  <i class="fas fa-comments fa-2x text-info mb-3"></i>
+                  <h5>Mentor Chat</h5>
+                  <p>Connect via WhatsApp or in-app chat.</p>
+                  <button class="btn btn-info" onclick="showChat()">
+                    <i class="fas fa-message me-1"></i>Start Chat
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-3">
+              <div class="card h-100 border-warning">
+                <div class="card-body text-center">
+                  <i class="fas fa-file-alt fa-2x text-warning mb-3"></i>
+                  <h5>Resume Review</h5>
+                  <p>Get professional feedback on your resume.</p>
+                  <button class="btn btn-warning" onclick="showResumeReview()">
+                    <i class="fas fa-upload me-1"></i>Submit Resume
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Additional Modules Section -->
+          <div class="row g-4 mt-4">
+            <div class="col-md-2">
+              <div class="card h-100 border-secondary">
+                <div class="card-body text-center">
+                  <i class="fas fa-brain fa-2x text-secondary mb-3"></i>
+                  <h5>Mind Fresh</h5>
+                  <p>Refresh your mind with fun games, jokes, riddles, and brain teasers to boost creativity and reduce stress.</p>
+                  <a href="/mindfresh" class="btn btn-secondary">
+                    <i class="fas fa-play me-1"></i>Play Now
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-2">
+              <div class="card h-100 border-dark">
+                <div class="card-body text-center">
+                  <i class="fas fa-robot fa-2x text-dark mb-3"></i>
+                  <h5>AI Tools</h5>
+                  <p>Explore cutting-edge AI tools for learning, productivity, and creativity. Discover the best AI assistants for students.</p>
+                  <a href="/ai" class="btn btn-dark">
+                    <i class="fas fa-tools me-1"></i>Explore Tools
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-2">
+              <div class="card h-100 border-primary">
+                <div class="card-body text-center">
+                  <i class="fas fa-book fa-2x text-primary mb-3"></i>
+                  <h5>Learning Guides</h5>
+                  <p>Step-by-step beginner guides for LinkedIn, GitHub, LeetCode, VS Code, and domain-specific career guidance for BCA, BSc, Pharmacy, Medical, Agriculture, MPSC, UPSC students.</p>
+                  <a href="/learn" class="btn btn-primary">
+                    <i class="fas fa-graduation-cap me-1"></i>Learn Now
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-2">
+              <div class="card h-100 border-info">
+                <div class="card-body text-center">
+                  <i class="fas fa-comments fa-2x text-info mb-3"></i>
+                  <h5>AI Chatbot</h5>
+                  <p>Friendly AI assistant for instant guidance. Ask any question about careers, platforms, mental health, or get step-by-step help with any topic.</p>
+                  <a href="/chatbot" class="btn btn-info">
+                    <i class="fas fa-robot me-1"></i>Chat Now
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-2 card-3d">
+              <div class="card h-100 border-success">
+                <div class="card-body text-center">
+                  <i class="fas fa-handshake fa-2x text-success mb-3"></i>
+                  <h5>Connect with Mentor</h5>
+                  <p>Directly connect with experienced mentors via WhatsApp for personalized guidance and support.</p>
+                  <a href="https://wa.me/917620260012?text=Hi%20I%20want%20to%20connect%20with%20a%20mentor" class="btn btn-success" target="_blank">
+                    <i class="fab fa-whatsapp me-1"></i>Connect Now
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Admin Panel Section (only visible to admins) -->
+          {% if is_admin %}
+          <div class="mt-5">
+            <h4 class="mb-3 text-danger">🔧 Admin Panel - User & Mentor Management</h4>
+            
+            <!-- Mentor Requests Section -->
+            <div class="mb-4">
+              <h5 class="mb-3">🎓 Mentor Payment Requests</h5>
+              <div class="table-responsive">
+                <table class="table table-striped">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>User</th>
+                      <th>Email</th>
+                      <th>UTR</th>
+                      <th>Requested</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for request in requests %}
+                    <tr>
+                      <td>{{ request[0] }}</td>
+                      <td>{{ request[1] }}</td>
+                      <td>{{ request[2] }}</td>
+                      <td><code>{{ request[3] }}</code></td>
+                      <td>{{ request[4] }}</td>
+                      <td>
+                        {% if request[5] == 'pending' %}
+                          <span class="badge bg-warning">Pending</span>
+                        {% elif request[5] == 'approved' %}
+                          <span class="badge bg-success">Approved</span>
+                        {% else %}
+                          <span class="badge bg-danger">Rejected</span>
+                        {% endif %}
+                      </td>
+                      <td>
+                        {% if request[5] == 'pending' %}
+                          <a href="/admin/mentor-request/{{ request[0] }}/approve" class="btn btn-sm btn-success me-1">
+                            <i class="fas fa-check"></i> Approve
+                          </a>
+                          <a href="/admin/mentor-request/{{ request[0] }}/reject" class="btn btn-sm btn-danger">
+                            <i class="fas fa-times"></i> Reject
+                          </a>
+                        {% else %}
+                          <span class="text-muted">Processed</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not requests %}
+                    <tr>
+                      <td colspan="7" class="text-center text-muted">No mentor requests pending</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <!-- User Management Section -->
+            <div class="mb-4">
+              <h5 class="mb-3">👥 User Management</h5>
+              <div class="table-responsive">
+                <table class="table table-striped">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Username</th>
+                      <th>Email</th>
+                      <th>Premium</th>
+                      <th>Mentor Access</th>
+                      <th>Joined</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for user in users %}
+                    <tr>
+                      <td>{{ user[0] }}</td>
+                      <td>{{ user[1] }}</td>
+                      <td>{{ user[2] }}</td>
+                      <td>
+                        {% if user[3] %}
+                          <span class="badge bg-success">Yes</span>
+                        {% else %}
+                          <span class="badge bg-secondary">No</span>
+                        {% endif %}
+                      </td>
+                      <td>
+                        {% if user[4] %}
+                          <span class="badge bg-success">Yes</span>
+                        {% else %}
+                          <span class="badge bg-secondary">No</span>
+                        {% endif %}
+                      </td>
+                      <td>{{ user[5] }}</td>
+                      <td>
+                        <a href="/admin/user/{{ user[0] }}/toggle_premium" class="btn btn-sm btn-warning me-1">
+                          Toggle Premium
+                        </a>
+                        <a href="/admin/user/{{ user[0] }}/toggle_mentor" class="btn btn-sm btn-info">
+                          Toggle Mentor
+                        </a>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <!-- Statistics Section -->
+            <div class="row">
+              <div class="col-md-6">
+                <div class="card border-primary">
+                  <div class="card-body">
+                    <h6>💰 Payment Verification</h6>
+                    <p class="small">Check emails for payment screenshots and manually activate premium access.</p>
+                    <p class="small text-muted">UPI IDs: PhonePe (7620260012@ibl), Paytm (7620260012@ptyes), GPay (mryashu9300@okaxis)</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="card border-success">
+                  <div class="card-body">
+                    <h6>📊 Statistics</h6>
+                    <p class="small">Total Users: {{ users|length }}</p>
+                    <p class="small">Premium Users: {{ users|selectattr('3')|list|length }}</p>
+                    <p class="small">Mentor Access: {{ users|selectattr('4')|list|length }}</p>
+                    <p class="small">Pending Requests: {{ requests|selectattr('5', 'equalto', 'pending')|list|length }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+          
+          <!-- Mentor Request Modal -->
+          <div class="modal fade" id="mentorRequestModal" tabindex="-1">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Request a Mentor</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <form id="mentorRequestForm">
+                    <div class="mb-3">
+                      <label class="form-label">Your Field/Interest</label>
+                      <select class="form-select" name="field" required>
+                        <option value="">Select field...</option>
+                        <option value="engineering">Engineering</option>
+                        <option value="medical">Medical</option>
+                        <option value="business">Business/MBA</option>
+                        <option value="arts">Arts & Humanities</option>
+                        <option value="science">Science</option>
+                        <option value="law">Law</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Current Year/Semester</label>
+                      <input type="text" class="form-control" name="year" placeholder="e.g., 2nd Year, Final Year" required>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Specific Goals</label>
+                      <textarea class="form-control" name="goals" rows="3" placeholder="What do you want to achieve?" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Preferred Communication</label>
+                      <select class="form-select" name="communication">
+                        <option value="whatsapp">WhatsApp</option>
+                        <option value="call">Phone Call</option>
+                        <option value="video">Video Call</option>
+                      </select>
+                    </div>
+                  </form>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button type="button" class="btn btn-primary" onclick="submitMentorRequest()">Submit Request</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showMentorRequest() {
+    const modal = new bootstrap.Modal(document.getElementById('mentorRequestModal'));
+    modal.show();
+}
+
+function submitMentorRequest() {
+    // Here you would send the form data to your backend
+    alert('Mentor request submitted! We will match you with a mentor within 48 hours.');
+    bootstrap.Modal.getInstance(document.getElementById('mentorRequestModal')).hide();
+}
+
+function showBooking() {
+    // Open WhatsApp for scheduling calls
+    const mentorNumber = "917620260012"; // Your WhatsApp number
+    const message = encodeURIComponent("Hi! I would like to schedule a mentoring call. Please let me know your availability.");
+    const whatsappUrl = `https://wa.me/${mentorNumber}?text=${message}`;
+    window.open(whatsappUrl, '_blank');
+}
+
+function showChat() {
+    // Open WhatsApp with mentor's number
+    const mentorNumber = "917620260012"; // Your WhatsApp number
+    const message = encodeURIComponent("Hi! I have been approved for mentor access. I would like to connect with my mentor.");
+    const whatsappUrl = `https://wa.me/${mentorNumber}?text=${message}`;
+    window.open(whatsappUrl, '_blank');
+}
+
+function showResumeReview() {
+    // Open WhatsApp for resume submission
+    const mentorNumber = "917620260012"; // Your WhatsApp number
+    const message = encodeURIComponent("Hi! I would like to submit my resume for review. Please guide me on how to share it.");
+    const whatsappUrl = `https://wa.me/${mentorNumber}?text=${message}`;
+    window.open(whatsappUrl, '_blank');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Log In - MargDarshak AI{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper" style="min-height: calc(100vh - 100px); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+    <!-- Abstract Background -->
+    <div style="position: absolute; top: -10%; left: -10%; width: 40vw; height: 40vw; background: rgba(99, 102, 241, 0.15); filter: blur(80px); border-radius: 50%; z-index: -1;"></div>
+    <div style="position: absolute; bottom: -10%; right: -10%; width: 40vw; height: 40vw; background: rgba(236, 72, 153, 0.15); filter: blur(80px); border-radius: 50%; z-index: -1;"></div>
+
+    <div class="container py-4" style="position: relative; z-index: 10;">
+        <div class="row align-items-center justify-content-center">
+            
+            <!-- Left Side: 3D Visual -->
+            <div class="col-lg-5 d-none d-lg-block text-center pe-lg-5">
+                <div data-tilt data-tilt-max="10" data-tilt-speed="400" data-tilt-perspective="1000" data-tilt-glare data-tilt-max-glare="0.4" style="transform-style: preserve-3d; background: rgba(255,255,255,0.4); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 36px; border: 1px solid rgba(255,255,255,0.6); padding: 50px 30px; box-shadow: 0 30px 60px rgba(0,0,0,0.1);">
+                    <img src="/static/icon-512.png" alt="MargDarshak Logo" style="width: 140px; transform: translateZ(60px); filter: drop-shadow(0 20px 30px rgba(0,0,0,0.2)); margin-bottom: 30px; border-radius: 32px;">
+                    <h2 style="font-family: 'Outfit', sans-serif; font-weight: 800; transform: translateZ(40px); font-size: 2.2rem; line-height: 1.2; margin-bottom: 15px; background: linear-gradient(135deg, #6366f1, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Welcome Back to Your Journey.</h2>
+                    <p style="color: var(--color-muted); transform: translateZ(20px); font-size: 1.1rem; line-height: 1.6;">Sign in to securely access your AI Career map, Mental wellness trackers, and exclusive Mentorship networks.</p>
+                </div>
+            </div>
+
+            <!-- Right Side: The Form -->
+            <div class="col-lg-5 col-md-8">
+                <div class="card p-4 p-md-5" style="border-radius: 28px; box-shadow: 0 20px 50px rgba(0,0,0,0.08); border: 1px solid rgba(0,0,0,0.06); background: rgba(255,255,255,0.85);">
+                    <div class="text-center mb-4 d-block d-lg-none">
+                        <img src="/static/icon-192.png" alt="Logo" style="width: 65px; height: 65px; border-radius: 16px; box-shadow: 0 10px 20px rgba(0,0,0,0.1);">
+                    </div>
+                    <div class="text-center mb-5">
+                        <h3 style="font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 2.2rem; margin-bottom: 8px; color: #0f172a;">Log In</h3>
+                        <p style="color: var(--color-muted); font-size: 1.05rem;">Accelerate your academic future</p>
+                    </div>
+
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                      {% if messages %}
+                        {% for category, msg in messages %}
+                          <div class="alert alert-{{ 'danger' if category=='error' else ('success' if category=='success' else 'info') }} alert-sm" style="border-radius: 14px; border: none; font-weight: 500; background: rgba(239, 68, 68, 0.1) if category == 'error' else rgba(16, 185, 129, 0.1); color: #ef4444 if category == 'error' else #10b981;">
+                              <i class="fas fa-info-circle me-2"></i>{{ msg }}
+                          </div>
+                        {% endfor %}
+                      {% endif %}
+                    {% endwith %}
+
+                    <form method="post" action="">
+                        <div class="mb-4">
+                            <label class="form-label" style="font-weight: 700; color: #475569; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">Email Address</label>
+                            <div class="input-group" style="box-shadow: 0 4px 15px rgba(0,0,0,0.02); border-radius: 16px;">
+                                <span class="input-group-text bg-white border-end-0 text-muted" style="border-radius: 16px 0 0 16px; padding-left: 20px;"><i class="fas fa-at"></i></span>
+                                <input type="email" name="email" class="form-control border-start-0 ps-2 py-3 bg-white" placeholder="hello@student.com" required style="border-radius: 0 16px 16px 0; font-size: 1.05rem;" />
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label" style="font-weight: 700; color: #475569; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px;">Password</label>
+                            <div class="input-group" style="box-shadow: 0 4px 15px rgba(0,0,0,0.02); border-radius: 16px;">
+                                <span class="input-group-text bg-white border-end-0 text-muted" style="border-radius: 16px 0 0 16px; padding-left: 20px;"><i class="fas fa-lock"></i></span>
+                                <input type="password" name="password" class="form-control border-start-0 ps-2 py-3 bg-white" placeholder="••••••••" required style="border-radius: 0 16px 16px 0; font-size: 1.05rem;" />
+                            </div>
+                        </div>
+
+                        <div class="d-grid mt-5">
+                            <button type="submit" class="btn btn-primary" style="padding: 16px; font-size: 1.15rem; border-radius: 18px; box-shadow: 0 10px 25px rgba(99,102,241,0.35); font-family: 'Outfit', sans-serif; letter-spacing: 0.5px; transition: all 0.3s ease; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none;">Enter Workspace <i class="fas fa-arrow-right ms-2"></i></button>
+                        </div>
+                    </form>
+
+                    <div class="text-center mt-4 pt-3 border-top" style="border-color: rgba(0,0,0,0.05) !important;">
+                        <span style="color: #64748b; font-size: 0.95rem;">New to MargDarshak? <a href="{{ url_for('signup') }}" style="color: #6366f1; font-weight: 700; text-decoration: none; padding: 5px 10px; border-radius: 8px; transition: background 0.2s;" onmouseover="this.style.background='rgba(99,102,241,0.1)'" onmouseout="this.style.background='transparent'">Create an account freely</a></span>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<style>
+    body.dark-mode .auth-wrapper .card {
+        background: rgba(15, 23, 42, 0.8) !important;
+        border-color: rgba(255,255,255,0.05) !important;
+    }
+    body.dark-mode .auth-wrapper h3 { color: #f8fafc !important; }
+    body.dark-mode .auth-wrapper .input-group-text, body.dark-mode .auth-wrapper .form-control {
+        background: rgba(30, 41, 59, 0.8) !important;
+        border-color: rgba(255,255,255,0.1) !important;
+        color: white !important;
+    }
+</style>
+{% endblock %}

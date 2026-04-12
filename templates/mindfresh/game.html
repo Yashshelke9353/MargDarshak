@@ -1,0 +1,690 @@
+{% extends 'base.html' %}
+
+{% block title %}MindFresh Zone 🧠{% endblock %}
+
+{% block content %}
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+    /* 🎨 Base Aesthetics & Theme */
+    .mf-app {
+        /* Default: Bright Spiritual Theme */
+        --theme-bg: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+        --theme-text-main: #2d3748;
+        --theme-text-sub: #4a5568;
+        --theme-gold: #c27803; /* Adjusted gold for contrast on light bg */
+        --theme-gold-bg: rgba(194, 120, 3, 0.1);
+        --theme-card-bg: rgba(255, 255, 255, 0.65);
+        --theme-card-border: rgba(194, 120, 3, 0.3);
+        --theme-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        --theme-hover-shadow: 0 20px 40px rgba(0,0,0,0.1), 0 0 20px rgba(194, 120, 3, 0.15);
+        --theme-modal-bg: rgba(253, 251, 251, 0.95);
+        --theme-modal-card: rgba(255, 255, 255, 0.9);
+        --theme-particle: rgba(194, 120, 3, 0.15);
+        --theme-input-bg: rgba(255,255,255,0.5);
+        
+        font-family: 'Poppins', sans-serif;
+        background: var(--theme-bg);
+        color: var(--theme-text-main);
+        min-height: 100vh;
+        padding-bottom: 5rem;
+        position: relative;
+        overflow-x: hidden;
+        margin: -1.5rem;
+        padding-top: 6rem; /* Increased to avoid navbar overlap */
+        transition: all 0.4s ease;
+    }
+
+    body.dark-mode .mf-app {
+        /* Optional: Dark Theme */
+        --theme-bg: radial-gradient(circle at top center, #111827 0%, #030712 100%);
+        --theme-text-main: #f8fafc;
+        --theme-text-sub: #9ca3af;
+        --theme-gold: #FFD700;
+        --theme-gold-bg: rgba(255, 215, 0, 0.1);
+        --theme-card-bg: rgba(17, 24, 39, 0.6);
+        --theme-card-border: rgba(255, 215, 0, 0.1);
+        --theme-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        --theme-hover-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 20px rgba(255, 215, 0, 0.15);
+        --theme-modal-bg: rgba(3, 7, 18, 0.95);
+        --theme-modal-card: rgba(17, 24, 39, 0.8);
+        --theme-particle: rgba(255, 215, 0, 0.1);
+        --theme-input-bg: rgba(0,0,0,0.2);
+    }
+
+    .mf-gold { color: var(--theme-gold) !important; }
+    
+    /* Hero Section */
+    .mf-hero {
+        text-align: center;
+        padding: 3rem 1rem;
+        position: relative;
+        z-index: 10;
+    }
+
+    .mf-back-global {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 2rem;
+        color: var(--theme-text-sub);
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 1.1rem;
+        transition: all 0.3s;
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        background: var(--theme-card-bg);
+        border: 1px solid var(--theme-card-border);
+    }
+
+    .mf-back-global:hover {
+        color: var(--theme-gold);
+        border-color: var(--theme-gold);
+        transform: translateX(-5px);
+    }
+    
+    .mf-hero h1 {
+        font-size: 3.5rem;
+        font-weight: 700;
+        text-shadow: 0 4px 20px var(--theme-gold-bg);
+        margin-bottom: 0.5rem;
+        letter-spacing: 1px;
+    }
+
+    .mf-hero p {
+        font-size: 1.2rem;
+        color: var(--theme-text-sub);
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    /* Particles Background */
+    .mf-particles {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        background-image: radial-gradient(circle at center, var(--theme-particle) 1px, transparent 1px);
+        background-size: 50px 50px;
+        opacity: 0.8;
+        animation: driftBg 60s linear infinite;
+    }
+    
+    @keyframes driftBg {
+        0% { background-position: 0 0; }
+        100% { background-position: 500px 500px; }
+    }
+
+    /* Grid layout */
+    .mf-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 2rem;
+        position: relative;
+        z-index: 10;
+    }
+
+    /* Glassmorphism Cards */
+    .mf-card {
+        background: var(--theme-card-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--theme-card-border);
+        border-radius: 20px;
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: var(--theme-shadow);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .mf-card:hover {
+        transform: translateY(-8px);
+        border-color: var(--theme-gold);
+        box-shadow: var(--theme-hover-shadow);
+    }
+
+    .mf-icon {
+        font-size: 2.5rem;
+        color: var(--theme-gold);
+        margin-bottom: 1.5rem;
+        filter: drop-shadow(0 0 10px var(--theme-gold-bg));
+    }
+
+    .mf-card h3 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0.8rem;
+        color: var(--theme-text-main);
+    }
+
+    .mf-card p {
+        font-size: 0.95rem;
+        color: var(--theme-text-sub);
+        margin-bottom: 2rem;
+        flex-grow: 1;
+    }
+
+    .mf-btn {
+        background: transparent;
+        color: var(--theme-gold);
+        border: 1px solid var(--theme-gold);
+        padding: 0.6rem 2.5rem;
+        border-radius: 50px;
+        font-weight: 500;
+        transition: all 0.3s;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-size: 0.9rem;
+        width: 100%;
+    }
+
+    .mf-btn:hover {
+        background: var(--theme-gold);
+        color: #fff;
+        box-shadow: 0 0 15px var(--theme-gold-bg);
+    }
+
+    /* Fullscreen Game Modal */
+    .mf-modal {
+        position: fixed;
+        inset: 0;
+        background: var(--theme-modal-bg);
+        backdrop-filter: blur(15px);
+        z-index: 9999; /* Very high z-index to completely cover the Bootstrap navbar */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.4s ease;
+    }
+
+    .mf-modal.active {
+        opacity: 1;
+        pointer-events: all;
+    }
+
+    .mf-modal-content {
+        background: var(--theme-modal-card);
+        border: 1px solid var(--theme-card-border);
+        border-radius: 24px;
+        width: 90%;
+        max-width: 800px;
+        min-height: 500px;
+        padding: 3rem 2rem;
+        position: relative;
+        text-align: center;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+        transform: scale(0.9);
+        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        display: flex;
+        flex-direction: column;
+    }
+
+    body.dark-mode .mf-modal-content {
+        box-shadow: 0 25px 50px rgba(0,0,0,0.8);
+    }
+
+    .mf-modal.active .mf-modal-content {
+        transform: scale(1);
+    }
+
+    .mf-close {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: var(--theme-card-bg);
+        border: 1px solid var(--theme-card-border);
+        color: var(--theme-text-sub);
+        font-size: 1rem;
+        border-radius: 50px;
+        padding: 0.4rem 1rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        z-index: 10;
+    }
+
+    .mf-close:hover {
+        color: var(--theme-gold);
+        border-color: var(--theme-gold);
+        background: transparent;
+    }
+
+    .game-view { display: none; width: 100%; height: 100%; flex-grow: 1; flex-direction: column; align-items: center; justify-content: center; color: var(--theme-text-main); }
+    .game-view.active { display: flex; }
+
+
+    /* 🎮 Game Specific Styles */
+
+    /* 1. Memory Match */
+    .memo-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 15px;
+        margin-top: 20px;
+        justify-content: center;
+    }
+    .memo-card {
+        width: 70px; height: 70px;
+        background: var(--theme-input-bg);
+        border: 2px solid var(--theme-card-border);
+        border-radius: 12px;
+        display: flex; justify-content: center; align-items: center;
+        font-size: 2.2rem; cursor: pointer; transition: all 0.3s;
+        box-shadow: var(--theme-shadow);
+        color: var(--theme-text-main);
+    }
+    .memo-card.flipped { background: var(--theme-gold-bg); border-color: var(--theme-gold); cursor: default; }
+    .memo-card.matched { background: rgba(16, 185, 129, 0.2); border-color: #10b981; pointer-events: none; opacity: 0.7;}
+    @media (max-width: 500px) { .memo-card { width: 55px; height: 55px; font-size: 1.5rem;} }
+
+    /* 2. Focus Game */
+    .focus-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 10px; margin-top: 20px;
+    }
+    .focus-item {
+        font-size: 2rem; user-select: none; cursor: pointer; transition: transform 0.2s; color: var(--theme-text-sub);
+    }
+    .focus-item:hover { transform: scale(1.1); color: var(--theme-gold);}
+
+    /* 3. Reaction Game */
+    #reactionBox {
+        width: 250px; height: 250px; border-radius: 50%;
+        margin: 2rem auto; cursor: pointer; display: flex;
+        justify-content: center; align-items: center;
+        font-size: 1.5rem; font-weight: bold; transition: background 0.1s;
+        border: 4px solid rgba(255,255,255,0.1);
+        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    }
+
+    /* 4. Breathing Game */
+    .breathe-container { margin: 3rem 0; position: relative; display: flex; align-items: center; justify-content: center;}
+    .breathe-circle {
+        width: 200px; height: 200px; border-radius: 50%;
+        background: var(--theme-gold-bg);
+        border: 2px solid var(--theme-gold);
+        display: flex; justify-content: center; align-items: center;
+        font-size: 1.5rem; font-weight: 500; text-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        transition: transform 4s ease-in-out, background 4s ease;
+        box-shadow: 0 0 30px var(--theme-gold-bg);
+        color: var(--theme-text-main);
+    }
+    .breathe-in { transform: scale(1.6); background: radial-gradient(circle, rgba(16,185,129,0.5) 0%, rgba(16,185,129,0.05) 100%); border-color: #10b981; box-shadow: 0 0 60px rgba(16,185,129,0.3);}
+
+    /* 5. Quick Quiz */
+    .quiz-options { display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 400px; margin: 0 auto; mt-4; }
+    .quiz-btn { background: var(--theme-gold-bg); border: 1px solid var(--theme-card-border); color: var(--theme-text-main); padding: 1rem; border-radius: 12px; cursor: pointer; transition: all 0.2s;}
+    .quiz-btn:hover { background: var(--theme-gold-bg); border-color: var(--theme-gold); }
+    
+    /* 6. Reflection */
+    .reflection-textarea {
+        width: 100%; max-width: 500px; height: 120px;
+        background: var(--theme-input-bg); border: 1px solid var(--theme-card-border);
+        border-radius: 12px; padding: 1rem; color: var(--theme-text-main); font-family: 'Poppins', sans-serif;
+        resize: none; outline: none; margin-bottom: 1rem;
+    }
+    .reflection-textarea:focus { border-color: var(--theme-gold); box-shadow: 0 0 15px var(--theme-gold-bg); }
+    .past-reflections { margin-top: 2rem; max-width: 500px; width: 100%; text-align: left; }
+    .ref-item { background: var(--theme-gold-bg); padding: 1rem; border-radius: 8px; margin-bottom: 10px; font-size: 0.9rem; border-left: 3px solid var(--theme-gold);}
+
+</style>
+
+<div class="mf-app">
+    <div class="mf-particles"></div>
+
+    <!-- HERO -->
+    <div class="mf-hero">
+        <a href="/" class="mf-back-global"><i class="fas fa-arrow-left"></i> Back to Home</a>
+        <h1 class="mf-gold">MindFresh Zone <i class="fas fa-brain fa-sm"></i></h1>
+        <p>Take a deep breath and quickly refresh your mind, logic, and spirit in minutes.</p>
+    </div>
+
+    <!-- GRID -->
+    <div class="mf-grid">
+        <!-- Card 1 -->
+        <div class="mf-card">
+            <i class="fas fa-layer-group mf-icon"></i>
+            <h3 class="mf-gold">Memory Match</h3>
+            <p>Flip cards and match spiritual symbols to gently improve short-term focus.</p>
+            <button class="mf-btn" onclick="openGame('memory')">Play Now</button>
+        </div>
+        <!-- Card 2 -->
+        <div class="mf-card">
+            <i class="fas fa-search mf-icon"></i>
+            <h3 class="mf-gold">Focus Game</h3>
+            <p>Improve your concentration by finding the one symbol that stands out.</p>
+            <button class="mf-btn" onclick="openGame('focus')">Play Now</button>
+        </div>
+        <!-- Card 3 -->
+        <div class="mf-card">
+            <i class="fas fa-bolt mf-icon"></i>
+            <h3 class="mf-gold">Reaction Speed</h3>
+            <p>Wait for the signal and tap quickly. Sharpens reflexes and presence of mind.</p>
+            <button class="mf-btn" onclick="openGame('reaction')">Play Now</button>
+        </div>
+        <!-- Card 4 -->
+        <div class="mf-card" style="box-shadow: 0 10px 40px rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3);">
+            <i class="fas fa-spa mf-icon" style="color: #10b981;"></i>
+            <h3 style="color: #10b981;">Breathing Game</h3>
+            <p>Follow the animated lotus. The 4-7-8 breathing method rapidly reduces stress.</p>
+            <button class="mf-btn" style="border-color: #10b981; color: #10b981;" onmouseover="this.style.background='#10b981'; this.style.color='#fff';" onmouseout="this.style.background='transparent'; this.style.color='#10b981';" onclick="openGame('breathe')">Breathe Now</button>
+        </div>
+        <!-- Card 5 -->
+        <div class="mf-card">
+            <i class="fas fa-quote-left mf-icon"></i>
+            <h3 class="mf-gold">Quick Quiz</h3>
+            <p>Simple logical and spiritual questions to briefly stimulate intellectual thought.</p>
+            <button class="mf-btn" onclick="openGame('quiz')">Play Now</button>
+        </div>
+        <!-- Card 6 -->
+        <div class="mf-card">
+            <i class="fas fa-pen-fancy mf-icon"></i>
+            <h3 class="mf-gold">Reflection Task</h3>
+            <p>End your session by writing down one thing that made you happy today.</p>
+            <button class="mf-btn" onclick="openGame('reflection')">Write Journal</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL -->
+<div class="mf-modal" id="mfModal">
+    <div class="mf-modal-content">
+        <button class="mf-close" onclick="closeModal()"><i class="fas fa-arrow-left"></i> Back</button>
+        
+        <!-- Game Views -->
+        
+        <!-- 1. Memory -->
+        <div class="game-view" id="view-memory">
+            <h2 class="mf-gold mb-2">Memory Match</h2>
+            <p class="text-muted mb-4">Matches: <span id="memoMatched">0</span>/8 | Moves: <span id="memoMoves">0</span></p>
+            <div class="memo-grid" id="memoGrid"></div>
+            <button class="mf-btn mt-4" style="max-width:200px" onclick="initMemory()">Restart</button>
+        </div>
+
+        <!-- 2. Focus -->
+        <div class="game-view" id="view-focus">
+            <h2 class="mf-gold mb-2">Odd One Out</h2>
+            <p class="text-muted mb-4">Find the symbol that is different from the rest.</p>
+            <h3 id="focusLvl" class="mb-3">Level 1</h3>
+            <div class="focus-grid" id="focusGrid"></div>
+            <p id="focusMsg" class="mt-4 text-success fw-bold"></p>
+        </div>
+
+        <!-- 3. Reaction -->
+        <div class="game-view" id="view-reaction">
+            <h2 class="mf-gold mb-2">Reaction Speed</h2>
+            <p class="text-muted mb-4">Wait for Green, then click the circle as fast as you can.</p>
+            <div id="reactionBox" style="background:#dc2626;" onclick="handleReactionClick()">Start</div>
+            <h3 id="reactionResult" class="mt-4"></h3>
+        </div>
+
+        <!-- 4. Breathing -->
+        <div class="game-view" id="view-breathe">
+            <h2 class="mb-2" style="color: #10b981;">4-7-8 Breathing</h2>
+            <p class="text-muted mb-5">Relax your body and calm your mind.</p>
+            <div class="breathe-container">
+                <div class="breathe-circle" id="breatheCircle">Ready</div>
+            </div>
+            <button class="mf-btn mt-5" style="max-width:200px; border-color:#10b981; color:#10b981;" onclick="toggleBreathe()" id="breatheToggleBtn">Start Sequence</button>
+        </div>
+
+        <!-- 5. Quiz -->
+        <div class="game-view" id="view-quiz">
+            <h2 class="mf-gold mb-2">Mindful Quiz</h2>
+            <p class="text-muted mb-4" style="color: var(--theme-text-sub);">Question <span id="qCount">1</span> of 3</p>
+            <h4 id="quizQuestion" class="mb-4" style="line-height:1.6; max-width:500px;"></h4>
+            <div class="quiz-options" id="quizOptions"></div>
+        </div>
+
+        <!-- 6. Reflection -->
+        <div class="game-view" id="view-reflection">
+            <h2 class="mf-gold mb-2">Daily Reflection</h2>
+            <p class="text-muted mb-4">What made you smile today?</p>
+            <textarea class="reflection-textarea" id="refInput" placeholder="A kind word, a good meal, reading a verse..."></textarea>
+            <button class="mf-btn" style="max-width:200px;" onclick="saveReflection()">Save Reflection</button>
+            <div class="past-reflections">
+                <h5 class="text-muted mb-3"><i class="fas fa-history me-2"></i>Past Reflections</h5>
+                <div id="refList"></div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    /* MODAL LOGIC */
+    let activeGameCtx = null;
+    function openGame(gameId) {
+        document.querySelectorAll('.game-view').forEach(el => el.classList.remove('active'));
+        document.getElementById('view-' + gameId).classList.add('active');
+        document.getElementById('mfModal').classList.add('active');
+        
+        activeGameCtx = gameId;
+        // Init Logic per game
+        if(gameId === 'memory') initMemory();
+        if(gameId === 'focus') initFocus();
+        if(gameId === 'reaction') resetReaction();
+        if(gameId === 'breathe') resetBreathe();
+        if(gameId === 'quiz') initQuiz();
+        if(gameId === 'reflection') loadReflections();
+
+        fetch('/mindfresh/log', { method: 'POST' }).catch(e=>{});
+    }
+
+    function closeModal() {
+        document.getElementById('mfModal').classList.remove('active');
+        if(activeGameCtx === 'breathe' && breatheInterval) { clearInterval(breatheInterval); isBreathing = false; }
+        if(reactionTimeout) clearTimeout(reactionTimeout);
+    }
+
+    /* 🧠 1. MEMORY MATCH */
+    const symbols = ['🪷', '🕉️', '☀️', '🌙', '📿', '🕯️', '🌿', '✨'];
+    let cards = [], flipped = [], matchedCnt = 0, moves = 0;
+    
+    function initMemory() {
+        let grid = document.getElementById('memoGrid');
+        grid.innerHTML = '';
+        matchedCnt = 0; moves = 0;
+        document.getElementById('memoMatched').innerText = '0';
+        document.getElementById('memoMoves').innerText = '0';
+        flipped = [];
+        
+        let deck = [...symbols, ...symbols].sort(() => Math.random() - 0.5);
+        deck.forEach((sym, idx) => {
+            let card = document.createElement('div');
+            card.className = 'memo-card';
+            card.dataset.sym = sym;
+            card.onclick = () => flipCard(card);
+            grid.appendChild(card);
+        });
+    }
+
+    function flipCard(card) {
+        if(flipped.length >= 2 || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+        card.classList.add('flipped');
+        card.innerText = card.dataset.sym;
+        flipped.push(card);
+        
+        if(flipped.length === 2) {
+            moves++; document.getElementById('memoMoves').innerText = moves;
+            if(flipped[0].dataset.sym === flipped[1].dataset.sym) {
+                flipped.forEach(c => c.classList.add('matched'));
+                flipped = [];
+                matchedCnt++; document.getElementById('memoMatched').innerText = matchedCnt;
+                if(matchedCnt === 8) setTimeout(() => alert("Peace achieved! Memory clear."), 500);
+            } else {
+                setTimeout(() => {
+                    flipped.forEach(c => { c.classList.remove('flipped'); c.innerText = ''; });
+                    flipped = [];
+                }, 1000);
+            }
+        }
+    }
+
+    /* 🔍 2. FOCUS GAME */
+    let fLvl = 1;
+    const icons = ['fa-leaf','fa-star','fa-moon','fa-sun','fa-om','fa-seedling'];
+    function initFocus() {
+        fLvl = 1; document.getElementById('focusMsg').innerText = '';
+        buildFocusGrid();
+    }
+    function buildFocusGrid() {
+        document.getElementById('focusLvl').innerText = 'Level ' + fLvl;
+        let grid = document.getElementById('focusGrid');
+        grid.innerHTML = '';
+        let count = 12 + (fLvl * 6);
+        let baseIcon = icons[(fLvl-1) % icons.length];
+        
+        let targetIdx = Math.floor(Math.random() * count);
+        
+        for(let i=0; i<count; i++) {
+            let el = document.createElement('i');
+            el.className = `fas ${baseIcon} focus-item`;
+            if(i === targetIdx) {
+                // Slightly manipulate the odd one out
+                el.style.transform = `rotate(${15 + fLvl*5}deg) scale(0.95)`;
+                el.onclick = () => {
+                    fLvl++;
+                    if(fLvl > 5) { document.getElementById('focusMsg').innerText = "Incredible Focus! You completed all levels."; grid.innerHTML='';}
+                    else buildFocusGrid();
+                };
+            } else {
+                el.onclick = () => { document.getElementById('focusMsg').innerText = "That's not it. Stay focused."; document.getElementById('focusMsg').style.color='#ef4444'; };
+            }
+            grid.appendChild(el);
+        }
+    }
+
+    /* ⚡ 3. REACTION SPEED */
+    let rState = 'ready', rStart = 0, reactionTimeout;
+    function resetReaction() {
+        rState = 'ready';
+        let box = document.getElementById('reactionBox');
+        box.style.background = '#0369a1'; // Blue ready state
+        box.innerText = 'Start';
+        document.getElementById('reactionResult').innerText = '';
+    }
+    
+    function handleReactionClick() {
+        let box = document.getElementById('reactionBox');
+        let res = document.getElementById('reactionResult');
+        
+        if(rState === 'ready') {
+            rState = 'waiting';
+            box.style.background = '#dc2626'; // Red
+            box.innerText = 'Wait...';
+            res.innerText = '';
+            let delay = Math.random() * 3000 + 1500;
+            reactionTimeout = setTimeout(() => {
+                rState = 'go';
+                box.style.background = '#16a34a'; // Green
+                box.innerText = 'CLICK!';
+                rStart = performance.now();
+            }, delay);
+        } else if(rState === 'waiting') {
+            clearTimeout(reactionTimeout);
+            res.innerText = 'Too early! Stay calm.';
+            resetReaction();
+        } else if(rState === 'go') {
+            let time = Math.round(performance.now() - rStart);
+            res.innerText = `Reaction Time: ${time} ms!`;
+            rState = 'ready';
+            box.style.background = '#0369a1';
+            box.innerText = 'Again';
+        }
+    }
+
+    /* 🧘 4. BREATHING GAME */
+    let breatheInterval, isBreathing = false;
+    function resetBreathe(){
+        document.getElementById('breatheCircle').className = 'breathe-circle';
+        document.getElementById('breatheCircle').innerText = 'Ready';
+        document.getElementById('breatheToggleBtn').innerText = 'Start Sequence';
+        if(breatheInterval) clearInterval(breatheInterval);
+        isBreathing = false;
+    }
+    function toggleBreathe() {
+        if(isBreathing) { resetBreathe(); return; }
+        isBreathing = true;
+        document.getElementById('breatheToggleBtn').innerText = 'Stop';
+        
+        const cycle = () => {
+            let circle = document.getElementById('breatheCircle');
+            circle.innerText = "Inhale...";
+            circle.classList.add('breathe-in');
+            setTimeout(() => {
+                circle.innerText = "Hold...";
+                setTimeout(() => {
+                    circle.innerText = "Exhale...";
+                    circle.classList.remove('breathe-in');
+                }, 7000);
+            }, 4000);
+        };
+        cycle();
+        breatheInterval = setInterval(cycle, 19000); // 4 + 7 + 8
+    }
+
+    /* ❓ 5. QUICK QUIZ */
+    const questions = [
+        { q: "What is the core message of Karma Yoga?", opts: ["Action without attachment to results", "Renouncing all worldly duties", "Performing rituals perfectly"], a: 0 },
+        { q: "Logical: If you have a bowl with six apples and you take away four, how many do you have?", opts: ["Two", "Four", "Six"], a: 1 },
+        { q: "According to spiritual texts, where does true peace reside?", opts: ["In material abundance", "In overcoming desires and mastering the mind", "In running away from society"], a: 1 }
+    ];
+    let qIdx = 0;
+    function initQuiz() { qIdx = 0; loadQuestion(); }
+    function loadQuestion() {
+        if(qIdx >= questions.length) {
+            document.getElementById('quizQuestion').innerText = "Quiz complete. Your mind is sharp!";
+            document.getElementById('quizOptions').innerHTML = '';
+            document.getElementById('qCount').innerText = questions.length;
+            return;
+        }
+        document.getElementById('qCount').innerText = qIdx + 1;
+        document.getElementById('quizQuestion').innerText = questions[qIdx].q;
+        let optsHTML = '';
+        questions[qIdx].opts.forEach((opt, i) => {
+            optsHTML += `<button class="quiz-btn" onclick="checkQuiz(${i})">${opt}</button>`;
+        });
+        document.getElementById('quizOptions').innerHTML = optsHTML;
+    }
+    function checkQuiz(ans) {
+        if(ans === questions[qIdx].a) {
+            qIdx++; loadQuestion();
+        } else {
+            alert("Almost! Reflect and try again.");
+        }
+    }
+
+    /* 🌿 6. REFLECTION */
+    function saveReflection() {
+        let text = document.getElementById('refInput').value.trim();
+        if(!text) return;
+        let past = JSON.parse(localStorage.getItem('mf_reflections') || '[]');
+        past.unshift({ date: new Date().toLocaleDateString(), text: text });
+        if(past.length > 5) past.pop();
+        localStorage.setItem('mf_reflections', JSON.stringify(past));
+        document.getElementById('refInput').value = '';
+        loadReflections();
+    }
+    function loadReflections() {
+        let past = JSON.parse(localStorage.getItem('mf_reflections') || '[]');
+        let html = past.map(p => `<div class="ref-item"><strong>${p.date}</strong><br>${p.text}</div>`).join('');
+        document.getElementById('refList').innerHTML = html || "<p class='text-muted'>No reflections yet.</p>";
+    }
+
+</script>
+{% endblock %}

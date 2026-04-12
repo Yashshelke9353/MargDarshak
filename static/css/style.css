@@ -1,0 +1,571 @@
+/* ==============================================================
+   MargDarshak Premium SaaS Theme - Global Styles
+   ============================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    /* Brand Colors */
+    --brand-50: #f5f3ff;
+    --brand-100: #ede9fe;
+    --brand-500: #8b5cf6;
+    --brand-600: #7c3aed;
+    --brand-700: #6d28d9;
+    
+    /* Modern SaaS Gradients */
+    --gradient-hero: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+    --gradient-hero-dark: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    
+    --gradient-primary: linear-gradient(135deg, #6366f1 0%, #ec4899 100%);
+    --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    --gradient-danger: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+    
+    /* Surface & Background */
+    --bg-page: #f8fafc;
+    --bg-surface: rgba(255, 255, 255, 0.7);
+    --border-subtle: rgba(255, 255, 255, 0.5);
+    
+    /* Text */
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    
+    /* Shadows */
+    --shadow-soft: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+    --shadow-float: 0 20px 40px -4px rgba(99, 102, 241, 0.15);
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-page);
+    background-image: 
+        radial-gradient(at 40% 20%, hsla(250,100%,74%,0.15) 0px, transparent 50%),
+        radial-gradient(at 80% 0%, hsla(189,100%,56%,0.15) 0px, transparent 50%),
+        radial-gradient(at 0% 50%, hsla(355,100%,93%,0.1) 0px, transparent 50%);
+    background-size: 100% 100%;
+    color: var(--text-main);
+    min-height: 100vh;
+    background-attachment: fixed;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* Dedicated Flawless Grid Overlay */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; width: 100vw; height: 100vh;
+    background-image: 
+        linear-gradient(to right, rgba(99, 102, 241, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: -1; /* Sits perfectly behind content, above base radial background */
+    pointer-events: none;
+}
+
+/* ==============================================================
+   Custom Premium Webkit Scrollbar
+   ============================================================== */
+::-webkit-scrollbar {
+    width: 0px; /* Completely hide scrollbar as requested */
+    display: none;
+}
+
+/* Firefox compatibility */
+html {
+    scrollbar-width: none; /* Hide in Firefox */
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6, .card-title, .modal-title {
+    font-family: 'Outfit', sans-serif;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+}
+
+/* ==============================================================
+   Glassmorphism & Surface Utilities
+   ============================================================== */
+.glass-panel {
+    background: var(--bg-surface);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-soft);
+    border-radius: 24px;
+}
+
+.glass-card, .card, .modal-content {
+    background: var(--bg-surface);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: var(--shadow-soft);
+    border-radius: 20px;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.card:hover, .glass-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-float);
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+.card-header, .modal-header, .card-footer, .modal-footer {
+    background: transparent !important;
+    border-color: rgba(0,0,0,0.05) !important;
+}
+
+.list-group-item {
+    background: rgba(255,255,255,0.4);
+    border-color: rgba(0,0,0,0.04);
+    transition: all 0.2s ease;
+}
+.list-group-item:hover {
+    background: rgba(99, 102, 241, 0.05);
+}
+
+/* ==============================================================
+   GLOBAL 3D PREMIUM BUTTONS (.btn-primary)
+   ============================================================== */
+.btn-primary {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 24px 8px 8px !important;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+    border-radius: 40px !important;
+    box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3) !important;
+    color: white !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 1.05rem !important;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    transform-style: preserve-3d;
+    text-transform: none !important;
+    letter-spacing: 0.5px;
+}
+
+.btn-primary::before {
+    content: '';
+    display: block;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    border-radius: 50%;
+    background-image: url('/static/icon-192.png');
+    background-size: cover;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    transform: translateZ(20px);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    margin-right: 12px;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #8b5cf6, #ec4899) !important;
+    box-shadow: 0 15px 30px rgba(236, 72, 153, 0.4) !important;
+    transform: translateY(-2px);
+    color: white !important;
+}
+
+.btn-primary:hover::before {
+    transform: translateZ(30px) rotate(-10deg) scale(1.15);
+}
+
+.btn-primary:active {
+    transform: scale(0.95);
+}
+
+body.dark-mode .btn-primary {
+    border-color: rgba(255,255,255,0.1) !important;
+}
+
+/* ==============================================================
+   Navbar Overrides
+   ============================================================== */
+.navbar {
+    background: rgba(255, 255, 255, 0.8) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 1rem 0;
+}
+
+.navbar-brand {
+    font-weight: 700;
+    color: var(--text-main) !important;
+    text-shadow: none;
+}
+
+.navbar-dark .navbar-nav .nav-link {
+    color: var(--text-muted);
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.navbar-dark .navbar-nav .nav-link:hover {
+    color: var(--brand-600);
+    background: var(--brand-50);
+}
+
+/* ==============================================================
+   Premium Buttons
+   ============================================================== */
+.btn {
+    border-radius: 9999px;
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    transition: all 0.2s ease;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn-primary {
+    background: var(--gradient-primary);
+    color: white;
+    box-shadow: 0 4px 14px 0 rgba(139, 92, 246, 0.39);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+    background: var(--gradient-primary); /* Prevent bootstrap override */
+    color: white;
+}
+
+.btn-success { background: var(--gradient-success); color: white; border: none; }
+.btn-warning { background: var(--gradient-warning); color: white; border: none; }
+.btn-danger { background: var(--gradient-danger); color: white; border: none; }
+
+/* ==============================================================
+   Dark Mode Overrides
+   ============================================================== */
+body.dark-mode {
+    --bg-page: #0f172a;
+    --bg-surface: rgba(30, 41, 59, 0.7);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    
+    background-color: var(--bg-page);
+    background-image: 
+        radial-gradient(at 40% 20%, hsla(250,100%,74%,0.05) 0px, transparent 50%),
+        radial-gradient(at 80% 0%, hsla(189,100%,56%,0.05) 0px, transparent 50%),
+        radial-gradient(at 0% 50%, hsla(355,100%,93%,0.03) 0px, transparent 50%);
+    background-size: 100% 100%;
+    color: var(--text-main);
+}
+
+body.dark-mode::before {
+    background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+body.dark-mode .navbar {
+    background: rgba(15, 23, 42, 0.8) !important;
+    border-bottom-color: rgba(255, 255, 255, 0.05);
+}
+
+body.dark-mode .navbar-brand {
+    color: var(--text-main) !important;
+}
+
+body.dark-mode .navbar-dark .navbar-nav .nav-link {
+    color: var(--text-muted);
+}
+
+body.dark-mode .navbar-dark .navbar-nav .nav-link:hover {
+    color: var(--brand-400);
+    background: rgba(139, 92, 246, 0.1);
+}
+
+body.dark-mode .glass-card, 
+body.dark-mode .glass-panel,
+body.dark-mode .card,
+body.dark-mode .modal-content {
+    background: var(--bg-surface);
+    border-color: var(--border-subtle);
+    box-shadow: var(--shadow-soft);
+    color: var(--text-main);
+}
+body.dark-mode .card:hover {
+    box-shadow: 0 20px 40px -4px rgba(0, 0, 0, 0.5);
+    border-color: rgba(99, 102, 241, 0.5);
+}
+body.dark-mode .list-group-item {
+    background: rgba(15, 23, 42, 0.4);
+    border-color: rgba(255,255,255,0.04);
+    color: var(--text-main);
+}
+
+body.dark-mode .text-muted { color: var(--text-muted) !important; }
+
+/* ==============================================================
+   Modern Inputs
+   ============================================================== */
+.form-control {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 16px;
+    padding: 0.75rem 1.25rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02) inset;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    background: white;
+    border-color: var(--brand-500);
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+}
+
+body.dark-mode .form-control {
+    background: rgba(15, 23, 42, 0.5);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+body.dark-mode .form-control:focus {
+    background: rgba(15, 23, 42, 0.8);
+}
+
+/* ==============================================================
+   Loader Shimmer Effect
+   ============================================================== */
+.shimmer {
+    background: #f6f7f8;
+    background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%);
+    background-repeat: no-repeat;
+    background-size: 800px 100%; 
+    animation-duration: 1s;
+    animation-fill-mode: forwards; 
+    animation-iteration-count: infinite;
+    animation-name: placeholderShimmer;
+    animation-timing-function: linear;
+}
+
+body.dark-mode .shimmer {
+    background: #1e293b;
+    background-image: linear-gradient(to right, #1e293b 0%, #334155 20%, #1e293b 40%, #1e293b 100%);
+}
+
+@keyframes placeholderShimmer {
+    0% { background-position: -468px 0; }
+    100% { background-position: 468px 0; }
+}
+
+/* Keep previous essential utilities */
+.ads-wrapper {
+    max-width: 100%;
+    margin: 30px auto;
+    padding: 10px;
+    text-align: center;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { 
+    background: var(--brand-300); 
+    border-radius: 4px; 
+}
+::-webkit-scrollbar-thumb:hover { background: var(--brand-500); }
+
+/* Quick fix for older cards */
+.card {
+    border-radius: 20px;
+    border: none;
+    box-shadow: var(--shadow-soft);
+}
+.card-header {
+    border-top-left-radius: 20px !important;
+    border-top-right-radius: 20px !important;
+}
+
+/* Fix sidebar gradient */
+.sidebar {
+    background: var(--gradient-primary);
+}
+
+
+/* ==============================================================
+   MargDarshak 3D Modern UI Updates
+   ============================================================== */
+
+/* 3D Container & Elements */
+.container-3d {
+    perspective: 1000px;
+    transform-style: preserve-3d;
+}
+
+.tilt-card {
+    transform-style: preserve-3d;
+    transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), box-shadow 0.2s ease;
+    will-change: transform;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05), inset 0 1px 0 rgba(255,255,255,0.6);
+    position: relative;
+    overflow: hidden;
+}
+
+body.dark-mode .tilt-card {
+    background: rgba(30, 41, 59, 0.7);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+
+.tilt-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.1) 100%);
+    z-index: 1;
+}
+
+body.dark-mode .tilt-card::before {
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.05) 100%);
+}
+
+.tilt-card > * {
+    transform: translateZ(50px);
+    z-index: 2;
+    position: relative;
+}
+
+/* Floating Animation */
+@keyframes float-3d {
+    0% { transform: translateY(0px) rotateX(0deg) rotateY(0deg); }
+    50% { transform: translateY(-15px) rotateX(5deg) rotateY(-5deg); filter: drop-shadow(0 25px 25px rgba(139, 92, 246, 0.4)); }
+    100% { transform: translateY(0px) rotateX(0deg) rotateY(0deg); }
+}
+
+.animate-float-3d {
+    animation: float-3d 6s ease-in-out infinite;
+    transform-style: preserve-3d;
+}
+
+/* Grid overlay for 3D depth background */
+.hero-grid {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: 
+        linear-gradient(to right, rgba(139, 92, 246, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(139, 92, 246, 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    perspective: 1000px;
+    transform: rotateX(60deg) translateY(-100px) scale(2);
+    transform-origin: top center;
+    z-index: 0;
+    opacity: 0.8;
+}
+
+body.dark-mode .hero-grid {
+    background-image: 
+        linear-gradient(to right, rgba(139, 92, 246, 0.15) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(139, 92, 246, 0.15) 1px, transparent 1px);
+}
+
+/* Neon Glow Utilities */
+.neon-text-primary {
+    text-shadow: 0 0 15px rgba(139, 92, 246, 0.6);
+}
+
+.neon-border {
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.5), inset 0 0 10px rgba(139, 92, 246, 0.3);
+    border: 1px solid rgba(139,92,246,0.5);
+}
+
+/* 3D Stats Cards */
+.stat-item-3d {
+    background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(245,243,255,0.5));
+    border-radius: 20px;
+    box-shadow: 
+        10px 10px 20px rgba(0,0,0,0.05),
+        -10px -10px 20px rgba(255,255,255,0.8),
+        inset 1px 1px 2px rgba(255,255,255,1);
+    position: relative;
+    padding: 1.5rem;
+    transition: transform 0.3s;
+    border: none;
+}
+
+body.dark-mode .stat-item-3d {
+    background: linear-gradient(145deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9));
+    box-shadow: 
+        10px 10px 20px rgba(0,0,0,0.4),
+        -5px -5px 15px rgba(255,255,255,0.05),
+        inset 1px 1px 2px rgba(255,255,255,0.1);
+}
+
+.stat-item-3d:hover {
+    transform: translateZ(20px) scale(1.05);
+}
+
+/* Hover Icon Pop */
+.tilt-card:hover .icon-box i {
+    transform: translateZ(40px) scale(1.2);
+    text-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+.icon-box i {
+    transition: all 0.3s ease;
+}
+
+/* 3D Button */
+.btn-3d {
+    transform-style: preserve-3d;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 6px 0 var(--brand-700), 0 10px 20px rgba(0,0,0,0.2);
+}
+
+.btn-3d:active, .btn-3d:hover {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 var(--brand-700), 0 5px 10px rgba(0,0,0,0.2);
+}
+
+body.dark-mode .btn-3d {
+    box-shadow: 0 6px 0 rgba(76, 29, 149, 1), 0 10px 20px rgba(0,0,0,0.5);
+}
+body.dark-mode .btn-3d:active, body.dark-mode .btn-3d:hover {
+    box-shadow: 0 2px 0 rgba(76, 29, 149, 1), 0 5px 10px rgba(0,0,0,0.5);
+}
+
+/* Module Card Text Pop */
+.tilt-card h3 {
+    transform: translateZ(30px);
+    text-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.tilt-card p {
+    transform: translateZ(20px);
+}
+
+.tilt-card .btn {
+    transform: translateZ(40px);
+}
+
+/* Pulse Glow Keyframe */
+@keyframes pulse-glow {
+    0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+    70% { box-shadow: 0 0 0 20px rgba(139, 92, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+}
+
+.animate-pulse-glow {
+    animation: pulse-glow 2s infinite;
+}
+

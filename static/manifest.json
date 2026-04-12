@@ -1,0 +1,24 @@
+{
+  "name": "Marg Darshak - जीवन के हर पड़ाव पर सही दिशा",
+  "short_name": "MargDarshak",
+  "description": "Marg Darshak is a student guidance and productivity platform for Indian students.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#A855F7",
+  "theme_color": "#A855F7",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/static/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "categories": ["education", "productivity", "business"]
+}

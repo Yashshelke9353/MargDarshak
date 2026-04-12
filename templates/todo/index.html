@@ -1,0 +1,319 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Section Header -->
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold text-primary">📝 Student To-Do List – Daily Task Planner</h1>
+        <p class="lead text-muted">"Chhote tasks, daily progress."</p>
+    </div>
+
+    <!-- Feature Introduction -->
+    <div class="card mb-5 shadow-sm">
+        <div class="card-body">
+            <h2 class="card-title h4 mb-3">🙋‍♂️ क्यों बनाया गया यह To-Do List?</h2>
+            <p class="mb-3">
+                College के पहले साल में, planning का habit नहीं होता। सुबह उठते हैं तो पता नहीं क्या करें, शाम को सोते समय lagta hai kuch nahi hua pura din waste.
+            </p>
+            <p class="mb-3">
+                बिना planning के time बहut waste hota hai। Netflix pe 2 ghante, phone pe scrolling, friends ke saath baatein – ये sab important hai par productive nahi.
+            </p>
+            <p class="mb-3">
+                To-Do List se clarity milti hai। पता चलता है aaj kya karna hai, kis order me karna hai। Focus ban jata hai, aur end me satisfaction milta hai।
+            </p>
+            <p class="text-success fw-bold">
+                Goal: Har din thoda sa progress, chhote chhote steps se badi success ki taraf! 🚀
+            </p>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <a href="{{ url_for('add_task') }}" class="btn btn-success btn-lg w-100 mb-3">
+                ➕ नया Task Add करें
+            </a>
+        </div>
+        <div class="col-md-6">
+            <button class="btn btn-info btn-lg w-100 mb-3" onclick="showSuggestions()">
+                💡 Ready-made Tasks देखें
+            </button>
+        </div>
+    </div>
+
+    <!-- Today's Progress -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h3 class="card-title h5 mb-0">📅 Today's Progress</h3>
+        </div>
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <h4 class="text-primary">{{ completed_today }}</h4>
+                    <p class="mb-0">Completed Tasks</p>
+                </div>
+                <div class="col-md-4">
+                    <h4 class="text-warning">{{ total_today }}</h4>
+                    <p class="mb-0">Total Tasks</p>
+                </div>
+                <div class="col-md-4">
+                    {% if total_today > 0 %}
+                        <h4 class="text-success">{{ ((completed_today / total_today) * 100)|round|int }}%</h4>
+                    {% else %}
+                        <h4 class="text-muted">0%</h4>
+                    {% endif %}
+                    <p class="mb-0">Progress</p>
+                </div>
+            </div>
+            {% if total_today > 0 %}
+            <div class="progress mt-3" style="height: 20px;">
+                <div class="progress-bar bg-success" role="progressbar"
+                     style="width: {{ ((completed_today / total_today) * 100)|round|int }}%"
+                     aria-valuenow="{{ ((completed_today / total_today) * 100)|round|int }}"
+                     aria-valuemin="0" aria-valuemax="100">
+                    {{ ((completed_today / total_today) * 100)|round|int }}%
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Today's Tasks -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <h3 class="card-title h5 mb-0">🎯 Today's Tasks ({{ today_tasks|length }})</h3>
+        </div>
+        <div class="card-body">
+            {% if today_tasks %}
+                <div class="row">
+                    {% for task in today_tasks %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 {% if task.status == 'Completed' %}bg-light{% endif %}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="card-title h6 mb-1 {{ 'text-decoration-line-through' if task.status == 'Completed' else '' }}">
+                                        {{ task.title }}
+                                    </h5>
+                                    <div>
+                                        {% if task.priority == 'High' %}
+                                            <span class="badge bg-danger">High</span>
+                                        {% elif task.priority == 'Medium' %}
+                                            <span class="badge bg-warning">Medium</span>
+                                        {% else %}
+                                            <span class="badge bg-success">Low</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                {% if task.description %}
+                                <p class="card-text small text-muted mb-2">{{ task.description }}</p>
+                                {% endif %}
+
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        <i class="fas fa-tag"></i> {{ task.category }}
+                                    </small>
+                                    <div>
+                                        <form method="post" action="{{ url_for('complete_task', task_id=task.id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm {% if task.status == 'Completed' %}btn-success{% else %}btn-outline-success{% endif %} me-1">
+                                                {% if task.status == 'Completed' %}
+                                                    ✅ Done
+                                                {% else %}
+                                                    ✓ Mark Done
+                                                {% endif %}
+                                            </button>
+                                        </form>
+                                        <a href="{{ url_for('edit_task', task_id=task.id) }}" class="btn btn-sm btn-outline-primary me-1">✏️</a>
+                                        <form method="post" action="{{ url_for('delete_task', task_id=task.id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this task?')">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted mb-3">आज के लिए कोई tasks नहीं हैं। नया task add करें!</p>
+                    <a href="{{ url_for('add_task') }}" class="btn btn-primary">➕ पहला Task Add करें</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Weekly Tasks -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-info text-white">
+            <h3 class="card-title h5 mb-0">📊 This Week's Pending Tasks ({{ weekly_tasks|length }})</h3>
+        </div>
+        <div class="card-body">
+            {% if weekly_tasks %}
+                <div class="row">
+                    {% for task in weekly_tasks %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title mb-1">{{ task.title }}</h6>
+                                    {% if task.priority == 'High' %}
+                                        <span class="badge bg-danger">High</span>
+                                    {% elif task.priority == 'Medium' %}
+                                        <span class="badge bg-warning">Medium</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Low</span>
+                                    {% endif %}
+                                </div>
+
+                                <small class="text-muted d-block mb-2">
+                                    <i class="fas fa-calendar"></i> {{ task.deadline }}
+                                </small>
+                                <small class="text-muted d-block mb-2">
+                                    <i class="fas fa-tag"></i> {{ task.category }}
+                                </small>
+
+                                <div class="d-flex gap-1">
+                                    <form method="post" action="{{ url_for('complete_task', task_id=task.id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-success">✓ Done</button>
+                                    </form>
+                                    <a href="{{ url_for('edit_task', task_id=task.id) }}" class="btn btn-sm btn-outline-primary">✏️</a>
+                                    <form method="post" action="{{ url_for('delete_task', task_id=task.id) }}" class="d-inline" onsubmit="return confirm('Are you sure?')">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <p class="text-muted">This week सभी tasks complete हैं! 🎉</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Productivity Rules -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-success text-white">
+            <h3 class="card-title h5 mb-0">📚 Student Productivity Rules</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="text-primary">✅ सही तरीके:</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">• एक दिन में सिर्फ 3-5 tasks रखें</li>
+                        <li class="mb-2">• बड़े tasks को छोटे steps में तोड़ें</li>
+                        <li class="mb-2">• हर task complete करने पर tick mark लगाएं</li>
+                        <li class="mb-2">• सुबह का planning जरूरी है</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-danger">❌ गलतियां न करें:</h6>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">• एक साथ 10 tasks मत add करें</li>
+                        <li class="mb-2">• Missed tasks पर stress मत लें</li>
+                        <li class="mb-2">• बिना priority के tasks मत चुनें</li>
+                        <li class="mb-2">• रात को planning मत करें</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Suggestions Modal -->
+    <div class="modal fade" id="suggestionsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">💡 Ready-made Task Suggestions</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-3">Beginners के लिए आसान tasks। इनसे start करें!</p>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">📚 Study Tasks:</h6>
+                            <ul class="list-group mb-3">
+                                <li class="list-group-item">• Study 1 topic for 30 minutes</li>
+                                <li class="list-group-item">• Revise yesterday's notes (20 min)</li>
+                                <li class="list-group-item">• Watch 1 educational video</li>
+                                <li class="list-group-item">• Practice 5 math problems</li>
+                                <li class="list-group-item">• Read 1 chapter from textbook</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-success">💪 Skill Tasks:</h6>
+                            <ul class="list-group mb-3">
+                                <li class="list-group-item">• Learn 1 new word daily</li>
+                                <li class="list-group-item">• Practice coding for 30 minutes</li>
+                                <li class="list-group-item">• Update LinkedIn profile</li>
+                                <li class="list-group-item">• Write 1 blog post</li>
+                                <li class="list-group-item">• Learn 1 new software skill</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-info">❤️ Health Tasks:</h6>
+                            <ul class="list-group mb-3">
+                                <li class="list-group-item">• Drink 8 glasses of water</li>
+                                <li class="list-group-item">• Do 10 minutes exercise</li>
+                                <li class="list-group-item">• Take a 5-minute walk</li>
+                                <li class="list-group-item">• Practice breathing exercise</li>
+                                <li class="list-group-item">• Sleep by 11 PM</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-warning">🏠 Personal Tasks:</h6>
+                            <ul class="list-group mb-3">
+                                <li class="list-group-item">• Clean study table</li>
+                                <li class="list-group-item">• Organize notes and books</li>
+                                <li class="list-group-item">• Call family for 10 minutes</li>
+                                <li class="list-group-item">• Plan tomorrow's schedule</li>
+                                <li class="list-group-item">• Write 3 things you're grateful for</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>💡 Tip:</strong> Start with easy tasks first. Success का feeling मिलेगा, फिर difficult tasks पर focus करें।
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function showSuggestions() {
+    var modal = new bootstrap.Modal(document.getElementById('suggestionsModal'));
+    modal.show();
+}
+
+// Auto-refresh every 30 seconds to show updated progress
+setInterval(function() {
+    location.reload();
+}, 30000);
+</script>
+
+<style>
+    .card {
+        border: none;
+        border-radius: 10px;
+    }
+    .card-header {
+        border-radius: 10px 10px 0 0 !important;
+    }
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
