@@ -1,0 +1,1799 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Career Analysis - MargDarshak{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --font-outfit: 'Outfit', sans-serif;
+        --font-inter: 'Inter', sans-serif;
+        --color-primary: #6366f1;
+        --color-secondary: #8b5cf6;
+        --color-dark: #0f172a;
+        --color-light: #f8fafc;
+        --color-muted: #64748b;
+    }
+
+    body {
+        font-family: var(--font-inter);
+        background-color: var(--color-light);
+        color: var(--color-dark);
+    }
+
+    body.dark-mode {
+        background-color: #0b0f19;
+        color: #f1f5f9;
+        --color-dark: #f1f5f9;
+        --color-light: #0b0f19;
+        --color-muted: #94a3b8;
+    }
+
+    /* Page Header */
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 4rem 0 3rem;
+        margin-top: -2rem;
+        margin-bottom: 3rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .page-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="0.5" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+        opacity: 0.1;
+    }
+
+    .page-title {
+        font-family: var(--font-outfit);
+        font-weight: 800;
+        font-size: 3rem;
+        color: white;
+        text-align: center;
+        margin-bottom: 1rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .page-subtitle {
+        font-size: 1.2rem;
+        color: rgba(255,255,255,0.9);
+        text-align: center;
+        max-width: 600px;
+        margin: 0 auto;
+        font-weight: 400;
+    }
+
+    /* Upload Section */
+    .upload-section {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 24px;
+        padding: 3rem;
+        margin-bottom: 3rem;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    body.dark-mode .upload-section {
+        background: rgba(15, 23, 42, 0.8);
+        border-color: rgba(255,255,255,0.1);
+    }
+
+    .upload-title {
+        font-family: var(--font-outfit);
+        font-weight: 700;
+        font-size: 2rem;
+        color: var(--color-dark);
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    body.dark-mode .upload-title {
+        color: var(--color-dark);
+    }
+
+    .form-group {
+        margin-bottom: 2rem;
+    }
+
+    .form-label {
+        font-weight: 600;
+        color: var(--color-dark);
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    body.dark-mode .form-label {
+        color: var(--color-dark);
+    }
+
+    .form-control {
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background: white;
+        color: var(--color-dark);
+    }
+
+    .form-control:focus {
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        outline: none;
+    }
+
+    body.dark-mode .form-control {
+        background: #1e293b;
+        border-color: #334155;
+        color: var(--color-dark);
+    }
+
+    body.dark-mode .form-control:focus {
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+
+    .file-input-wrapper {
+        position: relative;
+        border: 2px dashed #cbd5e1;
+        border-radius: 12px;
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        background: #f8fafc;
+    }
+
+    .file-input-wrapper:hover {
+        border-color: var(--color-primary);
+        background: rgba(99, 102, 241, 0.05);
+    }
+
+    body.dark-mode .file-input-wrapper {
+        border-color: #334155;
+        background: #1e293b;
+    }
+
+    body.dark-mode .file-input-wrapper:hover {
+        border-color: var(--color-primary);
+        background: rgba(99, 102, 241, 0.1);
+    }
+
+    .file-input {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+
+    .analyze-btn {
+        background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
+        border: none;
+        border-radius: 12px;
+        padding: 1rem 2rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    }
+
+    .analyze-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+    }
+
+    .analyze-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* Results Section */
+    .results-section {
+        display: none;
+    }
+
+    .results-header {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        text-align: center;
+        margin-bottom: 3rem;
+        color: white;
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+    }
+
+    .results-title {
+        font-family: var(--font-outfit);
+        font-weight: 800;
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .results-subtitle {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        margin-bottom: 0;
+    }
+
+    .download-btn {
+        background: rgba(255,255,255,0.2);
+        border: 2px solid rgba(255,255,255,0.3);
+        border-radius: 12px;
+        padding: 0.75rem 1.5rem;
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        margin-left: 1rem;
+    }
+
+    .download-btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+        color: white;
+        text-decoration: none;
+    }
+
+    /* Analysis Cards */
+    .analysis-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 2rem;
+        margin-bottom: 3rem;
+    }
+
+    .analysis-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+        transition: all 0.3s ease;
+    }
+
+    .analysis-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    }
+
+    body.dark-mode .analysis-card {
+        background: rgba(15, 23, 42, 0.8);
+        border-color: rgba(255,255,255,0.1);
+    }
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    body.dark-mode .card-header {
+        border-color: #334155;
+    }
+
+    .card-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+
+    .card-title {
+        font-family: var(--font-outfit);
+        font-weight: 700;
+        font-size: 1.5rem;
+        margin: 0;
+        color: var(--color-dark);
+    }
+
+    body.dark-mode .card-title {
+        color: var(--color-dark);
+    }
+
+    /* Skill Badges */
+    .skill-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .skill-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        display: inline-block;
+        transition: all 0.3s ease;
+    }
+
+    .skill-strong {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .skill-missing {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+
+    /* Skill Levels */
+    .skill-levels {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .skill-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+    }
+
+    body.dark-mode .skill-item {
+        background: #1e293b;
+        border-color: #334155;
+    }
+
+    .skill-name {
+        font-weight: 600;
+        color: var(--color-dark);
+    }
+
+    .skill-level {
+        font-weight: 500;
+        color: var(--color-primary);
+    }
+
+    /* ATS Score */
+    .ats-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 2rem;
+    }
+
+    .ats-visual {
+        flex: 1;
+        margin-right: 2rem;
+    }
+
+    .ats-circle {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: conic-gradient(#10b981 0% 78%, #e5e7eb 78% 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        position: relative;
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+    }
+
+    .ats-inner {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: #10b981;
+    }
+
+    body.dark-mode .ats-inner {
+        background: #0b0f19;
+    }
+
+    .ats-details {
+        flex: 1;
+    }
+
+    .ats-title {
+        font-family: var(--font-outfit);
+        font-weight: 700;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        color: var(--color-dark);
+    }
+
+    body.dark-mode .ats-title {
+        color: var(--color-dark);
+    }
+
+    .ats-feedback {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .ats-feedback li {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .ats-feedback li:last-child {
+        border-bottom: none;
+    }
+
+    body.dark-mode .ats-feedback li {
+        border-color: #334155;
+    }
+
+    /* Internship Cards */
+    .internship-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .internship-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .internship-best {
+        border-color: #10b981;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.02) 100%);
+    }
+
+    .internship-stretch {
+        border-color: #3b82f6;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(37, 99, 235, 0.02) 100%);
+    }
+
+    .internship-beginner {
+        border-color: #8b5cf6;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(124, 58, 237, 0.02) 100%);
+    }
+
+    body.dark-mode .internship-card {
+        background: #1e293b;
+        border-color: #334155;
+    }
+
+    .internship-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .internship-title {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: var(--color-dark);
+        margin: 0;
+    }
+
+    body.dark-mode .internship-title {
+        color: var(--color-dark);
+    }
+
+    .internship-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .internship-details {
+        color: var(--color-muted);
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Roadmap */
+    .roadmap-container {
+        position: relative;
+    }
+
+    .roadmap-phase {
+        margin-bottom: 2rem;
+    }
+
+    .roadmap-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .roadmap-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        font-size: 1rem;
+    }
+
+    .roadmap-title {
+        font-family: var(--font-outfit);
+        font-weight: 700;
+        font-size: 1.25rem;
+        margin: 0;
+        color: var(--color-dark);
+    }
+
+    body.dark-mode .roadmap-title {
+        color: var(--color-dark);
+    }
+
+    .roadmap-steps {
+        margin-left: 3rem;
+        position: relative;
+    }
+
+    .roadmap-steps::before {
+        content: '';
+        position: absolute;
+        left: -1.5rem;
+        top: 0;
+        width: 2px;
+        height: 100%;
+        background: linear-gradient(to bottom, var(--color-primary), transparent);
+    }
+
+    .roadmap-step {
+        position: relative;
+        padding: 0.75rem 0 0.75rem 2rem;
+        border-left: 2px solid var(--color-primary);
+        margin-left: -2rem;
+        background: #f8fafc;
+        border-radius: 0 8px 8px 0;
+        margin-bottom: 0.5rem;
+    }
+
+    .roadmap-step::before {
+        content: '';
+        position: absolute;
+        left: -6px;
+        top: 1rem;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--color-primary);
+        border: 2px solid white;
+    }
+
+    body.dark-mode .roadmap-step {
+        background: #1e293b;
+    }
+
+    /* Final Summary */
+    .summary-content {
+        text-align: center;
+    }
+
+    .summary-content .summary-item {
+        padding: 1.5rem;
+        background: rgba(16, 185, 129, 0.1);
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .summary-content .summary-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .summary-content .summary-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        color: #10b981;
+    }
+
+    .summary-content .summary-text {
+        font-weight: 600;
+        font-size: 1rem;
+        color: var(--color-dark);
+        margin: 0;
+    }
+
+    /* Status Messages */
+    .status-message {
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        font-weight: 500;
+        text-align: center;
+        margin: 1rem 0;
+    }
+
+    .status-success {
+        background: rgba(16, 185, 129, 0.1);
+        color: #059669;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .status-error {
+        background: rgba(239, 68, 68, 0.1);
+        color: #dc2626;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .status-info {
+        background: rgba(99, 102, 241, 0.1);
+        color: #4f46e5;
+        border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    /* Loading Animation */
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(99, 102, 241, 0.3);
+        border-radius: 50%;
+        border-top-color: var(--color-primary);
+        animation: spin 1s ease-in-out infinite;
+        margin-right: 0.5rem;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    /* Suggestions Section */
+    .suggestions-section {
+        margin-top: 3rem;
+    }
+
+    .suggestion-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .suggestion-tag {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+    }
+
+    .suggestion-tag:hover {
+        transform: translateY(-2px);
+        text-decoration: none;
+    }
+
+    .internship-suggestion {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .internship-suggestion:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        color: white;
+    }
+
+    .course-suggestion {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+    }
+
+    .course-suggestion:hover {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<section class="page-header">
+    <div class="container">
+        <h1 class="page-title">
+            <i class="fas fa-robot me-3"></i>AI Career Analysis
+        </h1>
+        <p class="page-subtitle">
+            Get comprehensive resume analysis powered by advanced AI to boost your career prospects
+        </p>
+    </div>
+</section>
+
+<!-- Main Content -->
+<div class="container">
+    <!-- Upload Section -->
+    <section class="upload-section">
+        <h2 class="upload-title">
+            <i class="fas fa-upload me-2"></i>Upload Your Resume
+        </h2>
+
+        <form id="resumeReviewForm" enctype="multipart/form-data">
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="form-group">
+                        <label for="targetRole" class="form-label">
+                            <i class="fas fa-bullseye me-1"></i>Target Role
+                        </label>
+                        <input type="text" id="targetRole" class="form-control" placeholder="e.g. Data Scientist, Software Engineer" required>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="form-group">
+                        <label for="resumeFile" class="form-label">
+                            <i class="fas fa-file-pdf me-1"></i>Upload Resume File
+                        </label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="resumeFile" class="file-input" accept=".pdf,.txt">
+                            <div>
+                                <i class="fas fa-cloud-upload-alt fa-2x text-primary mb-2"></i>
+                                <p class="mb-1 fw-semibold">Drop your resume here or click to browse</p>
+                                <small class="text-muted">Supports PDF and TXT files up to 10MB</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="resumeText" class="form-label">
+                    <i class="fas fa-edit me-1"></i>Or Paste Resume Text
+                </label>
+                <textarea id="resumeText" class="form-control" rows="6" placeholder="Paste your resume content here..."></textarea>
+            </div>
+
+            <div class="text-center">
+                <button type="submit" class="analyze-btn" id="analyzeBtn">
+                    <i class="fas fa-magic me-2"></i>Analyze Resume
+                </button>
+                <div id="statusMessage" class="mt-3"></div>
+            </div>
+        </form>
+    </section>
+
+    <!-- Results Section -->
+    <section class="results-section" id="resultsSection">
+        <!-- Results Header -->
+        <div class="results-header">
+            <h2 class="results-title">
+                <i class="fas fa-chart-line me-2"></i>Analysis Complete!
+            </h2>
+            <p class="results-subtitle">Here's your comprehensive career analysis report</p>
+            <div id="analysisMode" class="badge bg-warning text-dark px-3 py-2 mt-2" style="display: none;">
+                <i class="fas fa-info-circle me-1"></i>Basic Analysis Mode (AI service temporarily unavailable)
+            </div>
+            <a href="#" class="download-btn" id="downloadPdfBtn">
+                <i class="fas fa-download me-2"></i>Download PDF Report
+            </a>
+        </div>
+
+        <!-- Analysis Results -->
+        <div id="analysisSummary"></div>
+
+        <!-- Suggestions Section -->
+        <section class="suggestions-section" id="suggestionsSection" style="display: none;">
+            <div class="analysis-grid">
+                <div class="analysis-card">
+                    <div class="card-header">
+                        <div class="card-icon bg-warning text-white">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <h3 class="card-title">Recommended Internships</h3>
+                    </div>
+                    <p class="text-muted mb-3">Based on your resume analysis, here are personalized internship suggestions:</p>
+                    <div id="internshipSuggestions" class="mb-3"></div>
+                    <a href="#" id="exploreInternshipsBtn" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-2"></i>Explore All Internships
+                    </a>
+                </div>
+
+                <div class="analysis-card">
+                    <div class="card-header">
+                        <div class="card-icon bg-info text-white">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <h3 class="card-title">Recommended Courses</h3>
+                    </div>
+                    <p class="text-muted mb-3">Courses to help you bridge skill gaps and advance your career:</p>
+                    <div id="courseSuggestions" class="mb-3"></div>
+                    <a href="#" id="exploreCoursesBtn" class="btn btn-primary w-100">
+                        <i class="fas fa-book me-2"></i>Explore All Courses
+                    </a>
+                </div>
+            </div>
+        </section>
+    </section>
+</div>
+
+<script>
+    // File input handling
+    document.getElementById('resumeFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const fileName = file.name;
+            const fileSize = (file.size / 1024 / 1024).toFixed(2);
+            const wrapper = e.target.closest('.file-input-wrapper');
+
+            wrapper.innerHTML = `
+                <i class="fas fa-file-${file.name.endsWith('.pdf') ? 'pdf' : 'alt'} fa-2x text-success mb-2"></i>
+                <p class="mb-1 fw-semibold">${fileName}</p>
+                <small class="text-muted">${fileSize} MB</small>
+                <input type="file" id="resumeFile" class="file-input" accept=".pdf,.txt" style="display: none;">
+            `;
+
+            // Re-attach the event listener
+            document.getElementById('resumeFile').addEventListener('change', arguments.callee);
+        }
+    });
+
+    // Form submission
+    async function handleSubmit(event) {
+        event.preventDefault();
+
+        const targetRole = document.getElementById('targetRole').value.trim();
+        const resumeText = document.getElementById('resumeText').value.trim();
+        const resumeFile = document.getElementById('resumeFile').files[0];
+        const statusMessage = document.getElementById('statusMessage');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+
+        console.log('Form submission:', { targetRole, resumeText: resumeText.substring(0, 100) + '...', resumeFile });
+
+        if (!targetRole) {
+            statusMessage.innerHTML = '<div class="status-message status-error"><i class="fas fa-exclamation-triangle me-1"></i>Please enter a target role.</div>';
+            return;
+        }
+
+        // Check if either text or file is provided
+        const hasResumeText = resumeText.length > 10; // Require at least 10 characters
+        const hasResumeFile = resumeFile && resumeFile.size > 0;
+
+        console.log('Validation:', { hasResumeText, hasResumeFile, resumeTextLength: resumeText.length, fileSize: resumeFile ? resumeFile.size : 0 });
+
+        if (!hasResumeText && !hasResumeFile) {
+            statusMessage.innerHTML = '<div class="status-message status-error"><i class="fas fa-exclamation-triangle me-1"></i>Please provide resume text (at least 10 characters) or upload a file.</div>';
+            return;
+        }
+
+        // Update button state
+        analyzeBtn.disabled = true;
+        analyzeBtn.innerHTML = '<span class="loading-spinner"></span>Analyzing...';
+
+        statusMessage.innerHTML = '<div class="status-message status-info"><span class="loading-spinner"></span>Analyzing your resume with AI...</div>';
+
+        try {
+            const formData = new FormData();
+            formData.append('target_role', targetRole);
+            if (resumeText) formData.append('resume_text', resumeText);
+            if (resumeFile) formData.append('resume_file', resumeFile);
+
+            const response = await fetch('/career/resume-analysis', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (!data.success) {
+                statusMessage.innerHTML = `<div class="status-message status-error"><i class="fas fa-times-circle me-1"></i>${data.error || 'Analysis failed. Try again.'}</div>`;
+                analyzeBtn.disabled = false;
+                analyzeBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Analyze Resume';
+                return;
+            }
+
+            const analysisMode = document.getElementById('analysisMode');
+            if (data.analysis.analysis_mode === 'fallback') {
+                analysisMode.style.display = 'block';
+            } else {
+                analysisMode.style.display = 'none';
+            }
+
+            // Render results
+            document.getElementById('analysisSummary').innerHTML = renderAnalysis(data.analysis);
+            document.getElementById('resultsSection').style.display = 'block';
+
+            // Generate and render suggestions
+            const suggestions = generateSuggestions(data.analysis, targetRole);
+            renderSuggestions(suggestions);
+
+            // Setup PDF download
+            setupPdfDownload(data.analysis, targetRole);
+
+            statusMessage.innerHTML = '<div class="status-message status-success"><i class="fas fa-check-circle me-1"></i>Resume analyzed successfully!</div>';
+
+            // Reset button
+            analyzeBtn.disabled = false;
+            analyzeBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Analyze Resume';
+
+            // Scroll to results
+            document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+
+        } catch (error) {
+            console.error('Resume analysis error:', error);
+            statusMessage.innerHTML = '<div class="status-message status-error"><i class="fas fa-times-circle me-1"></i>Error connecting to the server. Please refresh and try again.</div>';
+            analyzeBtn.disabled = false;
+            analyzeBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Analyze Resume';
+        }
+    }
+
+    function setupPdfDownload(analysis, targetRole) {
+        const downloadBtn = document.getElementById('downloadPdfBtn');
+        downloadBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            downloadBtn.innerHTML = '<span class="loading-spinner"></span>Generating PDF...';
+            downloadBtn.style.pointerEvents = 'none';
+
+            try {
+                const response = await fetch('/career/download-report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        analysis: analysis,
+                        target_role: targetRole
+                    })
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `career_analysis_report_${targetRole.toLowerCase().replace(/\s+/g, '_')}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+
+                    downloadBtn.innerHTML = '<i class="fas fa-check me-2"></i>Downloaded!';
+                    setTimeout(() => {
+                        downloadBtn.innerHTML = '<i class="fas fa-download me-2"></i>Download PDF Report';
+                        downloadBtn.style.pointerEvents = 'auto';
+                    }, 2000);
+                } else {
+                    throw new Error('PDF generation failed');
+                }
+            } catch (error) {
+                console.error('PDF download error:', error);
+                alert('Failed to generate PDF report. Please try again.');
+                downloadBtn.innerHTML = '<i class="fas fa-download me-2"></i>Download PDF Report';
+                downloadBtn.style.pointerEvents = 'auto';
+            }
+        });
+    }
+
+    // Render functions
+    function renderAnalysis(analysis) {
+        const profile = renderProfile(analysis.profile);
+        const skills = analysis.skills_analysis ? analysis.skills_analysis.strong_skills : [];
+        const missing = analysis.skills_analysis ? analysis.skills_analysis.missing_skills : [];
+        const skillLevels = analysis.skills_analysis ? analysis.skills_analysis.skill_levels : {};
+
+        const atsScore = renderATSScore(analysis.ats_score);
+        const internshipMatches = renderInternships(analysis.internship_matches);
+
+        return `
+            <div class="row">
+                <div class="col-lg-8">
+                    ${profile}
+                    ${renderSkillBadges('Strong Skills', skills, 'skill-strong', 'fas fa-check-circle', 'bg-success')}
+                    ${renderSkillBadges('Skills to Improve', missing, 'skill-missing', 'fas fa-exclamation-triangle', 'bg-warning')}
+                    ${renderSkillLevels(skillLevels)}
+                    ${renderList('Resume Improvement Suggestions', analysis.resume_improvements || [], 'fas fa-lightbulb', 'bg-warning')}
+                    ${renderList('Skill Gap Analysis', analysis.skill_gap || [], 'fas fa-chart-pie', 'bg-danger')}
+                    ${renderRoadmap(analysis.roadmap || {})}
+                    ${renderList('Recommended Platform Features', analysis.platform_recommendations || [], 'fas fa-star', 'bg-info')}
+                    ${renderList('Essential Tools', analysis.tools || [], 'fas fa-tools', 'bg-secondary')}
+                </div>
+                <div class="col-lg-4">
+                    ${atsScore}
+                    ${internshipMatches}
+                    ${renderFinalSummary()}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderProfile(profile) {
+        if (!profile) return '';
+        const lines = [];
+        if (profile.name) lines.push(`<strong>Name:</strong> ${profile.name}`);
+        if (profile.email) lines.push(`<strong>Email:</strong> ${profile.email}`);
+        if (profile.phone) lines.push(`<strong>Phone:</strong> ${profile.phone}`);
+        if (profile.experience) lines.push(`<strong>Experience:</strong> ${profile.experience}`);
+        if (profile.education) lines.push(`<strong>Education:</strong> ${profile.education}`);
+
+        return `
+            <div class="analysis-card">
+                <div class="card-header">
+                    <div class="card-icon bg-primary text-white">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h3 class="card-title">Profile Summary</h3>
+                </div>
+                <div class="mb-0">${lines.join('<br>')}</div>
+            </div>
+        `;
+    }
+
+    function renderSkillBadges(title, items, badgeClass, icon, color) {
+        if (!items || !items.length) return '';
+        const badges = items.map(skill => `<span class="skill-badge ${badgeClass}">${skill}</span>`).join('');
+        return `
+            <div class="analysis-card">
+                <div class="card-header">
+                    <div class="card-icon ${color} text-white">
+                        <i class="${icon}"></i>
+                    </div>
+                    <h3 class="card-title">${title}</h3>
+                </div>
+                <div class="skill-badges">${badges}</div>
+            </div>
+        `;
+    }
+
+    function renderSkillLevels(skillLevels) {
+        if (!skillLevels || !Object.keys(skillLevels).length) return '';
+
+        const levels = Object.entries(skillLevels).map(([skill, level]) => {
+            const percentage = level === 'Beginner' ? 30 : level === 'Intermediate' ? 60 : level === 'Advanced' ? 90 : 45;
+            return `
+                <div class="skill-item">
+                    <span class="skill-name">${skill}</span>
+                    <span class="skill-level">${level}</span>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="analysis-card">
+                <div class="card-header">
+                    <div class="card-icon bg-info text-white">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h3 class="card-title">Skill Proficiency Levels</h3>
+                </div>
+                <div class="skill-levels">${levels}</div>
+            </div>
+        `;
+    }
+
+    function renderList(title, items, icon, color) {
+        if (!items || !items.length) return '';
+        const listItems = items.map(item => `<li class="mb-2">${item}</li>`).join('');
+        return `
+            <div class="analysis-card">
+                <div class="card-header">
+                    <div class="card-icon ${color} text-white">
+                        <i class="${icon}"></i>
+                    </div>
+                    <h3 class="card-title">${title}</h3>
+                </div>
+                <ul class="mb-0 ps-3">${listItems}</ul>
+            </div>
+        `;
+    }
+
+    function renderATSScore(score) {
+        const scoreNum = score || 0;
+        const color = scoreNum >= 80 ? '#10b981' : scoreNum >= 60 ? '#f59e0b' : '#ef4444';
+
+        return `
+            <div class="analysis-card">
+                <div class="card-header">
+                    <div class="card-icon bg-success text-white">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <h3 class="card-title">ATS Compatibility Score</h3>
+                </div>
+                <div class="ats-container">
+                    <div class="ats-visual">
+                        <div class="ats-circle" style="background: conic-gradient(${color} 0% ${scoreNum}%, #e5e7eb ${scoreNum}% 100%)">
+                            <div class="ats-inner">
+                                <div class="h3 mb-0">${scoreNum}</div>
+                                <small class="text-muted">/100</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ats-details">
+                        <h4 class="ats-title">Feedback:</h4>
+                        <ul class="ats-feedback">
+                            <li>Add more technical keywords</li>
+                            <li>Improve project impact descriptions</li>
+                            <li>Include measurable results</li>
+                            <li>Add more relevant skills</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderInternships(internships) {
+        if (!internships || !internships.length) return '';
+
+        const internshipCards = internships.map(internship => {
+            let cardClass = 'internship-beginner';
+            let badgeClass = 'bg-purple';
+            let badgeText = 'Beginner Level';
+
+            if (internship.score >= 25) {
+                cardClass = 'internship-best';
+                badgeClass = 'bg-success';
+                badgeText = 'Best Match';
+            } else if (internship.score >= 15) {
+                cardClass = 'internship-stretch';
+                badgeClass = 'bg-primary';
+                badgeText = 'Stretch Opportunity';
+            }
+
+            return `
+                <div class="internship-card ${cardClass}">
+                    <div class="internship-header">
+                        <h4 class="internship-title">${internship.company} - ${internship.role}</h4>
+                        <span class="badge ${badgeClass} internship-badge">${badgeText}</span>
+                    </div>
+                    <p class="internship-details">
+                        <i class="fas fa-map-marker-alt me-1"></i>${internship.city} •
+                        <i class="fas fa-briefcase me-1"></i>${internship.mode} •
+                        <i class="fas fa-rupee-sign me-1"></i>${internship.stipend}
+                    </p>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="analysis-card">
+                <div class="card-header">
+                    <div class="card-icon bg-warning text-white">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h3 class="card-title">Recommended Internships</h3>
+                </div>
+                <div class="internship-grid">${internshipCards}</div>
+            </div>
+        `;
+    }
+
+    function renderRoadmap(roadmap) {
+        const renderPhase = (title, items, icon, color) => {
+            if (!items || !items.length) return '';
+            const steps = items.map((item, index) => `
+                <div class="roadmap-step">
+                    <div class="fw-semibold mb-1">${item}</div>
+                </div>
+            `).join('');
+
+            return `
+                <div class="roadmap-phase">
+                    <div class="roadmap-header">
+                        <div class="roadmap-icon ${color} text-white">
+                            <i class="${icon}"></i>
+                        </div>
+                        <h4 class="roadmap-title">${title}</h4>
+                    </div>
+                    <div class="roadmap-steps">${steps}</div>
+                </div>
+            `;
+        };
+
+        return `
+            <div class="analysis-card">
+                <div class="card-header">
+                    <div class="card-icon bg-info text-white">
+                        <i class="fas fa-route"></i>
+                    </div>
+                    <h3 class="card-title">Personalized Career Roadmap</h3>
+                </div>
+                ${renderPhase('3-Month Plan', roadmap['3_month'], 'fas fa-seedling', 'bg-success')}
+                ${renderPhase('6-Month Plan', roadmap['6_month'], 'fas fa-tree', 'bg-primary')}
+                ${renderPhase('12-Month Plan', roadmap['12_month'], 'fas fa-mountain', 'bg-warning')}
+            </div>
+        `;
+    }
+
+    function renderFinalSummary() {
+        return `
+            <div class="analysis-card">
+                <div class="card-header">
+                    <div class="card-icon bg-success text-white">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <h3 class="card-title">Final Summary</h3>
+                </div>
+                <div class="summary-content">
+                    <div class="summary-item">
+                        <div class="summary-icon">
+                            <i class="fas fa-level-up-alt"></i>
+                        </div>
+                        <p class="summary-text">You are currently at <strong>intermediate level</strong></p>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-icon">
+                            <i class="fas fa-bullseye"></i>
+                        </div>
+                        <p class="summary-text">Focus on <strong>Machine Learning + Projects</strong></p>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-icon">
+                            <i class="fas fa-rocket"></i>
+                        </div>
+                        <p class="summary-text">You are <strong>internship-ready within 3-6 months</strong></p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Generate suggestions based on resume analysis
+    function generateSuggestions(analysis, targetRole) {
+        const suggestions = {
+            internships: [],
+            courses: []
+        };
+
+        // Extract skills and target role for suggestions
+        const strongSkills = analysis.skills_analysis?.strong_skills || [];
+        const missingSkills = analysis.skills_analysis?.missing_skills || [];
+        const allSkills = [...strongSkills, ...missingSkills, targetRole];
+
+        // Generate internship suggestions based on skills and target role
+        const internshipKeywords = [
+            'Data Science', 'Machine Learning', 'Python', 'Java', 'Web Development',
+            'Software Engineering', 'Data Analysis', 'AI/ML', 'Full Stack', 'Frontend',
+            'Backend', 'DevOps', 'Cloud Computing', 'Cybersecurity', 'Mobile Development'
+        ];
+
+        internshipKeywords.forEach(keyword => {
+            if (allSkills.some(skill => skill.toLowerCase().includes(keyword.toLowerCase().split(' ')[0])) ||
+                targetRole.toLowerCase().includes(keyword.toLowerCase().split(' ')[0])) {
+                suggestions.internships.push(keyword);
+            }
+        });
+
+        // Add target role as primary internship suggestion
+        if (!suggestions.internships.includes(targetRole)) {
+            suggestions.internships.unshift(targetRole);
+        }
+
+        // Generate course suggestions based on missing skills
+        const courseKeywords = [
+            'Python Programming', 'Machine Learning', 'Data Science', 'Web Development',
+            'JavaScript', 'React', 'Node.js', 'SQL', 'Database Design', 'Cloud Computing',
+            'AWS', 'Docker', 'Git', 'Agile', 'Cybersecurity', 'Mobile App Development'
+        ];
+
+        courseKeywords.forEach(keyword => {
+            if (missingSkills.some(skill => skill.toLowerCase().includes(keyword.toLowerCase().split(' ')[0])) ||
+                targetRole.toLowerCase().includes(keyword.toLowerCase().split(' ')[0])) {
+                suggestions.courses.push(keyword);
+            }
+        });
+
+        // Add some default course suggestions if none found
+        if (suggestions.courses.length === 0) {
+            suggestions.courses = ['Python Programming', 'Data Structures', 'Web Development', 'Machine Learning'];
+        }
+
+        // Limit suggestions to top 4 each
+        suggestions.internships = suggestions.internships.slice(0, 4);
+        suggestions.courses = suggestions.courses.slice(0, 4);
+
+        return suggestions;
+    }
+
+    // Render suggestions in the UI
+    function renderSuggestions(suggestions) {
+        // Render internship suggestions
+        const internshipTags = suggestions.internships.map(keyword => {
+            const searchQuery = encodeURIComponent(keyword);
+            return `<a href="/internships?search=${searchQuery}" class="suggestion-tag internship-suggestion" target="_blank">
+                <i class="fas fa-building me-1"></i>${keyword}
+            </a>`;
+        }).join('');
+
+        document.getElementById('internshipSuggestions').innerHTML = `
+            <div class="suggestion-tags">${internshipTags}</div>
+            <small class="text-muted">Click on any tag to explore internships in that field</small>
+        `;
+
+        // Render course suggestions
+        const courseTags = suggestions.courses.map(keyword => {
+            const searchQuery = encodeURIComponent(keyword);
+            return `<a href="/skill/browse?search=${searchQuery}" class="suggestion-tag course-suggestion" target="_blank">
+                <i class="fas fa-graduation-cap me-1"></i>${keyword}
+            </a>`;
+        }).join('');
+
+        document.getElementById('courseSuggestions').innerHTML = `
+            <div class="suggestion-tags">${courseTags}</div>
+            <small class="text-muted">Click on any tag to explore courses in that topic</small>
+        `;
+
+        // Setup explore all buttons
+        const targetRole = document.getElementById('targetRole').value.trim();
+        const targetRoleQuery = encodeURIComponent(targetRole);
+
+        document.getElementById('exploreInternshipsBtn').href = `/internships?search=${targetRoleQuery}`;
+        document.getElementById('exploreCoursesBtn').href = `/skill/browse?search=${targetRoleQuery}`;
+
+        // Show suggestions section
+        document.getElementById('suggestionsSection').style.display = 'block';
+    }
+
+    document.getElementById('resumeReviewForm').addEventListener('submit', handleSubmit);
+</script>
+
+<style>
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    }
+
+    .analysis-card {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: none;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        transition: transform 0.3s ease;
+    }
+
+    .analysis-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .section-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+
+    .skill-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 25px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin: 0.25rem;
+        display: inline-block;
+    }
+
+    .skill-strong {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+
+    .skill-missing {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+
+    .skill-level {
+        position: relative;
+        height: 8px;
+        border-radius: 4px;
+        background: #e5e7eb;
+        overflow: hidden;
+        margin: 0.5rem 0;
+    }
+
+    .skill-level-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+
+    .internship-card {
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    .internship-best {
+        border-color: #10b981;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+    }
+
+    .internship-stretch {
+        border-color: #3b82f6;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
+    }
+
+    .internship-beginner {
+        border-color: #8b5cf6;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.05) 100%);
+    }
+
+    .roadmap-step {
+        position: relative;
+        padding-left: 3rem;
+    }
+
+    .roadmap-step::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.5rem;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        border: 3px solid white;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+    }
+
+    .roadmap-step::after {
+        content: '';
+        position: absolute;
+        left: 1rem;
+        top: 2.5rem;
+        width: 2px;
+        height: calc(100% - 2rem);
+        background: linear-gradient(to bottom, #4f46e5, transparent);
+    }
+
+    .roadmap-step:last-child::after {
+        display: none;
+    }
+
+    .ats-score-circle {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: conic-gradient(#10b981 0% 78%, #e5e7eb 78% 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        position: relative;
+    }
+
+    .ats-score-inner {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: #10b981;
+    }
+
+    @media (max-width: 768px) {
+        .display-4 {
+            font-size: 2rem;
+        }
+
+        .roadmap-step {
+            padding-left: 2.5rem;
+        }
+
+        .roadmap-step::before {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+    }
+</style>
+
+<style>
+    #analysisSummary .summary-card {
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.85);
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.06);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    body.dark-mode #analysisSummary .summary-card {
+        background: rgba(15, 23, 42, 0.75);
+    }
+</style>
+
+<script>
+async function renderList(title, items, icon, color) {
+    if (!items || !items.length) return '';
+    const listItems = items.map(item => `<li class="mb-2">${item}</li>`).join('');
+    return `
+        <div class="analysis-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="section-icon ${color} text-white me-3">
+                        <i class="${icon}"></i>
+                    </div>
+                    <h4 class="mb-0">${title}</h4>
+                </div>
+                <ul class="mb-0 ps-3">${listItems}</ul>
+            </div>
+        </div>
+    `;
+}
+
+function renderSkillBadges(title, items, badgeClass, icon, color) {
+    if (!items || !items.length) return '';
+    const badges = items.map(skill => `<span class="skill-badge ${badgeClass}">${skill}</span>`).join('');
+    return `
+        <div class="analysis-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="section-icon ${color} text-white me-3">
+                        <i class="${icon}"></i>
+                    </div>
+                    <h4 class="mb-0">${title}</h4>
+                </div>
+                <div class="mb-0">${badges}</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderSkillLevels(skillLevels) {
+    if (!skillLevels || !Object.keys(skillLevels).length) return '';
+
+    const levels = Object.entries(skillLevels).map(([skill, level]) => {
+        const percentage = level === 'Beginner' ? 30 : level === 'Intermediate' ? 60 : level === 'Advanced' ? 90 : 45;
+        return `
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="fw-semibold">${skill}</span>
+                    <span class="badge bg-primary">${level}</span>
+                </div>
+                <div class="skill-level">
+                    <div class="skill-level-fill bg-primary" style="width: ${percentage}%"></div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="analysis-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="section-icon bg-info text-white me-3">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h4 class="mb-0">Skill Proficiency Levels</h4>
+                </div>
+                ${levels}
+            </div>
+        </div>
+    `;
+}
+
+function renderProfile(profile) {
+    if (!profile) return '';
+    const lines = [];
+    if (profile.name) lines.push(`<strong>Name:</strong> ${profile.name}`);
+    if (profile.email) lines.push(`<strong>Email:</strong> ${profile.email}`);
+    if (profile.phone) lines.push(`<strong>Phone:</strong> ${profile.phone}`);
+    if (profile.experience) lines.push(`<strong>Experience:</strong> ${profile.experience}`);
+    if (profile.education) lines.push(`<strong>Education:</strong> ${profile.education}`);
+
+    return `
+        <div class="analysis-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="section-icon bg-primary text-white me-3">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <h4 class="mb-0">Profile Summary</h4>
+                </div>
+                <div class="mb-0">${lines.join('<br>')}</div>
+            </div>
+        </div>
+    `;
+}
+
+function renderATSScore(score) {
+    const scoreNum = score || 0;
+    const color = scoreNum >= 80 ? '#10b981' : scoreNum >= 60 ? '#f59e0b' : '#ef4444';
+
+    return `
+        <div class="analysis-card">
+            <div class="card-body text-center">
+                <div class="d-flex align-items-center justify-content-center mb-3">
+                    <div class="section-icon bg-success text-white me-3">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <h4 class="mb-0">ATS Compatibility Score</h4>
+                </div>
+                <div class="ats-score-circle" style="background: conic-gradient(${color} 0% ${scoreNum}%, #e5e7eb ${scoreNum}% 100%)">
+                    <div class="ats-score-inner">
+                        <div class="h3 mb-0">${scoreNum}</div>
+                        <small class="text-muted">/100</small>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <p class="mb-2 fw-semibold">Feedback:</p>
+                    <ul class="list-unstyled small text-start">
+                        <li class="mb-1"><i class="fas fa-check-circle text-success me-2"></i>Add more technical keywords</li>
+                        <li class="mb-1"><i class="fas fa-check-circle text-success me-2"></i>Improve project impact descriptions</li>
+                        <li class="mb-1"><i class="fas fa-check-circle text-success me-2"></i>Include measurable results</li>
+                        <li class="mb-1"><i class="fas fa-check-circle text-success me-2"></i>Add more relevant skills</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderInternships(internships) {
+    if (!internships || !internships.length) return '';
+
+    const internshipCards = internships.map(internship => {
+        let cardClass = 'internship-beginner';
+        let badgeClass = 'bg-purple';
+        let badgeText = 'Beginner Level';
+
+        if (internship.score >= 25) {
+            cardClass = 'internship-best';
+            badgeClass = 'bg-success';
+            badgeText = 'Best Match';
+        } else if (internship.score >= 15) {
+            cardClass = 'internship-stretch';
+            badgeClass = 'bg-primary';
+            badgeText = 'Stretch Opportunity';
+        }
+
+        return `
+            <div class="internship-card ${cardClass} rounded-3 p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="mb-0 fw-bold">${internship.company} - ${internship.role}</h6>
+                    <span class="badge ${badgeClass}">${badgeText}</span>
+                </div>
+                <p class="mb-2 small text-muted">
+                    <i class="fas fa-map-marker-alt me-1"></i>${internship.city} •
+                    <i class="fas fa-briefcase me-1"></i>${internship.mode} •
+                    <i class="fas fa-rupee-sign me-1"></i>${internship.stipend}
+                </p>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="analysis-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="section-icon bg-warning text-white me-3">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h4 class="mb-0">Recommended Internships</h4>
+                </div>
+                ${internshipCards}
+            </div>
+        </div>
+    `;
+}
+
+function renderRoadmap(roadmap) {
+    const renderPhase = (title, items, icon) => {
+        if (!items || !items.length) return '';
+        const steps = items.map((item, index) => `
+            <div class="roadmap-step">
+                <div class="fw-semibold mb-1">${item}</div>
+            </div>
+        `).join('');
+
+        return `
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="${icon} fa-2x text-primary"></i>
+                        </div>
+                        <h5 class="card-title">${title}</h5>
+                        <div class="roadmap-container">
+                            ${steps}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    };
+
+    return `
+        <div class="analysis-card">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="section-icon bg-info text-white me-3">
+                        <i class="fas fa-route"></i>
+                    </div>
+                    <h4 class="mb-0">Personalized Career Roadmap</h4>
+                </div>
+                <div class="row">
+                    ${renderPhase('3-Month Plan', roadmap['3_month'], 'fas fa-seedling')}
+                    ${renderPhase('6-Month Plan', roadmap['6_month'], 'fas fa-tree')}
+                    ${renderPhase('12-Month Plan', roadmap['12_month'], 'fas fa-mountain')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderFinalSummary() {
+    return `
+        <div class="analysis-card bg-gradient-primary text-white">
+            <div class="card-body text-center">
+                <h4 class="mb-4">
+                    <i class="fas fa-trophy me-2"></i>Final Summary
+                </h4>
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="h1 mb-2"><i class="fas fa-level-up-alt"></i></div>
+                        <p class="mb-0">You are currently at <strong>intermediate level</strong></p>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="h1 mb-2"><i class="fas fa-bullseye"></i></div>
+                        <p class="mb-0">Focus on <strong>Machine Learning + Projects</strong></p>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="h1 mb-2"><i class="fas fa-rocket"></i></div>
+                        <p class="mb-0">You are <strong>internship-ready within 3-6 months</strong></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function renderAnalysis(analysis) {
+    const profile = renderProfile(analysis.profile);
+    const skills = analysis.skills_analysis ? analysis.skills_analysis.strong_skills : [];
+    const missing = analysis.skills_analysis ? analysis.skills_analysis.missing_skills : [];
+    const skillLevels = analysis.skills_analysis ? analysis.skills_analysis.skill_levels : {};
+
+    const atsScore = renderATSScore(analysis.ats_score);
+    const internshipMatches = renderInternships(analysis.internship_matches);
+
+    return `
+        <div class="row">
+            <div class="col-lg-8">
+                ${profile}
+                ${renderSkillBadges('Strong Skills', skills, 'skill-strong', 'fas fa-check-circle', 'bg-success')}
+                ${renderSkillBadges('Skills to Improve', missing, 'skill-missing', 'fas fa-exclamation-triangle', 'bg-warning')}
+                ${renderSkillLevels(skillLevels)}
+                ${renderList('Resume Improvement Suggestions', analysis.resume_improvements || [], 'fas fa-lightbulb', 'bg-warning')}
+                ${renderList('Skill Gap Analysis', analysis.skill_gap || [], 'fas fa-chart-pie', 'bg-danger')}
+                ${renderRoadmap(analysis.roadmap || {})}
+                ${renderList('Recommended Platform Features', analysis.platform_recommendations || [], 'fas fa-star', 'bg-info')}
+                ${renderList('Essential Tools', analysis.tools || [], 'fas fa-tools', 'bg-secondary')}
+            </div>
+            <div class="col-lg-4">
+                ${atsScore}
+                ${internshipMatches}
+                ${renderFinalSummary()}
+            </div>
+        </div>
+    `;
+}
+
+{% endblock %}

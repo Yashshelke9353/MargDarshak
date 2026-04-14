@@ -10,6 +10,51 @@
   <p class="text-muted">
     Helpful AI-powered resources and tools to support learning. Click a tool to open it (we'll log usage).
   </p>
+  <p class="text-muted mb-3">
+    {{ tool_count }} AI tool{{ 's' if tool_count != 1 else '' }} available now — search by name or purpose.
+  </p>
+  <div class="row justify-content-center mb-4">
+    <div class="col-md-8">
+      <form action="/ai/tools" method="get" class="row g-3">
+        <div class="col-md-8">
+          <input type="search" name="search" value="{{ search_query or '' }}" class="form-control" placeholder="Search tool name, description or purpose">
+        </div>
+        <div class="col-md-2 d-grid">
+          <button type="submit" class="btn btn-primary">Search</button>
+        </div>
+        <div class="col-md-2 d-grid">
+          <a href="/ai/tools" class="btn btn-outline-secondary">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="alert alert-info d-inline-block text-start" style="max-width: 760px;">
+    <strong>Submit a new AI tool:</strong> Share the name, website link, purpose, and a short description. Your suggestion will appear on this page immediately.
+  </div>
+
+  <div class="card shadow-sm border-primary mb-4 mt-4" style="max-width: 760px; margin: 0 auto;">
+    <div class="card-body">
+      <h5 class="card-title">Add Your AI Tool</h5>
+      <form action="/ai/tools/add" method="POST" class="row g-3">
+        <div class="col-md-3">
+          <input type="text" name="name" class="form-control" placeholder="Tool name" required>
+        </div>
+        <div class="col-md-3">
+          <input type="url" name="url" class="form-control" placeholder="https://example.com" required>
+        </div>
+        <div class="col-md-3">
+          <input type="text" name="purpose" class="form-control" placeholder="Purpose (e.g. Learning, Design)" required>
+        </div>
+        <div class="col-md-3">
+          <input type="text" name="description" class="form-control" placeholder="Short description" required>
+        </div>
+        <div class="col-12 text-end">
+          <button type="submit" class="btn btn-primary">Suggest Tool</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- Video Button -->
   <button class="btn btn-outline-primary btn-sm mt-2" onclick="toggleAiToolsVideo()">
@@ -52,6 +97,9 @@ function toggleAiToolsVideo() {
       <div class="card h-100 shadow-sm">
         <div class="card-body d-flex flex-column">
           <h5 class="card-title">{{ tool.name }}</h5>
+          {% if tool.purpose %}
+          <span class="badge bg-secondary mb-2">Purpose: {{ tool.purpose }}</span>
+          {% endif %}
           <p class="card-text text-muted">{{ tool.description }}</p>
           <div class="mt-auto">
             <a href="{{ url_for('ai_launch', tool_id=tid) }}" target="_blank" class="btn btn-outline-primary">Open {{ tool.name }}</a>

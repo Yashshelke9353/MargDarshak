@@ -3,7 +3,6 @@
 {% block title %}Browse Careers - Career Compass{% endblock %}
 
 {% block content %}
-{% block content %}
 <!-- Google Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -58,20 +57,76 @@
         color: white;
         box-shadow: 0 5px 15px rgba(99, 102, 241, 0.3);
     }
+    
+    .search-input:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        outline: none;
+    }
+    
+    body.dark-mode .search-input {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(255, 255, 255, 0.2);
+        color: #f1f5f9;
+    }
+    
+    body.dark-mode .search-input:focus {
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+    
+    body.dark-mode .search-input::placeholder {
+        color: #9ca3af;
+    }
 </style>
 
 <div class="container my-5 career-browse">
-    <div class="text-center mb-5" data-tilt data-tilt-scale="1.02" data-tilt-max="5">
+    <div class="text-center mb-4" data-tilt data-tilt-scale="1.02" data-tilt-max="5">
         <h1 class="browse-title">Explore Career Matrices</h1>
+        <p class="text-muted mb-3" style="font-size: 1.05rem;">Need help matching your resume to a target role? Use the resume review tool.</p>
+        <a href="/career/resume-review" class="btn btn-primary btn-lg" style="border-radius: 50px; padding: 0.75rem 2rem; font-weight: 600;">
+            <i class="fas fa-file-alt me-2"></i> Resume Review
+        </a>
+    </div>
+    
+    <!-- Search Bar -->
+    <div class="text-center mb-4">
+        <form method="GET" action="/career/browse" class="d-inline-flex align-items-center gap-2">
+            <input type="text" name="search" value="{{ search_query or '' }}" 
+                   placeholder="Search careers by name..." 
+                   class="form-control search-input" 
+                   style="min-width: 300px; border-radius: 50px; padding: 0.75rem 1.5rem; border: 2px solid #e5e7eb;">
+            <input type="hidden" name="category" value="{{ selected_category or 'all' }}">
+            <button type="submit" class="btn btn-primary" style="border-radius: 50px; padding: 0.75rem 1.5rem;">
+                <i class="fas fa-search"></i> Search
+            </button>
+            {% if search_query %}
+            <a href="/career/browse?category={{ selected_category or 'all' }}" class="btn btn-outline-secondary" style="border-radius: 50px; padding: 0.75rem 1.5rem;">
+                <i class="fas fa-times"></i> Clear
+            </a>
+            {% endif %}
+        </form>
     </div>
     
     <!-- Category Filter -->
     <div class="text-center mb-5 d-flex flex-wrap justify-content-center gap-2">
-        <a href="/career/browse?category=all" class="btn-brand-outline text-decoration-none {% if selected_category == 'all' %}active{% endif %}">All</a>
+        <a href="/career/browse?category=all{% if search_query %}&search={{ search_query }}{% endif %}" class="btn-brand-outline text-decoration-none {% if selected_category == 'all' %}active{% endif %}">All</a>
         {% for cat in categories %}
-        <a href="/career/browse?category={{ cat }}" class="btn-brand-outline text-decoration-none {% if selected_category == cat %}active{% endif %}">{{ cat }}</a>
+        <a href="/career/browse?category={{ cat }}{% if search_query %}&search={{ search_query }}{% endif %}" class="btn-brand-outline text-decoration-none {% if selected_category == cat %}active{% endif %}">{{ cat }}</a>
         {% endfor %}
     </div>
+    
+    <!-- Results Info -->
+    {% if search_query %}
+    <div class="text-center mb-4">
+        <p class="text-muted mb-0" style="font-size: 1.1rem;">
+            <i class="fas fa-search me-2"></i>
+            Found <strong>{{ careers|length }}</strong> career{{ 's' if careers|length != 1 else '' }} 
+            {% if selected_category != 'all' %}in <strong>{{ selected_category }}</strong> {% endif %}
+            matching "<strong>{{ search_query }}</strong>"
+        </p>
+    </div>
+    {% endif %}
     
     <!-- Careers Grid -->
     <div class="row g-4">
@@ -92,12 +147,37 @@
                     <i class="fas fa-graduation-cap" style="color: #f59e0b;"></i> {{ career.difficulty_level }}
                 </div>
                 
-                <a href="{{ url_for('career_detail', career_id=career.id) }}" class="btn w-100" style="background: linear-gradient(135deg, #6366f1, #ec4899); color: white; border-radius: 50px; font-weight: 600;">
-                    Inspect Matrix <i class="fas fa-arrow-right ms-2"></i>
-                </a>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('career_detail', career_id=career.id) }}" class="roadmap-btn btn btn-sm text-white" style="border-radius: 50px; font-weight: 700; background: linear-gradient(135deg, #6366f1, #ec4899); border: none; padding: 0.75rem;">
+                        View Roadmap <i class="fas fa-map-signs ms-2"></i>
+                    </a>
+                    <a href="{{ url_for('career_detail', career_id=career.id) }}" class="btn btn-outline-secondary btn-sm" style="border-radius: 50px; font-weight: 600; padding: 0.75rem;">
+                        Inspect Matrix <i class="fas fa-arrow-right ms-2"></i>
+                    </a>
+                </div>
             </div>
         </div>
         {% endfor %}
     </div>
+    
+    <!-- No Results Message -->
+    {% if careers|length == 0 %}
+    <div class="text-center py-5">
+        <div class="empty-state" style="max-width: 500px; margin: 0 auto;">
+            <i class="fas fa-search" style="font-size: 4rem; color: #9ca3af; margin-bottom: 1rem;"></i>
+            <h3 class="text-muted mb-3">No careers found</h3>
+            <p class="text-muted mb-4">
+                {% if search_query %}
+                    No careers match your search "<strong>{{ search_query }}</strong>".
+                {% else %}
+                    No careers available in this category.
+                {% endif %}
+            </p>
+            <a href="/career/browse?category=all" class="btn btn-primary">
+                <i class="fas fa-home me-2"></i> Browse All Careers
+            </a>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

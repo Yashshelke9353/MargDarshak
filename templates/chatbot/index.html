@@ -1,453 +1,493 @@
 {% extends 'base.html' %}
 
-{% block title %}Chatbot - Marg Darshak{% endblock %}
+{% block title %}Neural Chatbot - Marg Darshak{% endblock %}
 
 {% block content %}
-<div class="container py-8 md:py-12">
-  <div class="row justify-content-center">
-    <div class="col-lg-10">
-      <div class="glass-card overflow-hidden">
-        <div class="p-6 text-center" style="background: var(--gradient-primary); color: white;">
-          <img src="/static/icon-192.png" alt="MargDarshak Logo" class="mx-auto shadow-lg" style="width: 56px; height: 56px; border-radius: 16px; margin-bottom: 12px; border: 2px solid rgba(255,255,255,0.4);">
-          <h3 class="mb-1 text-2xl font-bold font-sans">Marg Darshak AI</h3>
-          <p class="text-white/80 m-0 devanagari-text">आपका व्यक्तिगत मार्गदर्शन साथी</p>
-        </div>
-
-        <div class="p-4 md:p-6 bg-slate-50 dark:bg-slate-900/50">
-          <!-- Chat Messages Container -->
-          <div id="chat-messages" class="chat-messages mb-6 p-4 md:p-6 rounded-2xl bg-white/50 dark:bg-slate-800/50 shadow-inner" style="height: 500px; overflow-y: auto; border: 1px solid rgba(0,0,0,0.05);">
-            <!-- Welcome Message -->
-            <div class="message bot-message mb-3 opacity-0 motion-preset-slide-up motion-duration-500">
-              <div class="message-avatar">
-                <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-brand-100 text-brand-600 shadow-sm text-xl">🤖</span>
-              </div>
-              <div class="message-content">
-                <div class="message-text">
-                  नमस्ते! मैं आपका मार्गदर्शक हूं। मैं आपकी career, education, mental health, wisdom, skills, और overall development में मदद कर सकता हूं।<br><br>
-                  आप क्या जानना चाहेंगे? कोई भी question पूछ सकते हैं! 😊
+<div class="container py-5 chatbot-shell">
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="chatbot-side-card">
+                <div class="side-head">
+                    <h3 class="mb-1">Neural Chatbot</h3>
+                    <p class="mb-0">Advanced local assistant for website and career guidance.</p>
                 </div>
-                <small class="text-slate-400 mt-2 block">Marg Darshak Agent</small>
-              </div>
+                <div class="mode-badge-wrap">
+                    <span class="mode-badge"><i class="fas fa-microchip me-2"></i>Local Mode</span>
+                </div>
+                <div class="cap-list">
+                    <div class="cap-item"><i class="fas fa-compass"></i>Career quiz and role mapping</div>
+                    <div class="cap-item"><i class="fas fa-file-lines"></i>Resume and internship guidance</div>
+                    <div class="cap-item"><i class="fas fa-graduation-cap"></i>Learning and roadmap planning</div>
+                    <div class="cap-item"><i class="fas fa-comments"></i>General Q&A and concept help</div>
+                </div>
+                <div class="quick-grid">
+                    <button class="quick-btn" data-message="How do I take the career quiz?">Career Quiz</button>
+                    <button class="quick-btn" data-message="Give me a data analyst roadmap">Data Analyst Plan</button>
+                    <button class="quick-btn" data-message="How can I improve my resume?">Resume Guidance</button>
+                    <button class="quick-btn" data-message="Where is student community chat?">Student Community</button>
+                </div>
             </div>
-          </div>
-
-          <!-- Quick Action Buttons -->
-          <div class="quick-actions mb-4 overflow-x-auto pb-2 custom-scrollbar">
-            <div class="flex gap-2 min-w-max">
-                <button class="px-4 py-2 rounded-full border border-brand-200 bg-white dark:bg-slate-800 text-brand-700 hover:bg-brand-50 hover:border-brand-300 transition-all text-sm font-medium shadow-sm quick-btn" data-message="career quiz कैसे दें?">🎓 Career Quiz</button>
-                <button class="px-4 py-2 rounded-full border border-green-200 bg-white dark:bg-slate-800 text-green-700 hover:bg-green-50 hover:border-green-300 transition-all text-sm font-medium shadow-sm quick-btn" data-message="mental health tips">💚 Mental Health</button>
-                <button class="px-4 py-2 rounded-full border border-blue-200 bg-white dark:bg-slate-800 text-blue-700 hover:bg-blue-50 hover:border-blue-300 transition-all text-sm font-medium shadow-sm quick-btn" data-message="AI tools recommendations">🛠 AI Tools</button>
-                <button class="px-4 py-2 rounded-full border border-orange-200 bg-white dark:bg-slate-800 text-orange-700 hover:bg-orange-50 hover:border-orange-300 transition-all text-sm font-medium shadow-sm quick-btn" data-message="daily wisdom कैसे पाएं?">🕉 Daily Wisdom</button>
-            </div>
-          </div>
-
-          <!-- Chat Input -->
-          <div class="relative">
-            <div class="flex items-center gap-2 bg-white dark:bg-slate-800 p-2 rounded-FULL border border-slate-200 dark:border-slate-700 shadow-sm transition-all focus-within:ring-2 focus-within:ring-brand-500/50">
-              <button class="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:text-brand-600 hover:bg-brand-50 transition-colors" id="voice-input-btn" type="button" title="Voice Input">
-                <i class="fas fa-microphone"></i>
-              </button>
-              <input type="text" id="message-input" class="flex-1 bg-transparent border-none outline-none px-2 text-slate-700 dark:text-slate-200" placeholder="Ask me anything... (यहाँ टाइप करें)" maxlength="500">
-              <button class="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:text-green-600 hover:bg-green-50 transition-colors" id="voice-output-btn" type="button" title="Speak Last Response">
-                <i class="fas fa-volume-up"></i>
-              </button>
-              <button class="h-10 px-6 rounded-full bg-brand-600 text-white font-medium hover:bg-brand-700 transition-colors shadow-md flex items-center gap-2" id="send-button" type="button">
-                <span>Send</span>
-                <i class="fas fa-paper-plane text-xs"></i>
-              </button>
-            </div>
-            <div class="text-center mt-3">
-              <span id="voice-status" class="text-sm text-brand-600 font-medium"></span>
-            </div>
-          </div>
         </div>
 
-      </div>
+        <div class="col-lg-8">
+            <div class="chat-panel">
+                <div class="chat-header">
+                    <div>
+                        <h4 class="mb-1">Ask Anything</h4>
+                        <p class="mb-0">Website features, any field roadmap, or general questions.</p>
+                    </div>
+                    <span class="status-dot"><i class="fas fa-circle me-1"></i>Online</span>
+                </div>
+
+                <div id="chatMessages" class="chat-messages">
+                    <div class="msg-row bot">
+                        <div class="msg-bubble">
+                            I am ready. Ask me anything about this platform or any career field, and I will respond with practical steps.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chat-input-wrap">
+                    <input id="chatInput" type="text" class="chat-input" maxlength="700" placeholder="Type your question here...">
+                    <button id="sendBtn" class="send-btn" type="button">
+                        <i class="fas fa-paper-plane me-2"></i>Send
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
 <style>
-.chat-messages {
-  scroll-behavior: smooth;
-}
+    .chatbot-shell {
+        --bot-primary: #6366f1;
+        --bot-secondary: #8b5cf6;
+        --bot-accent: #0ea5e9;
+        --bot-dark: #0f172a;
+    }
 
-.message {
-  display: flex;
-  margin-bottom: 20px;
-}
+    .chatbot-side-card,
+    .chat-panel {
+        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid rgba(99, 102, 241, 0.16);
+        border-radius: 24px;
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+    }
 
-.message-avatar {
-  margin-right: 12px;
-  flex-shrink: 0;
-}
+    body.dark-mode .chatbot-side-card,
+    body.dark-mode .chat-panel {
+        background: rgba(15, 23, 42, 0.7);
+        border-color: rgba(148, 163, 184, 0.2);
+        box-shadow: 0 24px 50px rgba(2, 6, 23, 0.45);
+    }
 
-.user-message {
-  justify-content: flex-end;
-}
+    .chatbot-side-card {
+        padding: 1.2rem;
+        height: 100%;
+    }
 
-.user-message .message-content {
-  background: var(--gradient-primary);
-  color: white;
-  border-radius: 20px 20px 4px 20px;
-  padding: 12px 18px;
-  max-width: 75%;
-  word-wrap: break-word;
-  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2);
-}
+    .side-head {
+        padding: 1rem;
+        border-radius: 16px;
+        color: #fff;
+        background: linear-gradient(135deg, var(--bot-primary), var(--bot-secondary));
+    }
 
-.bot-message .message-content {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 20px 20px 20px 4px;
-  padding: 12px 18px;
-  max-width: 80%;
-  word-wrap: break-word;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-}
-body.dark-mode .bot-message .message-content {
-  background: rgba(30, 41, 59, 0.8);
-  border-color: rgba(255, 255, 255, 0.1);
-}
+    .side-head p {
+        opacity: 0.9;
+        font-size: 0.95rem;
+    }
 
-.message-text {
-  margin-bottom: 5px;
-  line-height: 1.5;
-}
+    .mode-badge-wrap {
+        margin-top: 1rem;
+    }
 
-.typing-indicator {
-  display: none;
-}
-.typing-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--brand-500);
-  margin-right: 4px;
-  animation: bounce 1.4s infinite ease-in-out both;
-}
-.typing-dot:nth-child(1) { animation-delay: -0.32s; }
-.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    .mode-badge {
+        display: inline-block;
+        background: rgba(14, 165, 233, 0.15);
+        color: #0369a1;
+        border: 1px solid rgba(14, 165, 233, 0.3);
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        padding: 0.4rem 0.8rem;
+    }
 
-@keyframes bounce {
-  0%, 80%, 100% { transform: scale(0); }
-  40% { transform: scale(1); }
-}
+    body.dark-mode .mode-badge {
+        color: #7dd3fc;
+    }
+
+    .cap-list {
+        margin-top: 1rem;
+        display: grid;
+        gap: 0.5rem;
+    }
+
+    .cap-item {
+        font-size: 0.92rem;
+        padding: 0.55rem 0.7rem;
+        border-radius: 10px;
+        background: rgba(99, 102, 241, 0.08);
+        color: #1e293b;
+    }
+
+    body.dark-mode .cap-item {
+        color: #e2e8f0;
+        background: rgba(148, 163, 184, 0.12);
+    }
+
+    .cap-item i {
+        width: 20px;
+        color: var(--bot-primary);
+        margin-right: 0.45rem;
+    }
+
+    .quick-grid {
+        margin-top: 1rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem;
+    }
+
+    .quick-btn {
+        border: none;
+        border-radius: 12px;
+        padding: 0.65rem 0.55rem;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #fff;
+        background: linear-gradient(135deg, var(--bot-primary), var(--bot-secondary));
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .quick-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(99, 102, 241, 0.25);
+    }
+
+    .chat-panel {
+        min-height: 620px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .chat-header {
+        padding: 1.2rem 1.25rem;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(14, 165, 233, 0.08));
+    }
+
+    .chat-header p {
+        color: #64748b;
+    }
+
+    body.dark-mode .chat-header p {
+        color: #94a3b8;
+    }
+
+    .status-dot {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #16a34a;
+        background: rgba(22, 163, 74, 0.12);
+        border: 1px solid rgba(22, 163, 74, 0.28);
+        border-radius: 999px;
+        padding: 0.3rem 0.7rem;
+        white-space: nowrap;
+    }
+
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 1.2rem;
+        background:
+            radial-gradient(circle at 10% 10%, rgba(99, 102, 241, 0.08), transparent 45%),
+            radial-gradient(circle at 90% 80%, rgba(14, 165, 233, 0.1), transparent 45%);
+    }
+
+    .msg-row {
+        display: flex;
+        margin-bottom: 0.9rem;
+    }
+
+    .msg-row.user {
+        justify-content: flex-end;
+    }
+
+    .msg-bubble {
+        max-width: min(80%, 620px);
+        border-radius: 16px;
+        padding: 0.75rem 0.9rem;
+        line-height: 1.45;
+        white-space: pre-line;
+    }
+
+    .msg-body {
+        white-space: pre-line;
+    }
+
+    .link-chip-wrap {
+        margin-top: 0.65rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+    }
+
+    .link-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        text-decoration: none;
+        font-size: 0.78rem;
+        font-weight: 700;
+        border-radius: 999px;
+        padding: 0.32rem 0.62rem;
+        border: 1px solid rgba(99, 102, 241, 0.25);
+        background: rgba(99, 102, 241, 0.1);
+        color: #3730a3;
+        transition: all 0.2s ease;
+    }
+
+    .link-chip:hover {
+        color: #ffffff;
+        border-color: transparent;
+        background: linear-gradient(135deg, var(--bot-primary), var(--bot-secondary));
+        transform: translateY(-1px);
+        box-shadow: 0 8px 14px rgba(99, 102, 241, 0.22);
+    }
+
+    body.dark-mode .link-chip {
+        color: #c7d2fe;
+        border-color: rgba(129, 140, 248, 0.45);
+        background: rgba(99, 102, 241, 0.16);
+    }
+
+    .msg-row.bot .msg-bubble {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        color: #0f172a;
+    }
+
+    body.dark-mode .msg-row.bot .msg-bubble {
+        background: rgba(30, 41, 59, 0.9);
+        color: #f1f5f9;
+        border-color: rgba(148, 163, 184, 0.25);
+    }
+
+    .msg-row.user .msg-bubble {
+        color: #fff;
+        background: linear-gradient(135deg, var(--bot-primary), var(--bot-secondary));
+        box-shadow: 0 10px 24px rgba(99, 102, 241, 0.24);
+    }
+
+    .chat-input-wrap {
+        border-top: 1px solid rgba(148, 163, 184, 0.25);
+        padding: 1rem;
+        display: flex;
+        gap: 0.8rem;
+        background: rgba(248, 250, 252, 0.8);
+    }
+
+    body.dark-mode .chat-input-wrap {
+        background: rgba(15, 23, 42, 0.6);
+    }
+
+    .chat-input {
+        flex: 1;
+        border: 1px solid rgba(148, 163, 184, 0.45);
+        border-radius: 12px;
+        padding: 0.8rem 0.95rem;
+        background: #fff;
+        color: #0f172a;
+    }
+
+    .chat-input:focus {
+        outline: none;
+        border-color: var(--bot-primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.16);
+    }
+
+    body.dark-mode .chat-input {
+        background: rgba(15, 23, 42, 0.9);
+        color: #e2e8f0;
+        border-color: rgba(148, 163, 184, 0.3);
+    }
+
+    .send-btn {
+        border: none;
+        border-radius: 12px;
+        color: #fff;
+        font-weight: 700;
+        padding: 0 1.15rem;
+        background: linear-gradient(135deg, var(--bot-primary), var(--bot-secondary));
+        box-shadow: 0 8px 18px rgba(99, 102, 241, 0.25);
+    }
+
+    .send-btn:hover {
+        filter: brightness(1.05);
+    }
+
+    .send-btn:disabled {
+        opacity: 0.65;
+    }
+
+    @media (max-width: 991.98px) {
+        .chat-panel {
+            min-height: 560px;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .quick-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .chat-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+    }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const messageInput = document.getElementById('message-input');
-    const sendButton = document.getElementById('send-button');
-    const chatMessages = document.getElementById('chat-messages');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
     const quickButtons = document.querySelectorAll('.quick-btn');
+    const history = [];
 
-    // Send message function
-    function sendMessage() {
-        const message = messageInput.value.trim();
-        if (!message) return;
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
 
-        // Add user message
-        addMessage(message, 'user');
-        messageInput.value = '';
+    function parseBotLinks(rawText) {
+        const text = String(rawText || '');
+        const lines = text.split('\n');
+        const links = [];
+        const kept = [];
+        const seenUrls = new Set();
+        const namedLinkPattern = /^\s*-\s*([^:]{2,80})\s*:\s*(https?:\/\/[^\s]+)\s*$/i;
 
-        // Show typing indicator
-        showTypingIndicator();
-
-        // Send to server
-        fetch('/chatbot/message', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ message: message })
-        })
-        .then(response => response.json())
-        .then(data => {
-            hideTypingIndicator();
-            if (data.success) {
-                addMessage(data.response, 'bot');
-            } else {
-                addMessage('Sorry, I encountered an error. Please try again!', 'bot');
+        for (const line of lines) {
+            if (/^\s*direct links?:\s*$/i.test(line)) {
+                continue;
             }
-        })
-        .catch(error => {
-            hideTypingIndicator();
-            console.error('Error:', error);
-            addMessage('Network error. Please check your connection and try again.', 'bot');
-        });
+
+            const named = line.match(namedLinkPattern);
+            if (named) {
+                const label = named[1].trim();
+                const url = named[2].trim().replace(/[.,;:!?]+$/, '');
+                if (!seenUrls.has(url)) {
+                    seenUrls.add(url);
+                    links.push({ label, url });
+                }
+                continue;
+            }
+
+            kept.push(line);
+        }
+
+        return {
+            displayText: kept.join('\n').trim(),
+            links
+        };
     }
 
-    // Add message to chat
-    function addMessage(text, sender) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${sender}-message`;
+    function pushMessage(text, role) {
+        const row = document.createElement('div');
+        row.className = 'msg-row ' + role;
 
-        const avatar = sender === 'user' ? '👤' : '🤖';
-        const avatarClass = sender === 'user' ? 'bg-success' : 'bg-primary';
+        let displayText = String(text || '');
+        let links = [];
+        if (role === 'bot') {
+            const parsed = parseBotLinks(text);
+            displayText = parsed.displayText || (parsed.links.length ? 'Quick links:' : displayText);
+            links = parsed.links;
+        }
 
-        messageDiv.innerHTML = `
-            <div class="message-avatar">
-                <span class="badge ${avatarClass}">${avatar}</span>
-            </div>
-            <div class="message-content">
-                <div class="message-text">${text.replace(/\n/g, '<br>')}</div>
-                <small class="text-muted">${sender === 'user' ? 'You' : 'Marg Darshak Bot'}</small>
-            </div>
-        `;
+        const linksHtml = links.length
+            ? `<div class="link-chip-wrap">${links.map(link => `<a class="link-chip" href="${escapeHtml(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(link.label)} <i class="fas fa-up-right-from-square"></i></a>`).join('')}</div>`
+            : '';
 
-        chatMessages.appendChild(messageDiv);
+        row.innerHTML = `<div class="msg-bubble"><div class="msg-body">${escapeHtml(displayText)}</div>${linksHtml}</div>`;
+        chatMessages.appendChild(row);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    // Typing indicator functions
-    function showTypingIndicator() {
-        const indicator = document.createElement('div');
-        indicator.className = 'message bot-message typing-indicator motion-preset-fade';
-        indicator.style.display = 'flex';
-        indicator.id = 'typing-indicator';
-        indicator.innerHTML = `
-            <div class="message-avatar">
-                <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-brand-100 text-brand-600 shadow-sm text-xl animate-pulse">🤖</span>
-            </div>
-            <div class="message-content">
-                <div class="message-text">
-                    <span class="typing-dot"></span>
-                    <span class="typing-dot"></span>
-                    <span class="typing-dot"></span>
-                </div>
-                <small class="text-slate-400 mt-2 block">Thinking...</small>
-            </div>
-        `;
-        chatMessages.appendChild(indicator);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+    function setSendingState(sending) {
+        sendBtn.disabled = sending;
+        chatInput.disabled = sending;
+        sendBtn.innerHTML = sending
+            ? '<i class="fas fa-spinner fa-spin me-2"></i>Sending'
+            : '<i class="fas fa-paper-plane me-2"></i>Send';
     }
 
-    function hideTypingIndicator() {
-        const indicator = document.getElementById('typing-indicator');
-        if (indicator) {
-            indicator.remove();
+    async function sendMessage(prefilled = null) {
+        const text = (prefilled !== null ? prefilled : chatInput.value).trim();
+        if (!text) return;
+
+        pushMessage(text, 'user');
+        chatInput.value = '';
+        history.push({ role: 'user', content: text });
+
+        setSendingState(true);
+        try {
+            const response = await fetch('/chatbot/message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: text,
+                    history: history.slice(-12)
+                })
+            });
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                pushMessage(data.error || 'Unable to answer right now. Please try again.', 'bot');
+                return;
+            }
+
+            pushMessage(data.response || 'No response available.', 'bot');
+            history.push({ role: 'assistant', content: data.response || '' });
+            if (history.length > 20) {
+                history.splice(0, history.length - 20);
+            }
+        } catch (error) {
+            console.error('Chat send error:', error);
+            pushMessage('Network issue while sending. Please retry.', 'bot');
+        } finally {
+            setSendingState(false);
+            chatInput.focus();
         }
     }
 
-    // Event listeners
-    sendButton.addEventListener('click', sendMessage);
-
-    messageInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
+    sendBtn.addEventListener('click', () => sendMessage());
+    chatInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
             sendMessage();
         }
     });
 
-    // Voice functionality
-    let recognition = null;
-    let isListening = false;
-    let lastBotResponse = '';
-    const voiceStatus = document.getElementById('voice-status');
-    const voiceInputBtn = document.getElementById('voice-input-btn');
-    const voiceOutputBtn = document.getElementById('voice-output-btn');
-
-    // Initialize speech recognition
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'hi-IN,en-US'; // Support Hindi and English
-
-        recognition.onstart = function() {
-            isListening = true;
-            voiceInputBtn.classList.add('bg-red-500', 'text-white', 'border-red-500');
-            voiceInputBtn.innerHTML = '<i class="fas fa-stop"></i>';
-            voiceInputBtn.title = 'Click to stop listening';
-            voiceStatus.textContent = '🎤 Listening... Speak now!';
-            voiceStatus.className = 'text-sm text-red-500 font-bold';
-        };
-
-        recognition.onresult = function(event) {
-            const transcript = event.results[0][0].transcript;
-            messageInput.value = transcript;
-            voiceStatus.textContent = `✅ Heard: "${transcript}"`;
-            voiceStatus.className = 'text-success';
-            resetVoiceInput();
-            // Don't auto-send, let user review and send manually
-        };
-
-        recognition.onerror = function(event) {
-            console.error('Speech recognition error:', event.error);
-            voiceStatus.textContent = '❌ Voice input error. Try again.';
-            voiceStatus.className = 'text-warning';
-            resetVoiceInput();
-        };
-
-        recognition.onend = function() {
-            resetVoiceInput();
-        };
-    } else {
-        voiceInputBtn.disabled = true;
-        voiceInputBtn.title = 'Voice input not supported in this browser';
-        voiceStatus.textContent = '🎤 Voice input not available';
-        voiceStatus.className = 'text-muted';
-    }
-
-    function resetVoiceInput() {
-        isListening = false;
-        voiceInputBtn.classList.remove('bg-red-500', 'text-white', 'border-red-500');
-        voiceInputBtn.innerHTML = '<i class="fas fa-microphone"></i>';
-        voiceInputBtn.title = 'Voice Input';
-        setTimeout(() => {
-            if (!isListening) {
-                voiceStatus.textContent = '';
-            }
-        }, 3000);
-    }
-
-    // Voice input button
-    voiceInputBtn.addEventListener('click', function() {
-        if (!recognition) {
-            alert('Voice input is not supported in your browser. Please use Chrome, Edge, or Safari.');
-            return;
-        }
-
-        if (isListening) {
-            // Stop listening
-            recognition.stop();
-            voiceStatus.textContent = '⏹️ Stopped listening';
-            voiceStatus.className = 'text-info';
-        } else {
-            // Start listening
-            try {
-                recognition.start();
-            } catch (error) {
-                console.error('Error starting recognition:', error);
-                voiceStatus.textContent = '❌ Error starting voice input';
-                voiceStatus.className = 'text-warning';
-            }
-        }
+    quickButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const text = btn.getAttribute('data-message') || '';
+            sendMessage(text);
+        });
     });
-
-    // Voice output functionality
-    let isSpeaking = false;
-
-    // Voice output button
-    voiceOutputBtn.addEventListener('click', function() {
-        if (!lastBotResponse) {
-            voiceStatus.textContent = '📝 No response to speak yet!';
-            voiceStatus.className = 'text-warning';
-            setTimeout(() => voiceStatus.textContent = '', 2000);
-            return;
-        }
-
-        if (isSpeaking) {
-            // Stop speaking
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-            }
-            isSpeaking = false;
-            voiceOutputBtn.classList.remove('btn-success');
-            voiceOutputBtn.classList.add('btn-outline-success');
-            voiceOutputBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
-            voiceOutputBtn.title = 'Voice Output (Last Response)';
-            voiceStatus.textContent = '⏹️ Stopped speaking';
-            voiceStatus.className = 'text-info';
-            setTimeout(() => voiceStatus.textContent = '', 2000);
-            return;
-        }
-
-        // Start speaking
-        speakText(lastBotResponse);
-    });
-
-    function speakText(text) {
-        if (!('speechSynthesis' in window)) {
-            alert('Text-to-speech is not supported in your browser.');
-            return;
-        }
-
-        // Cancel any ongoing speech
-        window.speechSynthesis.cancel();
-
-        // Remove HTML tags for speech
-        const cleanText = text.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ');
-
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.lang = 'hi-IN'; // Hindi
-        utterance.rate = 0.9;
-        utterance.pitch = 1;
-
-        // Try to find a Hindi voice
-        const voices = speechSynthesis.getVoices();
-        const hindiVoice = voices.find(voice => voice.lang.startsWith('hi'));
-        if (hindiVoice) {
-            utterance.voice = hindiVoice;
-        }
-
-        utterance.onstart = function() {
-            isSpeaking = true;
-            voiceOutputBtn.classList.add('btn-success');
-            voiceOutputBtn.classList.remove('btn-outline-success');
-            voiceOutputBtn.innerHTML = '<i class="fas fa-stop"></i>';
-            voiceOutputBtn.title = 'Stop speaking';
-            voiceStatus.textContent = '🔊 Speaking...';
-            voiceStatus.className = 'text-info';
-        };
-
-        utterance.onend = function() {
-            isSpeaking = false;
-            voiceOutputBtn.classList.remove('btn-success');
-            voiceOutputBtn.classList.add('btn-outline-success');
-            voiceOutputBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
-            voiceOutputBtn.title = 'Voice Output (Last Response)';
-            voiceStatus.textContent = '';
-        };
-
-        utterance.onerror = function() {
-            isSpeaking = false;
-            voiceOutputBtn.classList.remove('btn-success');
-            voiceOutputBtn.classList.add('btn-outline-success');
-            voiceOutputBtn.innerHTML = '<i class="fas fa-volume-up"></i>';
-            voiceOutputBtn.title = 'Voice Output (Last Response)';
-            voiceStatus.textContent = '❌ Speech synthesis error';
-            voiceStatus.className = 'text-warning';
-            setTimeout(() => voiceStatus.textContent = '', 3000);
-        };
-
-        speechSynthesis.speak(utterance);
-    }
-
-    // Store last bot response for voice output
-    function addMessage(text, sender) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${sender}-message motion-preset-slide-up motion-duration-300`;
-
-        const avatar = sender === 'user' ? '👤' : '🤖';
-        const avatarSpan = sender === 'user' 
-            ? '<span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-brand-600 text-white shadow-sm text-xl">' + avatar + '</span>'
-            : '<span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-brand-100 text-brand-600 shadow-sm text-xl">' + avatar + '</span>';
-
-        messageDiv.innerHTML = `
-            <div class="message-avatar">
-                ${avatarSpan}
-            </div>
-            <div class="message-content">
-                <div class="message-text">${text.replace(/\n/g, '<br>')}</div>
-                <small class="text-slate-400 mt-2 block">${sender === 'user' ? 'You' : 'Marg Darshak Agent'}</small>
-            </div>
-        `;
-
-        chatMessages.appendChild(messageDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-
-        // Store last bot response
-        if (sender === 'bot') {
-            lastBotResponse = text;
-        }
-    }
-
-    // Auto-focus input
-    messageInput.focus();
 });
 </script>
 {% endblock %}

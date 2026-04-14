@@ -1,15 +1,33 @@
-import os
+﻿import os
+import json
 import sqlite3
+import re
+import traceback
+import ast
+import operator
 from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, url_for, session, flash, g, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g, send_from_directory, jsonify, has_request_context
 from werkzeug.security import generate_password_hash, check_password_hash
 import pandas as pd
+from dotenv import load_dotenv
 from functools import wraps
+from openai import OpenAI
+import PyPDF2
+import spacy
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib import colors
+from io import BytesIO
+from urllib.parse import urlparse
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_change_me')
 
-# ✅ Login Required Decorator
+# âœ… Login Required Decorator
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -19,11 +37,10 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# ✅ Correct absolute path for DB inside "database" folder
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# âœ… Correct absolute path for DB inside "database" folder
 DB_PATH = os.path.join(BASE_DIR, "database", "marg_darshak.db")
 
-# ✅ Auto-create tables if not exist and load data if empty
+# âœ… Auto-create tables if not exist and load data if empty
 def init_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
@@ -78,7 +95,7 @@ def init_db():
         try:
             careers_df = pd.read_csv(os.path.join(BASE_DIR, 'data', 'careers.csv'))
             careers_df.to_sql('careers', conn, if_exists='append', index=False)
-            print(f"✅ Loaded {len(careers_df)} careers")
+            print(f"âœ… Loaded {len(careers_df)} careers")
         except Exception as e:
             print(f"Error loading careers data: {e}")
 
@@ -109,7 +126,7 @@ def init_db():
                     rows.append([row['source'], row['chapter'], row['verse_number'], row['sanskrit_text'], row['hindi_meaning'], row['english_meaning'], row['practical_application'], row['tags'], row['audio_url']])
             gyan_df = pd.DataFrame(rows, columns=['source', 'chapter', 'verse_number', 'sanskrit_text', 'hindi_meaning', 'english_meaning', 'practical_application', 'tags', 'audio_url'])
             gyan_df.to_sql('gyan_kosh', conn, if_exists='replace', index=False)
-            print(f"✅ Loaded {len(gyan_df)} gyan kosh entries")
+            print(f"âœ… Loaded {len(gyan_df)} gyan kosh entries")
         except Exception as e:
             print(f"Error loading gyan kosh data: {e}")
 
@@ -153,7 +170,7 @@ def init_db():
             if 'duration_hours' in resources_df.columns:
                 resources_df['duration_hours'] = pd.to_numeric(resources_df['duration_hours'], errors='coerce').fillna(0).astype(int)
             resources_df.to_sql('learning_resources', conn, if_exists='replace', index=False)
-            print(f"✅ Loaded {len(resources_df)} learning resources")
+            print(f"âœ… Loaded {len(resources_df)} learning resources")
         except Exception as e:
             print(f"Error loading learning resources data: {e}")
 
@@ -198,6 +215,35 @@ def init_db():
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )''')
 
+    # --- Student Community Chat Tables ---
+    c.execute('''CREATE TABLE IF NOT EXISTS student_connections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        requester_id INTEGER NOT NULL,
+        addressee_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'accepted', 'rejected')),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (requester_id) REFERENCES users (id),
+        FOREIGN KEY (addressee_id) REFERENCES users (id),
+        UNIQUE (requester_id, addressee_id),
+        CHECK (requester_id != addressee_id)
+    )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS student_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        connection_id INTEGER NOT NULL,
+        sender_id INTEGER NOT NULL,
+        receiver_id INTEGER NOT NULL,
+        message TEXT NOT NULL,
+        is_read INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (connection_id) REFERENCES student_connections (id),
+        FOREIGN KEY (sender_id) REFERENCES users (id),
+        FOREIGN KEY (receiver_id) REFERENCES users (id)
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_student_connections_users ON student_connections (requester_id, addressee_id, status)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_student_messages_connection ON student_messages (connection_id, created_at)')
+
     # --- Mentor Requests Table ---
     c.execute('''CREATE TABLE IF NOT EXISTS mentor_requests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -235,14 +281,74 @@ def init_db():
         FOREIGN KEY (user_id) REFERENCES users (id)
     )''')
 
+    # --- Internship Community Tables ---
+    c.execute('''CREATE TABLE IF NOT EXISTS internships (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        company TEXT NOT NULL,
+        role TEXT NOT NULL,
+        city TEXT,
+        mode TEXT,
+        stipend TEXT NOT NULL DEFAULT 'Not Disclosed',
+        apply_link TEXT,
+        source TEXT NOT NULL DEFAULT 'student',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (company, role, city, mode)
+    )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS internship_experiences (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        internship_id INTEGER,
+        name TEXT,
+        college TEXT NOT NULL,
+        internship_company TEXT NOT NULL,
+        city TEXT,
+        mode TEXT,
+        role TEXT NOT NULL,
+        how_got TEXT NOT NULL,
+        tips TEXT NOT NULL,
+        interview_questions TEXT,
+        apply_link TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (internship_id) REFERENCES internships (id)
+    )''')
+
+    # âœ… Add apply_link column if it doesn't exist
+    columns = [row[1] for row in c.execute('PRAGMA table_info(internship_experiences)').fetchall()]
+    if 'apply_link' not in columns:
+        print("Adding apply_link column to internship_experiences...")
+        c.execute('ALTER TABLE internship_experiences ADD COLUMN apply_link TEXT')
+    if 'user_id' not in columns:
+        print("Adding user_id column to internship_experiences...")
+        c.execute('ALTER TABLE internship_experiences ADD COLUMN user_id INTEGER')
+
+    internship_columns = [row[1] for row in c.execute('PRAGMA table_info(internships)').fetchall()]
+    if 'apply_link' not in internship_columns:
+        print("Adding apply_link column to internships...")
+        c.execute('ALTER TABLE internships ADD COLUMN apply_link TEXT')
+
+    # Backfill apply links for existing internships from shared experiences.
+    c.execute(
+        '''UPDATE internships
+           SET apply_link = (
+               SELECT ie.apply_link
+               FROM internship_experiences ie
+               WHERE ie.internship_id = internships.id
+                 AND ie.apply_link IS NOT NULL
+                 AND trim(ie.apply_link) != ''
+               ORDER BY ie.created_at DESC, ie.id DESC
+               LIMIT 1
+           )
+           WHERE (apply_link IS NULL OR trim(apply_link) = '')'''
+    )
+
     conn.commit()
     conn.close()
 
-# ✅ Run table creation before app starts
+# âœ… Run table creation before app starts
 init_db()
 
 
-# ✅ Connection helper
+# âœ… Connection helper
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -297,7 +403,7 @@ def load_current_user():
             session.pop('user_id', None)
 
 
-# ✅ Activity logging helper
+# âœ… Activity logging helper
 def log_activity(activity_type, module, description, metadata=None):
     """Log user activity for progress tracking"""
     try:
@@ -316,7 +422,651 @@ def log_activity(activity_type, module, description, metadata=None):
         print(f"Activity logging error: {e}")
 
 
-# ----------------- Auth routes -----------------
+def get_openai_client():
+    from openai import OpenAI
+    api_key = os.environ.get('OPENAI_API_KEY')
+    if not api_key:
+        raise ValueError('OPENAI_API_KEY is not configured')
+    return OpenAI(api_key=api_key)
+
+def describe_openai_resume_error(error):
+    """Convert OpenAI SDK errors into short user-safe messages."""
+    status_code = getattr(error, 'status_code', None)
+    error_code = None
+    response_body = getattr(error, 'body', None)
+    if isinstance(response_body, dict):
+        error_code = response_body.get('error', {}).get('code')
+
+    if error_code == 'insufficient_quota' or status_code == 429:
+        return 'Real-time AI analysis is temporarily unavailable because the API quota or billing limit has been reached.'
+    if status_code == 401:
+        return 'Real-time AI analysis failed because the configured API key is invalid or unauthorized.'
+    if status_code == 403:
+        return 'Real-time AI analysis failed because this API key does not have access to the requested model or project.'
+    if status_code in (408, 502, 503, 504):
+        return 'Real-time AI analysis is temporarily unavailable due to an upstream service or network issue.'
+    if error_code:
+        return f'Real-time AI analysis failed ({error_code}).'
+    return 'Real-time AI analysis failed. Verify API key, billing, and network, then try again.'
+
+def extract_text_from_pdf(pdf_file):
+    """Extract text from PDF file"""
+    try:
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
+        return text.strip()
+    except Exception as e:
+        print(f"PDF extraction error: {e}")
+        return None
+
+def calculate_ats_score(resume_text, target_role, skills):
+    """Calculate ATS compatibility score based on keywords and formatting"""
+    score = 0
+    max_score = 100
+    
+    # Basic checks
+    if len(resume_text) > 500:  # Reasonable length
+        score += 20
+    
+    # Check for contact info
+    contact_keywords = ['email', '@', 'phone', 'mobile', 'contact']
+    if any(keyword in resume_text.lower() for keyword in contact_keywords):
+        score += 15
+    
+    # Check for skills section
+    if 'skill' in resume_text.lower():
+        score += 15
+    
+    # Check for experience section
+    if 'experience' in resume_text.lower() or 'work' in resume_text.lower():
+        score += 15
+    
+    # Check for education
+    if 'education' in resume_text.lower() or 'degree' in resume_text.lower():
+        score += 15
+    
+    # Keyword matching for target role
+    target_keywords = target_role.lower().split()
+    resume_lower = resume_text.lower()
+    keyword_matches = sum(1 for keyword in target_keywords if keyword in resume_lower)
+    score += min(keyword_matches * 5, 20)  # Up to 20 points for keywords
+    
+    return min(score, max_score)
+
+def find_matching_internships(skills, target_role):
+    """Find internships matching user's skills and target role"""
+    try:
+        conn = get_db_connection()
+        
+        # Get all internships
+        internships = conn.execute('SELECT * FROM internships').fetchall()
+        
+        matches = []
+        for internship in internships:
+            score = 0
+            
+            # Check role match
+            if target_role.lower() in internship['role'].lower():
+                score += 30
+            
+            # Check company/role keywords
+            role_keywords = internship['role'].lower().split()
+            for skill in skills:
+                if skill.lower() in role_keywords:
+                    score += 10
+            
+            if score > 20:  # Minimum threshold
+                matches.append({
+                    'id': internship['id'],
+                    'company': internship['company'],
+                    'role': internship['role'],
+                    'city': internship['city'],
+                    'mode': internship['mode'],
+                    'stipend': internship['stipend'],
+                    'score': score
+                })
+        
+        # Sort by score and return top 5
+        matches.sort(key=lambda x: x['score'], reverse=True)
+        conn.close()
+        return matches[:5]
+        
+    except Exception as e:
+        print(f"Internship matching error: {e}")
+        return []
+
+def build_resume_analysis_prompt(resume_text, target_role):
+    return [
+        {
+            'role': 'system',
+            'content': (
+                'You are MargDarshak AI Career Engine, an intelligent career assistant for students. '
+                'Respond ONLY with valid JSON that matches the exact schema provided. Do not include markdown, explanation text, or any extra fields. '
+                'Use only the resume text and target role to generate the response. Extract structured information from the resume text. '
+                'Provide resume-specific insights, unique strengths, concrete gaps, and practical next steps. '
+                'If a skill or accomplishment is not present in the resume text, do not mention it. Focus on this candidate and this target role. '
+                'Produce a short, unique analysis summary and make every section clearly tied to facts from the resume text. '
+                'Keep it concise but advanced, with practical steps and measurable outcomes.'
+            )
+        },
+        {
+            'role': 'user',
+            'content': (
+                'Input:\n'
+                f'resume_text: """{resume_text}"""\n'
+                f'target_role: "{target_role}"\n'
+                'Output JSON schema:\n'
+                '{"profile":{"name":"","email":"","phone":"","skills":[],"education":[],"experience":[],"projects":[]},'
+                '"skills_analysis":{"strong_skills":[],"missing_skills":[],"skill_levels":{}},'
+                '"resume_improvements":[],"skill_gap":[],"internship_suggestions":[],"roadmap":{"3_month":[],"6_month":[],"12_month":[]},'
+                '"platform_recommendations":[],"tools":[],"analysis_summary":"","ats_score":0}'
+                '\n\n'
+                'Rules:\n'
+                '1) analysis_summary must be 2-3 short sentences and include one strength, one priority gap, and one next action.\n'
+                '2) roadmap must be unique for this resume and target role with exactly 4 step-wise actions in each phase: 3_month, 6_month, 12_month.\n'
+                '3) Every roadmap step must include a concrete deliverable or measurable outcome.\n'
+                '4) Keep lists concise: strong_skills <= 8, missing_skills <= 6, resume_improvements <= 5, skill_gap <= 4, internship_suggestions <= 4.\n'
+                '5) Avoid generic repeated statements and keep content directly tied to the provided resume text.\n'
+                '6) Return JSON only.'
+            )
+        }
+    ]
+
+
+def _normalized_unique(items, max_items=5):
+    cleaned_items = []
+    seen = set()
+    for item in items or []:
+        value = re.sub(r'\s+', ' ', str(item or '')).strip(" \t\r\n-â€¢")
+        if not value:
+            continue
+        key = value.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        cleaned_items.append(value)
+        if len(cleaned_items) >= max_items:
+            break
+    return cleaned_items
+
+
+def _extract_years_experience(resume_text):
+    match = re.search(r'(\d+)\s*(?:\+)?\s*(?:years?|yrs?)\s*(?:of\s*)?(?:experience|work)', resume_text, re.IGNORECASE)
+    if not match:
+        return 0
+    try:
+        return int(match.group(1))
+    except Exception:
+        return 0
+
+
+def _infer_domain(target_role, resume_text):
+    text = f"{target_role} {resume_text}".lower()
+    domain_signals = {
+        'data': ['data', 'analytics', 'analyst', 'machine learning', 'python', 'sql', 'statistics', 'tableau'],
+        'software': ['software', 'developer', 'engineer', 'backend', 'frontend', 'full stack', 'api', 'system design'],
+        'web': ['web', 'frontend', 'react', 'angular', 'css', 'html', 'javascript', 'ui'],
+        'cloud_devops': ['devops', 'cloud', 'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'ci/cd'],
+        'cybersecurity': ['security', 'cyber', 'soc', 'penetration', 'siem', 'network security'],
+        'product': ['product manager', 'product', 'roadmap', 'stakeholder', 'go-to-market'],
+        'design': ['designer', 'ux', 'ui', 'figma', 'prototype', 'user research'],
+        'marketing': ['marketing', 'seo', 'content', 'campaign', 'growth', 'branding'],
+        'finance': ['finance', 'accounting', 'financial', 'valuation', 'audit', 'excel'],
+    }
+    best_domain = 'general'
+    best_score = 0
+    for domain, keywords in domain_signals.items():
+        score = sum(1 for keyword in keywords if keyword in text)
+        if score > best_score:
+            best_score = score
+            best_domain = domain
+    return best_domain
+
+
+def _extract_resume_keywords(resume_text, target_role, max_items=10):
+    stopwords = {
+        'the', 'and', 'for', 'with', 'from', 'that', 'this', 'have', 'has', 'your', 'you', 'are', 'was', 'were',
+        'will', 'can', 'about', 'into', 'using', 'used', 'work', 'project', 'projects', 'experience', 'education',
+        'resume', 'role', 'skills', 'skill', 'team', 'month', 'year'
+    }
+    tokens = re.findall(r'[a-zA-Z][a-zA-Z0-9\+\#\.-]{2,}', f"{target_role} {resume_text}".lower())
+    freq = {}
+    for token in tokens:
+        if token in stopwords:
+            continue
+        freq[token] = freq.get(token, 0) + 1
+    ranked = sorted(freq.items(), key=lambda x: (-x[1], x[0]))
+    return [token for token, _ in ranked[:max_items]]
+
+
+def _build_dynamic_roadmap(target_role, strong_skills, missing_skills, resume_text):
+    role = target_role.strip() or 'target role'
+    top_strength = (strong_skills or ['your core strengths'])[0]
+    missing = missing_skills or ['domain fundamentals', 'communication', 'project impact']
+    first_gap = missing[0]
+    second_gap = missing[1] if len(missing) > 1 else missing[0]
+    third_gap = missing[2] if len(missing) > 2 else missing[0]
+    years = _extract_years_experience(resume_text)
+    domain = _infer_domain(target_role, resume_text)
+    keywords = _extract_resume_keywords(resume_text, target_role, max_items=5)
+    focus_hint = ', '.join(keywords[:2]) if keywords else role
+    exp_prefix = f"Leverage your {years}+ year experience" if years > 0 else "Build practical experience"
+
+    phase_3 = [
+        f"Step 1: Rewrite resume bullets for {role} with 6-8 quantified outcomes (impact %, time saved, revenue, accuracy).",
+        f"Step 2: Close priority gap '{first_gap}' by completing one focused course and publishing notes within 4 weeks.",
+        f"Step 3: Build one role-aligned mini project using {top_strength} and publish code plus measurable results.",
+        f"Step 4: Apply to 20 targeted {role} roles with a resume version optimized for {focus_hint}."
+    ]
+
+    phase_6 = [
+        f"Step 1: Deepen '{second_gap}' through an intermediate project with production-like constraints.",
+        f"Step 2: {exp_prefix} by completing one internship or freelance assignment with documented business impact.",
+        f"Step 3: Complete 10 mock interviews and prepare concise STAR stories for achievements and problem-solving.",
+        f"Step 4: Earn one recognized credential aligned to {role} and attach proof links in your resume."
+    ]
+
+    phase_12 = [
+        f"Step 1: Master '{third_gap}' to advanced level and complete one capstone solving a real business problem.",
+        f"Step 2: Build 3 flagship {role} portfolio projects with architecture, KPIs, and deployment/demo links.",
+        f"Step 3: Publish 2 technical posts or talks to build credibility in the {role} community.",
+        f"Step 4: Transition to higher-fit {role} opportunities by tracking interview conversion and offer metrics."
+    ]
+
+    if domain == 'data':
+        phase_6[0] = f"Step 1: Deepen '{second_gap}' by building one end-to-end analytics or ML pipeline with evaluation metrics."
+        phase_12[1] = f"Step 2: Build 3 flagship data projects with notebooks, dashboards, and reproducible results."
+    elif domain in ('software', 'web'):
+        phase_6[0] = f"Step 1: Deepen '{second_gap}' by shipping one full-stack feature with testing and monitoring."
+        phase_12[1] = f"Step 2: Build 3 flagship engineering projects with CI/CD, architecture docs, and live demos."
+    elif domain == 'cloud_devops':
+        phase_6[0] = f"Step 1: Deepen '{second_gap}' by implementing IaC and CI/CD for one deployment workflow."
+        phase_12[1] = f"Step 2: Build 3 cloud/devops projects with observability, autoscaling, and rollback strategy."
+    elif domain == 'cybersecurity':
+        phase_6[0] = f"Step 1: Deepen '{second_gap}' through one SOC-style detection and incident-response lab."
+        phase_12[1] = f"Step 2: Build 3 security projects with threat models, hardening checklist, and findings reports."
+
+    return {
+        '3_month': _normalized_unique(phase_3, max_items=4),
+        '6_month': _normalized_unique(phase_6, max_items=4),
+        '12_month': _normalized_unique(phase_12, max_items=4)
+    }
+
+
+def _normalize_analysis_payload(analysis, resume_text, target_role):
+    profile = analysis.get('profile', {}) if isinstance(analysis.get('profile'), dict) else {}
+    profile.setdefault('name', 'Candidate')
+    profile.setdefault('email', '')
+    profile.setdefault('phone', '')
+    profile.setdefault('skills', [])
+    profile.setdefault('education', [])
+    profile.setdefault('experience', [])
+    profile.setdefault('projects', [])
+    analysis['profile'] = profile
+
+    skills_analysis = analysis.get('skills_analysis', {}) if isinstance(analysis.get('skills_analysis'), dict) else {}
+    strong_skills = _normalized_unique(skills_analysis.get('strong_skills', []), max_items=8)
+    missing_skills = _normalized_unique(skills_analysis.get('missing_skills', []), max_items=6)
+    skill_levels_raw = skills_analysis.get('skill_levels', {}) if isinstance(skills_analysis.get('skill_levels'), dict) else {}
+    skill_levels = {}
+    for skill in strong_skills:
+        level = str(skill_levels_raw.get(skill, '')).strip().title() or 'Intermediate'
+        if level not in ('Beginner', 'Intermediate', 'Advanced'):
+            level = 'Intermediate'
+        skill_levels[skill] = level
+    skills_analysis['strong_skills'] = strong_skills
+    skills_analysis['missing_skills'] = missing_skills
+    skills_analysis['skill_levels'] = skill_levels
+    analysis['skills_analysis'] = skills_analysis
+
+    analysis['resume_improvements'] = _normalized_unique(analysis.get('resume_improvements', []), max_items=5)
+    analysis['skill_gap'] = _normalized_unique(analysis.get('skill_gap', []), max_items=4)
+    analysis['internship_suggestions'] = _normalized_unique(analysis.get('internship_suggestions', []), max_items=4)
+    analysis['platform_recommendations'] = _normalized_unique(analysis.get('platform_recommendations', []), max_items=4)
+    analysis['tools'] = _normalized_unique(analysis.get('tools', []), max_items=5)
+
+    generated_roadmap = _build_dynamic_roadmap(target_role, strong_skills, missing_skills, resume_text)
+    roadmap = analysis.get('roadmap', {}) if isinstance(analysis.get('roadmap'), dict) else {}
+    normalized_roadmap = {}
+    for phase in ('3_month', '6_month', '12_month'):
+        phase_steps = _normalized_unique(roadmap.get(phase, []), max_items=4)
+        if len(phase_steps) < 4:
+            phase_steps = _normalized_unique(phase_steps + generated_roadmap[phase], max_items=4)
+        normalized_roadmap[phase] = phase_steps
+    analysis['roadmap'] = normalized_roadmap
+
+    summary = re.sub(r'\s+', ' ', str(analysis.get('analysis_summary', '') or '')).strip()
+    role_hint = (target_role or '').strip()
+    summary_is_generic = len(summary) < 25 or summary.lower().startswith('ai-driven career analysis')
+    role_missing = bool(role_hint) and role_hint.split()[0].lower() not in summary.lower()
+    if not summary or summary_is_generic or role_missing:
+        top_strength = strong_skills[0] if strong_skills else 'core strengths'
+        top_gap = missing_skills[0] if missing_skills else 'role-specific depth'
+        next_action = analysis['roadmap']['3_month'][0] if analysis['roadmap']['3_month'] else f"Create a 30-day action plan for {target_role}."
+        summary = f"For {role_hint or 'this target role'}, strongest area is {top_strength}. Priority gap is {top_gap}. Next action: {next_action}"
+    analysis['analysis_summary'] = summary
+    return analysis
+
+
+def analyze_resume_fallback(resume_text, target_role):
+    """Fallback resume analysis when OpenAI is unavailable"""
+    resume_lower = resume_text.lower()
+    lines = [line.strip() for line in resume_text.splitlines() if line.strip()]
+    name = lines[0] if lines else "Candidate"
+
+    email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', resume_text)
+    email = email_match.group(0) if email_match else ""
+
+    phone_match = re.search(r'\b\d{10}\b|\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', resume_text)
+    phone = phone_match.group(0) if phone_match else ""
+
+    common_skills = [
+        'python', 'java', 'javascript', 'typescript', 'sql', 'html', 'css', 'react', 'node', 'django', 'flask',
+        'machine learning', 'data analysis', 'deep learning', 'nlp', 'tableau', 'power bi', 'excel',
+        'git', 'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'linux', 'c++', 'c#', 'figma', 'seo'
+    ]
+    found_skills = _normalized_unique([skill for skill in common_skills if skill in resume_lower], max_items=8)
+
+    years = _extract_years_experience(resume_text)
+    experience = f"{years} years" if years > 0 else "Not specified"
+
+    education_keywords = ['bachelor', 'master', 'phd', 'degree', 'university', 'college', 'b.tech', 'm.tech', 'bsc', 'msc']
+    education = "Not found"
+    for line in lines:
+        if any(keyword in line.lower() for keyword in education_keywords):
+            education = line.strip()
+            break
+
+    inferred_role = target_role.strip() or 'the target role'
+    domain = _infer_domain(target_role, resume_text)
+    domain_core_gaps = {
+        'data': ['statistics', 'pandas', 'data visualization', 'model evaluation', 'feature engineering'],
+        'software': ['data structures', 'algorithms', 'system design', 'testing', 'api design'],
+        'web': ['responsive design', 'state management', 'api integration', 'performance optimization', 'testing'],
+        'cloud_devops': ['cloud architecture', 'ci/cd', 'infrastructure as code', 'monitoring', 'security hardening'],
+        'cybersecurity': ['threat modeling', 'incident response', 'siem', 'security testing', 'risk assessment'],
+        'product': ['product metrics', 'user research', 'prioritization', 'stakeholder communication', 'experimentation'],
+        'design': ['user research', 'interaction design', 'design systems', 'accessibility', 'usability testing'],
+        'marketing': ['campaign analytics', 'seo/sem', 'content strategy', 'a/b testing', 'funnel optimization'],
+        'finance': ['financial modeling', 'valuation', 'risk analysis', 'excel automation', 'reporting'],
+        'general': ['communication', 'project impact', 'domain knowledge', 'clarity', 'problem-solving'],
+    }
+    primary_gap = []
+    for gap in domain_core_gaps.get(domain, domain_core_gaps['general']):
+        if gap.lower() not in resume_lower:
+            primary_gap.append(gap)
+
+    if not primary_gap:
+        primary_gap = ['clear project impact statements', 'measurable achievements', 'role-specific keywords']
+
+    achievements = bool(re.search(r'\b(improved|increased|reduced|launched|built|designed|implemented|optimized|resulted in)\b', resume_lower))
+    has_projects = bool(re.search(r'\b(project|internship|research|capstone|portfolio)\b', resume_lower))
+
+    improvements = []
+    if not achievements:
+        improvements.append('Add one or two quantified achievements that show impact, such as percentages or outcomes.')
+    if not has_projects:
+        improvements.append('Include short project summaries with your role, tools used, and results.')
+    if found_skills and any(skill in ['machine learning', 'data analysis'] for skill in found_skills) and 'sql' not in found_skills:
+        improvements.append('Add SQL or database keywords if you are targeting data roles.')
+    if 'summary' not in resume_lower and 'objective' not in resume_lower:
+        improvements.append('Add a brief summary or objective at the top that matches the target role.')
+    if len(found_skills) < 4:
+        improvements.append('Expand the skills section with more role-specific tools and technologies.')
+    if not email or not phone:
+        improvements.append('Ensure your contact section includes a phone number and email address.')
+    if not improvements:
+        improvements.append('Review word choice and replace generic terms with specific role-related achievements.')
+    improvements = _normalized_unique(improvements, max_items=5)
+
+    keywords = _extract_resume_keywords(resume_text, target_role, max_items=5)
+    keyword_hint = ', '.join(keywords[:2]) if keywords else inferred_role
+    internship_suggestions = _normalized_unique([
+        f'Apply to {inferred_role} internships that require {found_skills[0] if found_skills else "core role skills"}.',
+        f'Target internships where projects in {keyword_hint} can be showcased during interviews.',
+        'Prioritize openings that emphasize measurable deliverables and ownership.',
+        f'Use a tailored resume version for each {inferred_role} application.'
+    ], max_items=4)
+
+    summary_fragments = []
+    if found_skills:
+        summary_fragments.append(f"Strong area: {', '.join(found_skills[:3])}.")
+    if primary_gap:
+        summary_fragments.append(f"Priority gap: {primary_gap[0]}.")
+    if improvements:
+        summary_fragments.append(f"Immediate action: {improvements[0]}")
+
+    roadmap = _build_dynamic_roadmap(inferred_role, found_skills, primary_gap[:6], resume_text)
+
+    analysis = {
+        'analysis_mode': 'fallback',
+        'profile': {
+            'name': name,
+            'email': email,
+            'phone': phone,
+            'experience': experience,
+            'education': education
+        },
+        'skills_analysis': {
+            'strong_skills': found_skills,
+            'missing_skills': primary_gap[:4],
+            'skill_levels': {skill: 'Intermediate' for skill in found_skills}
+        },
+        'resume_improvements': improvements,
+        'skill_gap': [
+            f'Main gap: {primary_gap[0]}',
+            'Improve measurable results and role-specific keyword alignment.',
+            f'Build stronger proof for {inferred_role} through outcomes-focused project bullets.',
+            f'Close {primary_gap[1] if len(primary_gap) > 1 else primary_gap[0]} with guided practice.'
+        ],
+        'internship_suggestions': internship_suggestions[:4],
+        'roadmap': roadmap,
+        'platform_recommendations': [
+            'AI Mock Interviewer â†’ Practice interviews with AI feedback',
+            'Internship Section â†’ Apply to real internships on MargDarshak',
+            'Skill Learning Module â†’ Learn missing skills with structured courses'
+        ],
+        'tools': [
+            'VS Code for development with Python extensions',
+            'Git for version control and GitHub portfolio',
+            'Jupyter Notebook for project notes'
+        ],
+        'analysis_summary': ' '.join(summary_fragments).strip() or f'{name} should sharpen resume impact and add role-specific proof.'
+    }
+
+    skills = analysis.get('skills_analysis', {}).get('strong_skills', [])
+    analysis['ats_score'] = calculate_ats_score(resume_text, target_role, skills)
+    analysis['internship_matches'] = find_matching_internships(skills, target_role)
+
+    return _normalize_analysis_payload(analysis, resume_text, target_role)
+
+def analyze_resume_with_openai(resume_text, target_role, allow_fallback=True):
+    try:
+        client = get_openai_client()
+    except ValueError as ve:
+        if allow_fallback:
+            print(f'OpenAI API key not configured: {ve}')
+            print('Using fallback analysis...')
+            return analyze_resume_fallback(resume_text, target_role)
+        raise ValueError('OPENAI_API_KEY is not configured. Real-time AI analysis requires a valid API key.')
+
+    prompt = build_resume_analysis_prompt(resume_text, target_role)
+    try:
+        print(f'Calling OpenAI API for resume analysis (target role: {target_role})')
+        result = client.chat.completions.create(
+            model='gpt-4o-mini',
+            messages=prompt,
+            temperature=0.9,
+            max_tokens=2200,
+            response_format={'type': 'json_object'}
+        )
+        raw = result.choices[0].message.content.strip()
+        print(f'OpenAI response received: {len(raw)} characters')
+
+        try:
+            analysis = json.loads(raw)
+            print('Successfully parsed AI analysis JSON')
+        except json.JSONDecodeError as je:
+            print(f'JSON decode error: {je}')
+            print(f'Raw response: {raw[:500]}...')
+            start = raw.find('{')
+            end = raw.rfind('}')
+            if start != -1 and end != -1:
+                analysis = json.loads(raw[start:end+1])
+                print('Extracted JSON block from response')
+            else:
+                raise ValueError(f"Could not parse OpenAI response as JSON: {raw[:200]}...")
+
+        if not analysis.get('skills_analysis') or not isinstance(analysis.get('skills_analysis'), dict):
+            raise ValueError('AI response did not contain valid skills_analysis.')
+
+        analysis = _normalize_analysis_payload(analysis, resume_text, target_role)
+        skills = analysis.get('skills_analysis', {}).get('strong_skills', [])
+        analysis['ats_score'] = calculate_ats_score(resume_text, target_role, skills)
+        analysis['internship_matches'] = find_matching_internships(skills, target_role)
+        analysis['analysis_mode'] = 'ai'
+        analysis['analysis_generated_at'] = datetime.utcnow().isoformat() + 'Z'
+        return analysis
+    except Exception as e:
+        print(f'OpenAI resume analysis error: {e}')
+        print(f'Error type: {type(e).__name__}')
+        print(f'Traceback: {traceback.format_exc()}')
+        if allow_fallback:
+            print('Falling back to basic analysis...')
+            analysis = analyze_resume_fallback(resume_text, target_role)
+            analysis['analysis_notice'] = describe_openai_resume_error(e)
+            return analysis
+        raise ValueError(describe_openai_resume_error(e))
+
+
+def generate_pdf_report(analysis, target_role):
+    """Generate a PDF report from the analysis data"""
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    styles = getSampleStyleSheet()
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        spaceAfter=30,
+        alignment=1,  # Center alignment
+        textColor=colors.HexColor('#4f46e5')
+    )
+    
+    section_style = ParagraphStyle(
+        'Section',
+        parent=styles['Heading2'],
+        fontSize=16,
+        spaceAfter=15,
+        textColor=colors.HexColor('#1f2937')
+    )
+    
+    content_style = styles['Normal']
+    content_style.spaceAfter = 10
+    
+    story = []
+    
+    # Title
+    story.append(Paragraph("AI Career Analysis Report", title_style))
+    story.append(Spacer(1, 20))
+    
+    # Profile Summary
+    story.append(Paragraph("Profile Summary", section_style))
+    profile = analysis.get('profile', {})
+    if profile:
+        profile_data = [
+            f"Name: {profile.get('name', 'N/A')}",
+            f"Email: {profile.get('email', 'N/A')}",
+            f"Phone: {profile.get('phone', 'N/A')}",
+            f"Experience: {profile.get('experience', 'N/A')}",
+            f"Education: {profile.get('education', 'N/A')}"
+        ]
+        for item in profile_data:
+            story.append(Paragraph(item, content_style))
+    story.append(Spacer(1, 15))
+    
+    # Skills Analysis
+    story.append(Paragraph("Skills Analysis", section_style))
+    skills_analysis = analysis.get('skills_analysis', {})
+    
+    strong_skills = skills_analysis.get('strong_skills', [])
+    if strong_skills:
+        story.append(Paragraph("Strong Skills:", ParagraphStyle('Subsection', parent=styles['Heading3'])))
+        for skill in strong_skills:
+            story.append(Paragraph(f"â€¢ {skill.title()}", content_style))
+    
+    missing_skills = skills_analysis.get('missing_skills', [])
+    if missing_skills:
+        story.append(Paragraph("Skills to Improve:", ParagraphStyle('Subsection', parent=styles['Heading3'])))
+        for skill in missing_skills:
+            story.append(Paragraph(f"â€¢ {skill}", content_style))
+    
+    story.append(Spacer(1, 15))
+    
+    # ATS Score
+    ats_score = analysis.get('ats_score', 0)
+    story.append(Paragraph("ATS Compatibility Score", section_style))
+    story.append(Paragraph(f"Score: {ats_score}/100", ParagraphStyle('Score', parent=styles['Heading3'], textColor=colors.green if ats_score >= 70 else colors.orange)))
+    story.append(Spacer(1, 15))
+    
+    # Resume Improvements
+    improvements = analysis.get('resume_improvements', [])
+    if improvements:
+        story.append(Paragraph("Resume Improvement Suggestions", section_style))
+        for improvement in improvements[:5]:  # Limit to 5 items for PDF
+            story.append(Paragraph(f"â€¢ {improvement}", content_style))
+        story.append(Spacer(1, 15))
+    
+    # Roadmap
+    roadmap = analysis.get('roadmap', {})
+    if roadmap:
+        story.append(Paragraph("Career Roadmap", section_style))
+        
+        for phase, steps in roadmap.items():
+            phase_title = phase.replace('_', ' ').title()
+            story.append(Paragraph(phase_title, ParagraphStyle('Phase', parent=styles['Heading3'])))
+            for step in steps[:3]:  # Limit steps per phase
+                story.append(Paragraph(f"â€¢ {step}", content_style))
+            story.append(Spacer(1, 10))
+    
+    # Build PDF
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+# ----------------- PDF Download Route -----------------
+@app.route('/career/download-report', methods=['POST'])
+@login_required
+def download_pdf_report():
+    try:
+        data = request.get_json()
+        analysis = data.get('analysis', {})
+        target_role = data.get('target_role', 'Career')
+        
+        if not analysis:
+            return jsonify({'success': False, 'error': 'No analysis data provided'}), 400
+        
+        # Generate PDF
+        pdf_buffer = generate_pdf_report(analysis, target_role)
+        
+        # Return PDF as response
+        from flask import send_file
+        pdf_buffer.seek(0)
+        return send_file(
+            pdf_buffer,
+            as_attachment=True,
+            download_name=f'career_analysis_report_{target_role.lower().replace(" ", "_")}.pdf',
+            mimetype='application/pdf'
+        )
+        
+    except Exception as e:
+        print(f"PDF generation error: {e}")
+        return jsonify({'success': False, 'error': 'Failed to generate PDF report'}), 500
+
 @app.route('/auth/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
@@ -460,7 +1210,7 @@ def index():
             'resources': resource_count,
             'moods': mood_count,
             'games': game_sessions,
-            'tools': 17,  # Number of AI tools available
+            'tools': len(TOOLS_CATALOG),  # Number of AI tools available
             'guides': 17  # Number of learning guides
         }
 
@@ -558,6 +1308,53 @@ def career_quiz():
     
     return render_template('career/quiz.html')
 
+@app.route('/career/resume-analysis', methods=['POST'])
+@login_required
+def career_resume_analysis():
+    try:
+        target_role = request.form.get('target_role', '').strip()
+        resume_text = request.form.get('resume_text', '').strip()
+        resume_file = request.files.get('resume_file')
+        
+        print(f"Resume analysis request: target_role='{target_role}', resume_text_length={len(resume_text)}, has_file={bool(resume_file and resume_file.filename)}")
+        
+        if not target_role:
+            return jsonify({'success': False, 'error': 'Target role is required.'}), 400
+        
+        # Handle file upload
+        if resume_file and resume_file.filename:
+            if resume_file.filename.lower().endswith('.pdf'):
+                extracted_text = extract_text_from_pdf(resume_file)
+                if extracted_text is None:
+                    return jsonify({'success': False, 'error': 'Failed to extract text from PDF.'}), 400
+                resume_text = extracted_text
+            elif resume_file.filename.lower().endswith('.txt'):
+                resume_text = resume_file.read().decode('utf-8')
+            else:
+                return jsonify({'success': False, 'error': 'Only PDF and TXT files are supported.'}), 400
+        elif not resume_text:
+            print("No resume text or file provided")
+            return jsonify({'success': False, 'error': 'Resume text or file is required.'}), 400
+        
+        # Default to graceful fallback so the resume review page still works when
+        # the external AI service is rate-limited or temporarily unavailable.
+        strict_ai_mode = os.environ.get('RESUME_ANALYSIS_STRICT_AI', '0') == '1'
+        analysis = analyze_resume_with_openai(resume_text, target_role, allow_fallback=not strict_ai_mode)
+        log_activity('resume_analysis', 'career', 'Performed resume analysis', f'Target role: {target_role}')
+        return jsonify({'success': True, 'analysis': analysis})
+    except ValueError as ve:
+        return jsonify({'success': False, 'error': str(ve)}), 500
+    except Exception as e:
+        print(f"Resume analysis route error: {e}")
+        return jsonify({'success': False, 'error': 'Unable to analyze resume at this time.'}), 500
+
+@app.route('/career/resume-review')
+@login_required
+def career_resume_review():
+    """Resume review page inside Career Compass"""
+    log_activity('page_view', 'career', 'Accessed resume review page')
+    return render_template('career/resume_review.html')
+
 @app.route('/career/results')
 @login_required
 def career_results():
@@ -574,12 +1371,29 @@ def career_browse():
         conn = get_db_connection()
         
         category = request.args.get('category', 'all')
+        search_query = request.args.get('search', '').strip()
         
-        if category == 'all':
-            careers = conn.execute('SELECT * FROM careers ORDER BY title').fetchall()
-        else:
-            careers = conn.execute('SELECT * FROM careers WHERE category = ? ORDER BY title', (category,)).fetchall()
+        # Base query
+        query = 'SELECT * FROM careers'
+        params = []
         
+        # Build WHERE conditions
+        conditions = []
+        
+        if category != 'all':
+            conditions.append('category = ?')
+            params.append(category)
+        
+        if search_query:
+            conditions.append('title LIKE ?')
+            params.append(f'%{search_query}%')
+        
+        if conditions:
+            query += ' WHERE ' + ' AND '.join(conditions)
+        
+        query += ' ORDER BY title'
+        
+        careers = conn.execute(query, params).fetchall()
         categories = conn.execute('SELECT DISTINCT category FROM careers').fetchall()
         
         conn.close()
@@ -595,7 +1409,8 @@ def career_browse():
         return render_template('career/browse.html', 
                              careers=career_list,
                              categories=category_list,
-                             selected_category=category)
+                             selected_category=category,
+                             search_query=search_query)
     except Exception as e:
         print(f"Browse error: {e}")
         return f"Error: {e}", 500
@@ -741,6 +1556,7 @@ def skill_home():
             </div>
             """, 500
         
+        total_resources = conn.execute('SELECT COUNT(*) as count FROM learning_resources').fetchone()['count']
         topics = conn.execute('SELECT DISTINCT topic FROM learning_resources ORDER BY topic').fetchall()
         platforms = conn.execute('SELECT DISTINCT platform FROM learning_resources ORDER BY platform').fetchall()
         languages = conn.execute('SELECT DISTINCT language FROM learning_resources ORDER BY language').fetchall()
@@ -761,6 +1577,7 @@ def skill_home():
                              languages=language_list,
                              resource_types=resource_type_list,
                              resources=resource_list,
+                             total_resources=total_resources,
                              selected_topic='all',
                              selected_difficulty='all',
                              selected_platform='all',
@@ -787,6 +1604,7 @@ def skill_browse():
         search = request.args.get('search', '').strip()
         
         conn = get_db_connection()
+        total_resources = conn.execute('SELECT COUNT(*) as count FROM learning_resources').fetchone()['count']
         
         query = 'SELECT * FROM learning_resources WHERE 1=1'
         params = []
@@ -858,6 +1676,7 @@ def skill_browse():
         
         return render_template('skill/browse.html',
                              resources=resource_list,
+                             total_resources=total_resources,
                              topics=topic_list,
                              platforms=platform_list,
                              languages=language_list,
@@ -1172,19 +1991,19 @@ def progress_dashboard():
         # Achievement badges
         badges = []
         if total_activities >= 1:
-            badges.append({'name': 'First Steps', 'icon': '👶', 'description': 'Started your journey'})
+            badges.append({'name': 'First Steps', 'icon': 'ðŸ‘¶', 'description': 'Started your journey'})
         if total_activities >= 10:
-            badges.append({'name': 'Explorer', 'icon': '🗺️', 'description': 'Explored 10+ activities'})
+            badges.append({'name': 'Explorer', 'icon': 'ðŸ—ºï¸', 'description': 'Explored 10+ activities'})
         if total_activities >= 50:
-            badges.append({'name': 'Dedicated Learner', 'icon': '📚', 'description': '50+ learning activities'})
+            badges.append({'name': 'Dedicated Learner', 'icon': 'ðŸ“š', 'description': '50+ learning activities'})
         if current_streak >= 7:
-            badges.append({'name': 'Consistency King', 'icon': '👑', 'description': '7+ day learning streak'})
+            badges.append({'name': 'Consistency King', 'icon': 'ðŸ‘‘', 'description': '7+ day learning streak'})
         if module_stats.get('career', 0) >= 5:
-            badges.append({'name': 'Career Explorer', 'icon': '🎯', 'description': 'Explored 5+ careers'})
+            badges.append({'name': 'Career Explorer', 'icon': 'ðŸŽ¯', 'description': 'Explored 5+ careers'})
         if module_stats.get('gyan', 0) >= 10:
-            badges.append({'name': 'Wisdom Seeker', 'icon': '🧘', 'description': 'Read 10+ spiritual verses'})
+            badges.append({'name': 'Wisdom Seeker', 'icon': 'ðŸ§˜', 'description': 'Read 10+ spiritual verses'})
         if module_stats.get('mental', 0) >= 5:
-            badges.append({'name': 'Mindful Soul', 'icon': '🌸', 'description': 'Completed 5+ mental wellness activities'})
+            badges.append({'name': 'Mindful Soul', 'icon': 'ðŸŒ¸', 'description': 'Completed 5+ mental wellness activities'})
         
         conn.close()
         
@@ -1236,92 +2055,230 @@ TOOLS_CATALOG = {
     'expense_tracker': {
         'name': 'AI Expense Tracker',
         'url': 'https://expense-tracker-margdarshak.vercel.app/',
-        'description': 'Smart expense tracking and budgeting tool for students.'
+        'description': 'Smart expense tracking and budgeting tool for students.',
+        'purpose': 'Productivity'
     },
     'mock_interview': {
         'name': 'AI Mock Interviewer',
         'url': 'https://aimockinterviewer-one.vercel.app/',
-        'description': 'Practice mock interviews with AI for job preparation.'
+        'description': 'Practice mock interviews with AI for job preparation.',
+        'purpose': 'Career'
     },
     'leetcode': {
         'name': 'LeetCode',
         'url': 'https://leetcode.com',
-        'description': 'Practice data structures and algorithms with coding problems.'
+        'description': 'Practice data structures and algorithms with coding problems.',
+        'purpose': 'Coding'
     },
     'wolfram': {
         'name': 'WolframAlpha',
         'url': 'https://www.wolframalpha.com',
-        'description': 'Powerful computation engine for math, science, and data.'
+        'description': 'Powerful computation engine for math, science, and data.',
+        'purpose': 'Research'
     },
     'khan': {
         'name': 'Khan Academy',
         'url': 'https://www.khanacademy.org',
-        'description': 'Free video lessons and practice exercises across subjects.'
+        'description': 'Free video lessons and practice exercises across subjects.',
+        'purpose': 'Learning'
     },
     'coursera': {
         'name': 'Coursera',
         'url': 'https://www.coursera.org',
-        'description': 'Online courses from top universities (some free options).'
+        'description': 'Online courses from top universities (some free options).',
+        'purpose': 'Learning'
     },
     'stackoverflow': {
         'name': 'Stack Overflow',
         'url': 'https://stackoverflow.com',
-        'description': 'Community Q&A for programming and development questions.'
+        'description': 'Community Q&A for programming and development questions.',
+        'purpose': 'Coding'
     },
     'grammarly': {
         'name': 'Grammarly',
         'url': 'https://www.grammarly.com',
-        'description': 'Writing assistant for grammar, clarity, and tone.'
+        'description': 'Writing assistant for grammar, clarity, and tone.',
+        'purpose': 'Writing'
     },
     'replit': {
         'name': 'Replit',
         'url': 'https://replit.com',
-        'description': 'In-browser coding environment to write and test code quickly.'
+        'description': 'In-browser coding environment to write and test code quickly.',
+        'purpose': 'Coding'
     },
     'gamma': {
         'name': 'Gamma',
         'url': 'https://gamma.app',
-        'description': 'AI-powered presentation maker for creating stunning slides.'
+        'description': 'AI-powered presentation maker for creating stunning slides.',
+        'purpose': 'Design'
     },
     'napkin': {
         'name': 'Napkin AI',
         'url': 'https://napkin.ai',
-        'description': 'AI tool for creating flowcharts, diagrams, and visual ideas.'
+        'description': 'AI tool for creating flowcharts, diagrams, and visual ideas.',
+        'purpose': 'Design'
     },
     'chatgpt': {
         'name': 'ChatGPT',
         'url': 'https://chat.openai.com',
-        'description': 'Conversational AI for answering questions and generating text.'
+        'description': 'Conversational AI for answering questions and generating text.',
+        'purpose': 'General'
     },
     'deepseek': {
         'name': 'DeepSeek',
         'url': 'https://chat.deepseek.com',
-        'description': 'AI chat tool for research, coding, and creative tasks.'
+        'description': 'AI chat tool for research, coding, and creative tasks.',
+        'purpose': 'Research'
     },
     'notebooklm': {
         'name': 'NotebookLM',
         'url': 'https://notebooklm.google.com',
-        'description': 'AI-powered notebook for organizing and summarizing notes.'
+        'description': 'AI-powered notebook for organizing and summarizing notes.',
+        'purpose': 'Learning'
     },
     'gemini': {
         'name': 'Gemini AI',
         'url': 'https://gemini.google.com',
-        'description': 'Google\'s multimodal AI for text, images, and more.'
+        'description': 'Google\'s multimodal AI for text, images, and more.',
+        'purpose': 'General'
     },
     'ppt_to_word': {
         'name': 'PPT to Word',
         'url': 'https://www.ilovepdf.com/ppt-to-word',
-        'description': 'Convert PowerPoint presentations to Word documents online.'
+        'description': 'Convert PowerPoint presentations to Word documents online.',
+        'purpose': 'Document'
     },
     'word_to_ppt': {
         'name': 'Word to PPT',
         'url': 'https://www.ilovepdf.com/word-to-ppt',
-        'description': 'Convert Word documents to PowerPoint presentations.'
+        'description': 'Convert Word documents to PowerPoint presentations.',
+        'purpose': 'Document'
     },
     'word_to_pdf': {
         'name': 'Word to PDF',
         'url': 'https://www.ilovepdf.com/word-to-pdf',
-        'description': 'Convert Word documents to PDF format easily.'
+        'description': 'Convert Word documents to PDF format easily.',
+        'purpose': 'Document'
+    },
+    'quadratic': {
+        'name': 'Quadratic',
+        'url': 'https://app.quadratichq.com/',
+        'description': 'AI-powered spreadsheet with Python integration for data analysis and visualization.',
+        'purpose': 'Data'
+    },
+    'perplexity': {
+        'name': 'Perplexity AI',
+        'url': 'https://www.perplexity.ai',
+        'description': 'AI search engine that provides sourced answers to complex questions.',
+        'purpose': 'Research'
+    },
+    'mermaid': {
+        'name': 'Mermaid Live Editor',
+        'url': 'https://mermaid.live',
+        'description': 'Create diagrams and flowcharts using simple text-based syntax.',
+        'purpose': 'Design'
+    },
+    'excalidraw': {
+        'name': 'Excalidraw',
+        'url': 'https://excalidraw.com',
+        'description': 'Hand-drawn style collaborative whiteboard for sketching ideas.',
+        'purpose': 'Design'
+    },
+    'figma': {
+        'name': 'Figma',
+        'url': 'https://www.figma.com',
+        'description': 'Collaborative interface design tool for UI/UX prototyping.',
+        'purpose': 'Design'
+    },
+    'canva': {
+        'name': 'Canva',
+        'url': 'https://www.canva.com',
+        'description': 'Design tool for creating graphics, presentations, and social media content.',
+        'purpose': 'Design'
+    },
+    'notion': {
+        'name': 'Notion',
+        'url': 'https://www.notion.so',
+        'description': 'All-in-one workspace for notes, docs, and project management.',
+        'purpose': 'Productivity'
+    },
+    'obsidian': {
+        'name': 'Obsidian',
+        'url': 'https://obsidian.md',
+        'description': 'Knowledge management tool for connecting and organizing notes.',
+        'purpose': 'Productivity'
+    },
+    'anki': {
+        'name': 'Anki',
+        'url': 'https://apps.ankiweb.net',
+        'description': 'Flashcard app using spaced repetition for efficient learning.',
+        'purpose': 'Learning'
+    },
+    'duolingo': {
+        'name': 'Duolingo',
+        'url': 'https://www.duolingo.com',
+        'description': 'Gamified language learning platform for multiple languages.',
+        'purpose': 'Learning'
+    },
+    'codecademy': {
+        'name': 'Codecademy',
+        'url': 'https://www.codecademy.com',
+        'description': 'Interactive coding lessons for learning programming languages.',
+        'purpose': 'Learning'
+    },
+    'freecodecamp': {
+        'name': 'freeCodeCamp',
+        'url': 'https://www.freecodecamp.org',
+        'description': 'Free coding bootcamp with interactive lessons and certifications.',
+        'purpose': 'Learning'
+    },
+    'glitch': {
+        'name': 'Glitch',
+        'url': 'https://glitch.com',
+        'description': 'Collaborative coding platform for building and hosting web apps.',
+        'purpose': 'Development'
+    },
+    'vercel': {
+        'name': 'Vercel',
+        'url': 'https://vercel.com',
+        'description': 'Platform for deploying and hosting web applications globally.',
+        'purpose': 'Development'
+    },
+    'netlify': {
+        'name': 'Netlify',
+        'url': 'https://www.netlify.com',
+        'description': 'Web hosting and serverless backend services for modern web projects.',
+        'purpose': 'Development'
+    },
+    'supabase': {
+        'name': 'Supabase',
+        'url': 'https://supabase.com',
+        'description': 'Open source Firebase alternative with database and authentication.',
+        'purpose': 'Development'
+    },
+    'planetscale': {
+        'name': 'PlanetScale',
+        'url': 'https://planetscale.com',
+        'description': 'Serverless MySQL platform for modern application development.',
+        'purpose': 'Development'
+    },
+    'railway': {
+        'name': 'Railway',
+        'url': 'https://railway.app',
+        'description': 'Infrastructure platform for deploying applications without DevOps.',
+        'purpose': 'Development'
+    },
+    'cursor': {
+        'name': 'Cursor',
+        'url': 'https://cursor.sh',
+        'description': 'AI-first code editor built on VS Code with advanced AI features.',
+        'purpose': 'Development'
+    },
+    'windsor': {
+        'name': 'Windsor',
+        'url': 'https://windsor.io',
+        'description': 'Data integration platform for connecting marketing and business tools.',
+        'purpose': 'Business'
     }
 }
 
@@ -1329,10 +2286,69 @@ TOOLS_CATALOG = {
 @login_required
 def ai_tools():
     try:
-        return render_template('ai/tools.html', tools=TOOLS_CATALOG)
+        search_query = request.args.get('search', '').strip().lower()
+        purpose_query = request.args.get('purpose', '').strip().lower()
+
+        filtered_tools = {}
+        for tid, tool in TOOLS_CATALOG.items():
+            title = tool.get('name', '').lower()
+            description = tool.get('description', '').lower()
+            purpose = tool.get('purpose', '').lower()
+
+            matches_search = True
+            matches_purpose = True
+
+            if search_query:
+                matches_search = search_query in title or search_query in description or search_query in purpose
+            if purpose_query:
+                matches_purpose = purpose_query in purpose or purpose_query in title or purpose_query in description
+
+            if matches_search and matches_purpose:
+                filtered_tools[tid] = tool
+
+        return render_template('ai/tools.html', tools=filtered_tools, tool_count=len(TOOLS_CATALOG), search_query=search_query, purpose_query=purpose_query)
     except Exception as e:
         print(f"AI tools page error: {e}")
         return f"Error: {e}", 500
+
+
+@app.route('/ai/tools/add', methods=['POST'])
+@login_required
+def ai_tools_add():
+    try:
+        name = (request.form.get('name') or '').strip()
+        url = (request.form.get('url') or '').strip()
+        description = (request.form.get('description') or '').strip()
+        purpose = (request.form.get('purpose') or '').strip() or 'General'
+
+        if not name or not url or not description:
+            flash('Please provide name, URL, and description for the AI tool.', 'warning')
+            return redirect(url_for('ai_tools'))
+
+        import re
+        tool_key = re.sub(r'[^a-z0-9]+', '_', name.lower()).strip('_')
+        if not tool_key:
+            tool_key = f"tool_{len(TOOLS_CATALOG) + 1}"
+
+        original_key = tool_key
+        index = 1
+        while tool_key in TOOLS_CATALOG:
+            tool_key = f"{original_key}_{index}"
+            index += 1
+
+        TOOLS_CATALOG[tool_key] = {
+            'name': name,
+            'url': url,
+            'description': description,
+            'purpose': purpose
+        }
+
+        flash('Your AI tool suggestion has been added successfully.', 'success')
+        return redirect(url_for('ai_tools'))
+    except Exception as e:
+        print(f"AI tool add error: {e}")
+        flash('Could not add the AI tool. Please try again.', 'danger')
+        return redirect(url_for('ai_tools'))
 
 
 @app.route('/ai/launch/<tool_id>')
@@ -1359,23 +2375,24 @@ def ai_redirect():
 def learn_home():
     log_activity('module_access', 'learn', 'Accessed learning module homepage')
     platforms = [
-        {'id': 'linkedin', 'name': 'LinkedIn', 'icon': '💼', 'description': 'Professional networking platform'},
-        {'id': 'github', 'name': 'GitHub', 'icon': '📁', 'description': 'Code sharing and collaboration'},
-        {'id': 'leetcode', 'name': 'LeetCode', 'icon': '💻', 'description': 'Coding practice platform'},
-        {'id': 'vscode', 'name': 'VS Code', 'icon': '🛠️', 'description': 'Code editor for development'},
-        {'id': 'git_vscode', 'name': 'GitHub + VS Code', 'icon': '🔗', 'description': 'Basic workflow together'},
-        {'id': 'email_google', 'name': 'Email & Google Account', 'icon': '📧', 'description': 'Professional communication'},
-        {'id': 'resume_portfolio', 'name': 'Resume & Portfolio', 'icon': '📄', 'description': 'Building your online presence'},
-        {'id': 'coursera', 'name': 'Coursera', 'icon': '🎓', 'description': 'Online learning platform'},
-        {'id': 'stackoverflow', 'name': 'Stack Overflow', 'icon': '❓', 'description': 'Programming Q&A community'},
-        {'id': 'youtube', 'name': 'YouTube Learning', 'icon': '📺', 'description': 'Free educational videos'},
-        {'id': 'bca', 'name': 'BCA Students', 'icon': '💻', 'description': 'IT & Computer Applications guidance'},
-        {'id': 'bsc', 'name': 'BSc Students', 'icon': '🔬', 'description': 'Science stream career guidance'},
-        {'id': 'pharmacy', 'name': 'Pharmacy Students', 'icon': '💊', 'description': 'Pharmaceutical career platforms'},
-        {'id': 'medical', 'name': 'Medical Students', 'icon': '🏥', 'description': 'MBBS & Allied Health guidance'},
-        {'id': 'agriculture', 'name': 'Agriculture Students', 'icon': '🌾', 'description': 'Agri-tech & farming platforms'},
-        {'id': 'mpsc', 'name': 'MPSC Aspirants', 'icon': '📋', 'description': 'Maharashtra PSC exam preparation'},
-        {'id': 'upsc', 'name': 'UPSC Aspirants', 'icon': '🇮🇳', 'description': 'Civil services exam guidance'}
+        {'id': 'linkedin', 'name': 'LinkedIn', 'icon': 'ðŸ’¼', 'description': 'Professional networking platform'},
+        {'id': 'github', 'name': 'GitHub', 'icon': 'ðŸ“', 'description': 'Code sharing and collaboration'},
+        {'id': 'leetcode', 'name': 'LeetCode', 'icon': 'ðŸ’»', 'description': 'Coding practice platform'},
+        {'id': 'vscode', 'name': 'VS Code', 'icon': 'ðŸ› ï¸', 'description': 'Code editor for development'},
+        {'id': 'git_vscode', 'name': 'GitHub + VS Code', 'icon': 'ðŸ”—', 'description': 'Basic workflow together'},
+        {'id': 'email_google', 'name': 'Email & Google Account', 'icon': 'ðŸ“§', 'description': 'Professional communication'},
+        {'id': 'resume_portfolio', 'name': 'Resume & Portfolio', 'icon': 'ðŸ“„', 'description': 'Building your online presence'},
+        {'id': 'coursera', 'name': 'Coursera', 'icon': 'ðŸŽ“', 'description': 'Online learning platform'},
+        {'id': 'stackoverflow', 'name': 'Stack Overflow', 'icon': 'â“', 'description': 'Programming Q&A community'},
+        {'id': 'apply_guide', 'name': 'Internship Apply Guide', 'icon': 'ðŸŒ', 'description': 'Trusted internship companies and official apply links'},
+        {'id': 'youtube', 'name': 'YouTube Learning', 'icon': 'ðŸ“º', 'description': 'Free educational videos'},
+        {'id': 'bca', 'name': 'BCA Students', 'icon': 'ðŸ’»', 'description': 'IT & Computer Applications guidance'},
+        {'id': 'bsc', 'name': 'BSc Students', 'icon': 'ðŸ”¬', 'description': 'Science stream career guidance'},
+        {'id': 'pharmacy', 'name': 'Pharmacy Students', 'icon': 'ðŸ’Š', 'description': 'Pharmaceutical career platforms'},
+        {'id': 'medical', 'name': 'Medical Students', 'icon': 'ðŸ¥', 'description': 'MBBS & Allied Health guidance'},
+        {'id': 'agriculture', 'name': 'Agriculture Students', 'icon': 'ðŸŒ¾', 'description': 'Agri-tech & farming platforms'},
+        {'id': 'mpsc', 'name': 'MPSC Aspirants', 'icon': 'ðŸ“‹', 'description': 'Maharashtra PSC exam preparation'},
+        {'id': 'upsc', 'name': 'UPSC Aspirants', 'icon': 'ðŸ‡®ðŸ‡³', 'description': 'Civil services exam guidance'}
     ]
     return render_template('learn/index.html', platforms=platforms)
 
@@ -1386,92 +2403,92 @@ def learn_platform(platform):
         'linkedin': {
             'title': 'LinkedIn - Professional Networking',
             'content': '''
-            <h3>क्या है LinkedIn? (What is LinkedIn?)</h3>
-            <p>LinkedIn एक professional social media platform है, जहाँ आप अपने field के लोगों से connect कर सकते हैं, jobs खोज सकते हैं, और अपनी skills दिखा सकते हैं। Think of it as Facebook for professionals!</p>
+            <h3>à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ LinkedIn? (What is LinkedIn?)</h3>
+            <p>LinkedIn à¤à¤• professional social media platform à¤¹à¥ˆ, à¤œà¤¹à¤¾à¤ à¤†à¤ª à¤…à¤ªà¤¨à¥‡ field à¤•à¥‡ à¤²à¥‹à¤—à¥‹à¤‚ à¤¸à¥‡ connect à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚, jobs à¤–à¥‹à¤œ à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚, à¤”à¤° à¤…à¤ªà¤¨à¥€ skills à¤¦à¤¿à¤–à¤¾ à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤ Think of it as Facebook for professionals!</p>
 
-            <h3>क्यों use करें? (Why use it?)</h3>
-            <p>As a student, LinkedIn आपको professional network बनाने में मदद करता है, internships मिलती हैं, और आप different careers के बारे में learn कर सकते हैं। यह आपके resume से ज्यादा powerful है!</p>
+            <h3>à¤•à¥à¤¯à¥‹à¤‚ use à¤•à¤°à¥‡à¤‚? (Why use it?)</h3>
+            <p>As a student, LinkedIn à¤†à¤ªà¤•à¥‹ professional network à¤¬à¤¨à¤¾à¤¨à¥‡ à¤®à¥‡à¤‚ à¤®à¤¦à¤¦ à¤•à¤°à¤¤à¤¾ à¤¹à¥ˆ, internships à¤®à¤¿à¤²à¤¤à¥€ à¤¹à¥ˆà¤‚, à¤”à¤° à¤†à¤ª different careers à¤•à¥‡ à¤¬à¤¾à¤°à¥‡ à¤®à¥‡à¤‚ learn à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤ à¤¯à¤¹ à¤†à¤ªà¤•à¥‡ resume à¤¸à¥‡ à¤œà¥à¤¯à¤¾à¤¦à¤¾ powerful à¤¹à¥ˆ!</p>
 
-            <h3>Account कैसे बनाएँ? (How to create account)</h3>
+            <h3>Account à¤•à¥ˆà¤¸à¥‡ à¤¬à¤¨à¤¾à¤à¤? (How to create account)</h3>
             <ol>
-                <li>linkedin.com पर जाएँ और "Join now" click करें</li>
-                <li>अपना college email और strong password use करें</li>
-                <li>Profile complete करें - photo, education, skills add करें</li>
-                <li>Connections send करें - teachers, seniors से start करें</li>
+                <li>linkedin.com à¤ªà¤° à¤œà¤¾à¤à¤ à¤”à¤° "Join now" click à¤•à¤°à¥‡à¤‚</li>
+                <li>à¤…à¤ªà¤¨à¤¾ college email à¤”à¤° strong password use à¤•à¤°à¥‡à¤‚</li>
+                <li>Profile complete à¤•à¤°à¥‡à¤‚ - photo, education, skills add à¤•à¤°à¥‡à¤‚</li>
+                <li>Connections send à¤•à¤°à¥‡à¤‚ - teachers, seniors à¤¸à¥‡ start à¤•à¤°à¥‡à¤‚</li>
             </ol>
 
-            <h3>Daily कैसे use करें? (How to use daily)</h3>
-            <p>Daily 10-15 minutes में:
+            <h3>Daily à¤•à¥ˆà¤¸à¥‡ use à¤•à¤°à¥‡à¤‚? (How to use daily)</h3>
+            <p>Daily 10-15 minutes à¤®à¥‡à¤‚:
             <ul>
-                <li>Posts पढ़ें और like/comment करें</li>
-                <li>1-2 connections बनाएँ</li>
-                <li>अपनी skills या projects update करें</li>
-                <li>Jobs section में internships देखें</li>
+                <li>Posts à¤ªà¤¢à¤¼à¥‡à¤‚ à¤”à¤° like/comment à¤•à¤°à¥‡à¤‚</li>
+                <li>1-2 connections à¤¬à¤¨à¤¾à¤à¤</li>
+                <li>à¤…à¤ªà¤¨à¥€ skills à¤¯à¤¾ projects update à¤•à¤°à¥‡à¤‚</li>
+                <li>Jobs section à¤®à¥‡à¤‚ internships à¤¦à¥‡à¤–à¥‡à¤‚</li>
             </ul></p>
 
             <h3>Common Beginner Mistakes</h3>
             <ul>
-                <li>Profile incomplete छोड़ना</li>
-                <li>Spam messages भेजना</li>
-                <li>Bad profile photo use करना</li>
-                <li>Connections को ignore करना</li>
+                <li>Profile incomplete à¤›à¥‹à¤¡à¤¼à¤¨à¤¾</li>
+                <li>Spam messages à¤­à¥‡à¤œà¤¨à¤¾</li>
+                <li>Bad profile photo use à¤•à¤°à¤¨à¤¾</li>
+                <li>Connections à¤•à¥‹ ignore à¤•à¤°à¤¨à¤¾</li>
             </ul>
 
             <h3>Best Practices for Freshers</h3>
             <ul>
-                <li>Regular updates करें - weekly at least</li>
-                <li>Meaningful connections बनाएँ, not random</li>
-                <li>Learn करने का attitude रखें - ask questions</li>
-                <li>Endorsements और recommendations collect करें</li>
-                <li>Groups join करें related to your field</li>
+                <li>Regular updates à¤•à¤°à¥‡à¤‚ - weekly at least</li>
+                <li>Meaningful connections à¤¬à¤¨à¤¾à¤à¤, not random</li>
+                <li>Learn à¤•à¤°à¤¨à¥‡ à¤•à¤¾ attitude à¤°à¤–à¥‡à¤‚ - ask questions</li>
+                <li>Endorsements à¤”à¤° recommendations collect à¤•à¤°à¥‡à¤‚</li>
+                <li>Groups join à¤•à¤°à¥‡à¤‚ related to your field</li>
             </ul>
 
             <div class="alert alert-info">
-                <strong>Pro Tip:</strong> LinkedIn पर "Student" badge मिलता है। Use it to get free premium features!
+                <strong>Pro Tip:</strong> LinkedIn à¤ªà¤° "Student" badge à¤®à¤¿à¤²à¤¤à¤¾ à¤¹à¥ˆà¥¤ Use it to get free premium features!
             </div>
             '''
         },
         'github': {
             'title': 'GitHub - Code Sharing Platform',
             'content': '''
-            <h3>क्या है GitHub? (What is GitHub?)</h3>
-            <p>GitHub एक platform है जहाँ developers अपना code share करते हैं, collaborate करते हैं, और projects manage करते हैं। यह coding का Facebook है!</p>
+            <h3>à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ GitHub? (What is GitHub?)</h3>
+            <p>GitHub à¤à¤• platform à¤¹à¥ˆ à¤œà¤¹à¤¾à¤ developers à¤…à¤ªà¤¨à¤¾ code share à¤•à¤°à¤¤à¥‡ à¤¹à¥ˆà¤‚, collaborate à¤•à¤°à¤¤à¥‡ à¤¹à¥ˆà¤‚, à¤”à¤° projects manage à¤•à¤°à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤ à¤¯à¤¹ coding à¤•à¤¾ Facebook à¤¹à¥ˆ!</p>
 
-            <h3>क्यों use करें? (Why use it?)</h3>
-            <p>यह आपके coding skills को showcase करने का best way है। Companies आपके GitHub profile देखती हैं। Plus, आप open source projects में contribute करके learn कर सकते हैं और experience gain कर सकते हैं।</p>
+            <h3>à¤•à¥à¤¯à¥‹à¤‚ use à¤•à¤°à¥‡à¤‚? (Why use it?)</h3>
+            <p>à¤¯à¤¹ à¤†à¤ªà¤•à¥‡ coding skills à¤•à¥‹ showcase à¤•à¤°à¤¨à¥‡ à¤•à¤¾ best way à¤¹à¥ˆà¥¤ Companies à¤†à¤ªà¤•à¥‡ GitHub profile à¤¦à¥‡à¤–à¤¤à¥€ à¤¹à¥ˆà¤‚à¥¤ Plus, à¤†à¤ª open source projects à¤®à¥‡à¤‚ contribute à¤•à¤°à¤•à¥‡ learn à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚ à¤”à¤° experience gain à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤</p>
 
-            <h3>Account कैसे बनाएँ? (How to create account)</h3>
+            <h3>Account à¤•à¥ˆà¤¸à¥‡ à¤¬à¤¨à¤¾à¤à¤? (How to create account)</h3>
             <ol>
-                <li>github.com पर जाएँ</li>
-                <li>"Sign up" click करें</li>
-                <li>Unique username choose करें (professional wala)</li>
-                <li>Email verify करें</li>
-                <li>Profile setup करें - bio, photo add करें</li>
+                <li>github.com à¤ªà¤° à¤œà¤¾à¤à¤</li>
+                <li>"Sign up" click à¤•à¤°à¥‡à¤‚</li>
+                <li>Unique username choose à¤•à¤°à¥‡à¤‚ (professional wala)</li>
+                <li>Email verify à¤•à¤°à¥‡à¤‚</li>
+                <li>Profile setup à¤•à¤°à¥‡à¤‚ - bio, photo add à¤•à¤°à¥‡à¤‚</li>
             </ol>
 
-            <h3>Daily कैसे use करें? (How to use daily)</h3>
+            <h3>Daily à¤•à¥ˆà¤¸à¥‡ use à¤•à¤°à¥‡à¤‚? (How to use daily)</h3>
             <p>Start small:
             <ul>
-                <li>अपना first repository बनाएँ</li>
-                <li>कुछ simple code upload करें</li>
-                <li>Other people's repositories explore करें</li>
+                <li>à¤…à¤ªà¤¨à¤¾ first repository à¤¬à¤¨à¤¾à¤à¤</li>
+                <li>à¤•à¥à¤› simple code upload à¤•à¤°à¥‡à¤‚</li>
+                <li>Other people's repositories explore à¤•à¤°à¥‡à¤‚</li>
                 <li>Star interesting projects</li>
-                <li>Issues में help try करें</li>
+                <li>Issues à¤®à¥‡à¤‚ help try à¤•à¤°à¥‡à¤‚</li>
             </ul></p>
 
             <h3>Common Beginner Mistakes</h3>
             <ul>
-                <li>Private repos को accidentally public करना</li>
-                <li>Proper commit messages न लिखना</li>
-                <li>README file न बनाना</li>
-                <li>Code को organize न करना</li>
+                <li>Private repos à¤•à¥‹ accidentally public à¤•à¤°à¤¨à¤¾</li>
+                <li>Proper commit messages à¤¨ à¤²à¤¿à¤–à¤¨à¤¾</li>
+                <li>README file à¤¨ à¤¬à¤¨à¤¾à¤¨à¤¾</li>
+                <li>Code à¤•à¥‹ organize à¤¨ à¤•à¤°à¤¨à¤¾</li>
             </ul>
 
             <h3>Best Practices for Freshers</h3>
             <ul>
-                <li>Regular contributions करें (daily if possible)</li>
-                <li>README.md file जरूर बनाएँ with project description</li>
-                <li>Projects को meaningful names दें</li>
+                <li>Regular contributions à¤•à¤°à¥‡à¤‚ (daily if possible)</li>
+                <li>README.md file à¤œà¤°à¥‚à¤° à¤¬à¤¨à¤¾à¤à¤ with project description</li>
+                <li>Projects à¤•à¥‹ meaningful names à¤¦à¥‡à¤‚</li>
                 <li>Contribute to open source - start with documentation</li>
                 <li>Follow other developers in your field</li>
             </ul>
@@ -1484,93 +2501,93 @@ def learn_platform(platform):
         'leetcode': {
             'title': 'LeetCode - Coding Practice',
             'content': '''
-            <h3>क्या है LeetCode? (What is LeetCode?)</h3>
-            <p>LeetCode एक platform है जहाँ आप coding problems solve कर सकते हैं, जो real interviews में पूछे जाते हैं। यह coding का gym है!</p>
+            <h3>à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ LeetCode? (What is LeetCode?)</h3>
+            <p>LeetCode à¤à¤• platform à¤¹à¥ˆ à¤œà¤¹à¤¾à¤ à¤†à¤ª coding problems solve à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚, à¤œà¥‹ real interviews à¤®à¥‡à¤‚ à¤ªà¥‚à¤›à¥‡ à¤œà¤¾à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤ à¤¯à¤¹ coding à¤•à¤¾ gym à¤¹à¥ˆ!</p>
 
-            <h3>क्यों use करें? (Why use it?)</h3>
-            <p>यह आपके problem-solving skills को improve करता है और coding interviews की preparation में मदद करता है। Companies like Google, Amazon आपके LeetCode performance देखती हैं।</p>
+            <h3>à¤•à¥à¤¯à¥‹à¤‚ use à¤•à¤°à¥‡à¤‚? (Why use it?)</h3>
+            <p>à¤¯à¤¹ à¤†à¤ªà¤•à¥‡ problem-solving skills à¤•à¥‹ improve à¤•à¤°à¤¤à¤¾ à¤¹à¥ˆ à¤”à¤° coding interviews à¤•à¥€ preparation à¤®à¥‡à¤‚ à¤®à¤¦à¤¦ à¤•à¤°à¤¤à¤¾ à¤¹à¥ˆà¥¤ Companies like Google, Amazon à¤†à¤ªà¤•à¥‡ LeetCode performance à¤¦à¥‡à¤–à¤¤à¥€ à¤¹à¥ˆà¤‚à¥¤</p>
 
-            <h3>Account कैसे बनाएँ? (How to create account)</h3>
+            <h3>Account à¤•à¥ˆà¤¸à¥‡ à¤¬à¤¨à¤¾à¤à¤? (How to create account)</h3>
             <ol>
-                <li>leetcode.com पर जाएँ</li>
-                <li>"Sign up" click करें</li>
-                <li>Email और password enter करें</li>
-                <li>Programming language select करें (Python recommend for beginners)</li>
+                <li>leetcode.com à¤ªà¤° à¤œà¤¾à¤à¤</li>
+                <li>"Sign up" click à¤•à¤°à¥‡à¤‚</li>
+                <li>Email à¤”à¤° password enter à¤•à¤°à¥‡à¤‚</li>
+                <li>Programming language select à¤•à¤°à¥‡à¤‚ (Python recommend for beginners)</li>
             </ol>
 
-            <h3>Daily कैसे use करें? (How to use daily)</h3>
+            <h3>Daily à¤•à¥ˆà¤¸à¥‡ use à¤•à¤°à¥‡à¤‚? (How to use daily)</h3>
             <p>Consistency is key:
             <ul>
-                <li>Daily 1 problem solve करें</li>
-                <li>Easy से start करें</li>
-                <li>Solution को analyze करें</li>
-                <li>Discussion section पढ़ें</li>
-                <li>Weekly contests में participate करें</li>
+                <li>Daily 1 problem solve à¤•à¤°à¥‡à¤‚</li>
+                <li>Easy à¤¸à¥‡ start à¤•à¤°à¥‡à¤‚</li>
+                <li>Solution à¤•à¥‹ analyze à¤•à¤°à¥‡à¤‚</li>
+                <li>Discussion section à¤ªà¤¢à¤¼à¥‡à¤‚</li>
+                <li>Weekly contests à¤®à¥‡à¤‚ participate à¤•à¤°à¥‡à¤‚</li>
             </ul></p>
 
             <h3>Common Beginner Mistakes</h3>
             <ul>
-                <li>सभी solutions copy करना</li>
-                <li>Time complexity को ignore करना</li>
-                <li>Only easy problems करना</li>
-                <li>Without understanding submit करना</li>
+                <li>à¤¸à¤­à¥€ solutions copy à¤•à¤°à¤¨à¤¾</li>
+                <li>Time complexity à¤•à¥‹ ignore à¤•à¤°à¤¨à¤¾</li>
+                <li>Only easy problems à¤•à¤°à¤¨à¤¾</li>
+                <li>Without understanding submit à¤•à¤°à¤¨à¤¾</li>
             </ul>
 
             <h3>Best Practices for Freshers</h3>
             <ul>
-                <li>Consistent practice करें - daily 1 hour</li>
-                <li>Different topics cover करें (arrays, strings, trees, etc.)</li>
-                <li>Multiple approaches try करें</li>
-                <li>Streak maintain करें</li>
-                <li>Study plans follow करें</li>
+                <li>Consistent practice à¤•à¤°à¥‡à¤‚ - daily 1 hour</li>
+                <li>Different topics cover à¤•à¤°à¥‡à¤‚ (arrays, strings, trees, etc.)</li>
+                <li>Multiple approaches try à¤•à¤°à¥‡à¤‚</li>
+                <li>Streak maintain à¤•à¤°à¥‡à¤‚</li>
+                <li>Study plans follow à¤•à¤°à¥‡à¤‚</li>
             </ul>
 
             <div class="alert alert-warning">
-                <strong>Remember:</strong> Quality over quantity. समझकर solve करें!
+                <strong>Remember:</strong> Quality over quantity. à¤¸à¤®à¤à¤•à¤° solve à¤•à¤°à¥‡à¤‚!
             </div>
             '''
         },
         'vscode': {
             'title': 'VS Code - Code Editor',
             'content': '''
-            <h3>क्या है VS Code? (What is VS Code?)</h3>
-            <p>VS Code एक free, powerful code editor है जो developers use करते हैं code लिखने, debug करने, और projects manage करने के लिए। यह coding का Swiss Army knife है!</p>
+            <h3>à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ VS Code? (What is VS Code?)</h3>
+            <p>VS Code à¤à¤• free, powerful code editor à¤¹à¥ˆ à¤œà¥‹ developers use à¤•à¤°à¤¤à¥‡ à¤¹à¥ˆà¤‚ code à¤²à¤¿à¤–à¤¨à¥‡, debug à¤•à¤°à¤¨à¥‡, à¤”à¤° projects manage à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤à¥¤ à¤¯à¤¹ coding à¤•à¤¾ Swiss Army knife à¤¹à¥ˆ!</p>
 
-            <h3>क्यों use करें? (Why use it?)</h3>
-            <p>यह easy to learn है, सभी programming languages support करता है, और extensions से super powerful बन जाता है। Professional developers का favorite tool है।</p>
+            <h3>à¤•à¥à¤¯à¥‹à¤‚ use à¤•à¤°à¥‡à¤‚? (Why use it?)</h3>
+            <p>à¤¯à¤¹ easy to learn à¤¹à¥ˆ, à¤¸à¤­à¥€ programming languages support à¤•à¤°à¤¤à¤¾ à¤¹à¥ˆ, à¤”à¤° extensions à¤¸à¥‡ super powerful à¤¬à¤¨ à¤œà¤¾à¤¤à¤¾ à¤¹à¥ˆà¥¤ Professional developers à¤•à¤¾ favorite tool à¤¹à¥ˆà¥¤</p>
 
-            <h3>कैसे install करें? (How to install)</h3>
+            <h3>à¤•à¥ˆà¤¸à¥‡ install à¤•à¤°à¥‡à¤‚? (How to install)</h3>
             <ol>
-                <li>code.visualstudio.com पर जाएँ</li>
-                <li>"Download" click करें (right version for your OS)</li>
-                <li>Install करें (next-next finish)</li>
-                <li>Open करें और "Get Started" tour करें</li>
+                <li>code.visualstudio.com à¤ªà¤° à¤œà¤¾à¤à¤</li>
+                <li>"Download" click à¤•à¤°à¥‡à¤‚ (right version for your OS)</li>
+                <li>Install à¤•à¤°à¥‡à¤‚ (next-next finish)</li>
+                <li>Open à¤•à¤°à¥‡à¤‚ à¤”à¤° "Get Started" tour à¤•à¤°à¥‡à¤‚</li>
             </ol>
 
-            <h3>Daily कैसे use करें? (How to use daily)</h3>
+            <h3>Daily à¤•à¥ˆà¤¸à¥‡ use à¤•à¤°à¥‡à¤‚? (How to use daily)</h3>
             <p>Make it your daily companion:
             <ul>
-                <li>Coding practice करें</li>
-                <li>Extensions explore करें</li>
-                <li>Keyboard shortcuts learn करें</li>
-                <li>Themes change करें for fun</li>
+                <li>Coding practice à¤•à¤°à¥‡à¤‚</li>
+                <li>Extensions explore à¤•à¤°à¥‡à¤‚</li>
+                <li>Keyboard shortcuts learn à¤•à¤°à¥‡à¤‚</li>
+                <li>Themes change à¤•à¤°à¥‡à¤‚ for fun</li>
             </ul></p>
 
             <h3>Common Beginner Mistakes</h3>
             <ul>
-                <li>Too many extensions install करना</li>
-                <li>Settings को customize न करना</li>
-                <li>Keyboard shortcuts न learn करना</li>
-                <li>Files को unsaved छोड़ना</li>
+                <li>Too many extensions install à¤•à¤°à¤¨à¤¾</li>
+                <li>Settings à¤•à¥‹ customize à¤¨ à¤•à¤°à¤¨à¤¾</li>
+                <li>Keyboard shortcuts à¤¨ learn à¤•à¤°à¤¨à¤¾</li>
+                <li>Files à¤•à¥‹ unsaved à¤›à¥‹à¤¡à¤¼à¤¨à¤¾</li>
             </ul>
 
             <h3>Best Practices for Freshers</h3>
             <ul>
-                <li>Essential extensions install करें (Python, Git, etc.)</li>
-                <li>Settings customize करें (font size, theme)</li>
-                <li>Keyboard shortcuts master करें</li>
-                <li>Projects को organized folders में रखें</li>
-                <li>Version control (Git) integrate करें</li>
+                <li>Essential extensions install à¤•à¤°à¥‡à¤‚ (Python, Git, etc.)</li>
+                <li>Settings customize à¤•à¤°à¥‡à¤‚ (font size, theme)</li>
+                <li>Keyboard shortcuts master à¤•à¤°à¥‡à¤‚</li>
+                <li>Projects à¤•à¥‹ organized folders à¤®à¥‡à¤‚ à¤°à¤–à¥‡à¤‚</li>
+                <li>Version control (Git) integrate à¤•à¤°à¥‡à¤‚</li>
             </ul>
 
             <div class="alert alert-info">
@@ -1581,45 +2598,45 @@ def learn_platform(platform):
         'git_vscode': {
             'title': 'GitHub + VS Code Workflow',
             'content': '''
-            <h3>क्या है यह workflow? (What is this workflow?)</h3>
-            <p>GitHub और VS Code को together use करके आप code लिख सकते हैं, changes track कर सकते हैं, और online share कर सकते हैं। यह modern development का standard way है!</p>
+            <h3>à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ à¤¯à¤¹ workflow? (What is this workflow?)</h3>
+            <p>GitHub à¤”à¤° VS Code à¤•à¥‹ together use à¤•à¤°à¤•à¥‡ à¤†à¤ª code à¤²à¤¿à¤– à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚, changes track à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚, à¤”à¤° online share à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤ à¤¯à¤¹ modern development à¤•à¤¾ standard way à¤¹à¥ˆ!</p>
 
-            <h3>क्यों use करें? (Why use it?)</h3>
-            <p>यह version control और collaboration को easy बनाता है। आप अपने code को safely store कर सकते हैं और team में work कर सकते हैं।</p>
+            <h3>à¤•à¥à¤¯à¥‹à¤‚ use à¤•à¤°à¥‡à¤‚? (Why use it?)</h3>
+            <p>à¤¯à¤¹ version control à¤”à¤° collaboration à¤•à¥‹ easy à¤¬à¤¨à¤¾à¤¤à¤¾ à¤¹à¥ˆà¥¤ à¤†à¤ª à¤…à¤ªà¤¨à¥‡ code à¤•à¥‹ safely store à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚ à¤”à¤° team à¤®à¥‡à¤‚ work à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤</p>
 
-            <h3>कैसे setup करें? (How to setup)</h3>
+            <h3>à¤•à¥ˆà¤¸à¥‡ setup à¤•à¤°à¥‡à¤‚? (How to setup)</h3>
             <ol>
-                <li>VS Code में Git extension install करें (usually pre-installed)</li>
-                <li>GitHub से repository clone करें (VS Code में Ctrl+Shift+P → Git: Clone)</li>
-                <li>Code लिखें और save करें</li>
-                <li>Changes commit करें (Source Control panel में)</li>
-                <li>Push करें to GitHub</li>
+                <li>VS Code à¤®à¥‡à¤‚ Git extension install à¤•à¤°à¥‡à¤‚ (usually pre-installed)</li>
+                <li>GitHub à¤¸à¥‡ repository clone à¤•à¤°à¥‡à¤‚ (VS Code à¤®à¥‡à¤‚ Ctrl+Shift+P â†’ Git: Clone)</li>
+                <li>Code à¤²à¤¿à¤–à¥‡à¤‚ à¤”à¤° save à¤•à¤°à¥‡à¤‚</li>
+                <li>Changes commit à¤•à¤°à¥‡à¤‚ (Source Control panel à¤®à¥‡à¤‚)</li>
+                <li>Push à¤•à¤°à¥‡à¤‚ to GitHub</li>
             </ol>
 
-            <h3>Daily कैसे use करें? (How to use daily)</h3>
+            <h3>Daily à¤•à¥ˆà¤¸à¥‡ use à¤•à¤°à¥‡à¤‚? (How to use daily)</h3>
             <p>Simple routine:
             <ul>
                 <li>Morning: Pull latest changes</li>
-                <li>Code लिखें और test करें</li>
-                <li>Evening: Commit और push करें</li>
-                <li>Issues check करें और help करें</li>
+                <li>Code à¤²à¤¿à¤–à¥‡à¤‚ à¤”à¤° test à¤•à¤°à¥‡à¤‚</li>
+                <li>Evening: Commit à¤”à¤° push à¤•à¤°à¥‡à¤‚</li>
+                <li>Issues check à¤•à¤°à¥‡à¤‚ à¤”à¤° help à¤•à¤°à¥‡à¤‚</li>
             </ul></p>
 
             <h3>Common Beginner Mistakes</h3>
             <ul>
-                <li>Merge conflicts को fear करना</li>
-                <li>Large files commit करना</li>
-                <li>Commit messages में "fixed" लिखना</li>
-                <li>Push करने से पहले test न करना</li>
+                <li>Merge conflicts à¤•à¥‹ fear à¤•à¤°à¤¨à¤¾</li>
+                <li>Large files commit à¤•à¤°à¤¨à¤¾</li>
+                <li>Commit messages à¤®à¥‡à¤‚ "fixed" à¤²à¤¿à¤–à¤¨à¤¾</li>
+                <li>Push à¤•à¤°à¤¨à¥‡ à¤¸à¥‡ à¤ªà¤¹à¤²à¥‡ test à¤¨ à¤•à¤°à¤¨à¤¾</li>
             </ul>
 
             <h3>Best Practices for Freshers</h3>
             <ul>
-                <li>Small, frequent commits करें</li>
-                <li>Descriptive commit messages लिखें</li>
-                <li>Before push, code review करें</li>
-                <li>Branching learn करें for features</li>
-                <li>README और .gitignore जरूर बनाएँ</li>
+                <li>Small, frequent commits à¤•à¤°à¥‡à¤‚</li>
+                <li>Descriptive commit messages à¤²à¤¿à¤–à¥‡à¤‚</li>
+                <li>Before push, code review à¤•à¤°à¥‡à¤‚</li>
+                <li>Branching learn à¤•à¤°à¥‡à¤‚ for features</li>
+                <li>README à¤”à¤° .gitignore à¤œà¤°à¥‚à¤° à¤¬à¤¨à¤¾à¤à¤</li>
             </ul>
 
             <div class="alert alert-success">
@@ -1630,45 +2647,45 @@ def learn_platform(platform):
         'email_google': {
             'title': 'Email & Google Account',
             'content': '''
-            <h3>क्या है Professional Email? (What is Professional Email?)</h3>
-            <p>Professional communication के लिए separate email account। यह आपके personal और work emails को separate रखता है।</p>
+            <h3>à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ Professional Email? (What is Professional Email?)</h3>
+            <p>Professional communication à¤•à¥‡ à¤²à¤¿à¤ separate email accountà¥¤ à¤¯à¤¹ à¤†à¤ªà¤•à¥‡ personal à¤”à¤° work emails à¤•à¥‹ separate à¤°à¤–à¤¤à¤¾ à¤¹à¥ˆà¥¤</p>
 
-            <h3>क्यों use करें? (Why use it?)</h3>
-            <p>Companies और professors आपके email से आपका impression बनाते हैं। Professional email से आप serious और organized लगते हैं।</p>
+            <h3>à¤•à¥à¤¯à¥‹à¤‚ use à¤•à¤°à¥‡à¤‚? (Why use it?)</h3>
+            <p>Companies à¤”à¤° professors à¤†à¤ªà¤•à¥‡ email à¤¸à¥‡ à¤†à¤ªà¤•à¤¾ impression à¤¬à¤¨à¤¾à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤ Professional email à¤¸à¥‡ à¤†à¤ª serious à¤”à¤° organized à¤²à¤—à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤</p>
 
-            <h3>कैसे setup करें? (How to setup)</h3>
+            <h3>à¤•à¥ˆà¤¸à¥‡ setup à¤•à¤°à¥‡à¤‚? (How to setup)</h3>
             <ol>
-                <li>gmail.com पर जाएँ</li>
-                <li>"Create account" click करें</li>
-                <li>Professional name use करें (first.last or something)</li>
-                <li>Recovery email और phone add करें</li>
-                <li>Signature setup करें with your name and contact</li>
+                <li>gmail.com à¤ªà¤° à¤œà¤¾à¤à¤</li>
+                <li>"Create account" click à¤•à¤°à¥‡à¤‚</li>
+                <li>Professional name use à¤•à¤°à¥‡à¤‚ (first.last or something)</li>
+                <li>Recovery email à¤”à¤° phone add à¤•à¤°à¥‡à¤‚</li>
+                <li>Signature setup à¤•à¤°à¥‡à¤‚ with your name and contact</li>
             </ol>
 
-            <h3>Daily कैसे use करें? (How to use daily)</h3>
+            <h3>Daily à¤•à¥ˆà¤¸à¥‡ use à¤•à¤°à¥‡à¤‚? (How to use daily)</h3>
             <p>Professional habits:
             <ul>
-                <li>Morning में emails check करें</li>
-                <li>Within 24 hours reply करें</li>
-                <li>Spam folder clean करें</li>
-                <li>Important emails को label करें</li>
+                <li>Morning à¤®à¥‡à¤‚ emails check à¤•à¤°à¥‡à¤‚</li>
+                <li>Within 24 hours reply à¤•à¤°à¥‡à¤‚</li>
+                <li>Spam folder clean à¤•à¤°à¥‡à¤‚</li>
+                <li>Important emails à¤•à¥‹ label à¤•à¤°à¥‡à¤‚</li>
             </ul></p>
 
             <h3>Common Beginner Mistakes</h3>
             <ul>
-                <li>Funny email addresses use करना</li>
-                <li>Emails को unread छोड़ना</li>
-                <li>Personal और professional mix करना</li>
-                <li>Bad subject lines लिखना</li>
+                <li>Funny email addresses use à¤•à¤°à¤¨à¤¾</li>
+                <li>Emails à¤•à¥‹ unread à¤›à¥‹à¤¡à¤¼à¤¨à¤¾</li>
+                <li>Personal à¤”à¤° professional mix à¤•à¤°à¤¨à¤¾</li>
+                <li>Bad subject lines à¤²à¤¿à¤–à¤¨à¤¾</li>
             </ul>
 
             <h3>Best Practices for Freshers</h3>
             <ul>
-                <li>Clear, professional subject lines use करें</li>
-                <li>Proper greeting और closing use करें</li>
-                <li>Grammar check करें before sending</li>
-                <li>Attachments को properly name करें</li>
-                <li>Follow-up emails भेजें if needed</li>
+                <li>Clear, professional subject lines use à¤•à¤°à¥‡à¤‚</li>
+                <li>Proper greeting à¤”à¤° closing use à¤•à¤°à¥‡à¤‚</li>
+                <li>Grammar check à¤•à¤°à¥‡à¤‚ before sending</li>
+                <li>Attachments à¤•à¥‹ properly name à¤•à¤°à¥‡à¤‚</li>
+                <li>Follow-up emails à¤­à¥‡à¤œà¥‡à¤‚ if needed</li>
             </ul>
 
             <div class="alert alert-info">
@@ -1679,43 +2696,43 @@ def learn_platform(platform):
         'resume_portfolio': {
             'title': 'Resume & Portfolio',
             'content': '''
-            <h3>क्या है Resume और Portfolio? (What are Resume and Portfolio?)</h3>
-            <p>Resume आपके skills और experience का 1-page summary है। Portfolio आपके work का detailed showcase है - projects, achievements, etc.</p>
+            <h3>à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ Resume à¤”à¤° Portfolio? (What are Resume and Portfolio?)</h3>
+            <p>Resume à¤†à¤ªà¤•à¥‡ skills à¤”à¤° experience à¤•à¤¾ 1-page summary à¤¹à¥ˆà¥¤ Portfolio à¤†à¤ªà¤•à¥‡ work à¤•à¤¾ detailed showcase à¤¹à¥ˆ - projects, achievements, etc.</p>
 
-            <h3>क्यों बनाएँ? (Why create them?)</h3>
-            <p>Jobs, internships, और admissions के लिए essential हैं। Resume से companies आपका overview मिलता है, portfolio से proof!</p>
+            <h3>à¤•à¥à¤¯à¥‹à¤‚ à¤¬à¤¨à¤¾à¤à¤? (Why create them?)</h3>
+            <p>Jobs, internships, à¤”à¤° admissions à¤•à¥‡ à¤²à¤¿à¤ essential à¤¹à¥ˆà¤‚à¥¤ Resume à¤¸à¥‡ companies à¤†à¤ªà¤•à¤¾ overview à¤®à¤¿à¤²à¤¤à¤¾ à¤¹à¥ˆ, portfolio à¤¸à¥‡ proof!</p>
 
-            <h3>कैसे बनाएँ? (How to create)</h3>
+            <h3>à¤•à¥ˆà¤¸à¥‡ à¤¬à¤¨à¤¾à¤à¤? (How to create)</h3>
             <h4>Resume:</h4>
             <ol>
-                <li>Simple format choose करें (Google Docs या Canva)</li>
-                <li>Contact info, education, skills add करें</li>
-                <li>Projects और achievements highlight करें</li>
-                <li>PDF format में save करें</li>
+                <li>Simple format choose à¤•à¤°à¥‡à¤‚ (Google Docs à¤¯à¤¾ Canva)</li>
+                <li>Contact info, education, skills add à¤•à¤°à¥‡à¤‚</li>
+                <li>Projects à¤”à¤° achievements highlight à¤•à¤°à¥‡à¤‚</li>
+                <li>PDF format à¤®à¥‡à¤‚ save à¤•à¤°à¥‡à¤‚</li>
             </ol>
 
             <h4>Portfolio:</h4>
             <ol>
-                <li>GitHub Pages use करें (free)</li>
-                <li>अपने projects showcase करें</li>
-                <li>About और contact page add करें</li>
-                <li>Live link share करें</li>
+                <li>GitHub Pages use à¤•à¤°à¥‡à¤‚ (free)</li>
+                <li>à¤…à¤ªà¤¨à¥‡ projects showcase à¤•à¤°à¥‡à¤‚</li>
+                <li>About à¤”à¤° contact page add à¤•à¤°à¥‡à¤‚</li>
+                <li>Live link share à¤•à¤°à¥‡à¤‚</li>
             </ol>
 
             <h3>Common Beginner Mistakes</h3>
             <ul>
-                <li>Resume को 2+ pages बनाना</li>
-                <li>Too much information add करना</li>
-                <li>Portfolio को incomplete छोड़ना</li>
-                <li>Bad design choose करना</li>
+                <li>Resume à¤•à¥‹ 2+ pages à¤¬à¤¨à¤¾à¤¨à¤¾</li>
+                <li>Too much information add à¤•à¤°à¤¨à¤¾</li>
+                <li>Portfolio à¤•à¥‹ incomplete à¤›à¥‹à¤¡à¤¼à¤¨à¤¾</li>
+                <li>Bad design choose à¤•à¤°à¤¨à¤¾</li>
             </ul>
 
             <h3>Best Practices for Freshers</h3>
             <ul>
                 <li>Keep resume to 1 page</li>
                 <li>Use action words (Developed, Created, etc.)</li>
-                <li>Quantify achievements (numbers use करें)</li>
-                <li>Regularly update करें</li>
+                <li>Quantify achievements (numbers use à¤•à¤°à¥‡à¤‚)</li>
+                <li>Regularly update à¤•à¤°à¥‡à¤‚</li>
                 <li>Tailor for each application</li>
             </ul>
 
@@ -1727,61 +2744,168 @@ def learn_platform(platform):
         'coursera': {
             'title': 'Coursera - Online Learning',
             'content': '''
-            <h3>क्या है Coursera? (What is Coursera?)</h3>
-            <p>Coursera एक online learning platform है जहाँ top universities के courses मिलते हैं। यह college का extension है!</p>
+            <h3>à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ Coursera? (What is Coursera?)</h3>
+            <p>Coursera à¤à¤• online learning platform à¤¹à¥ˆ à¤œà¤¹à¤¾à¤ top universities à¤•à¥‡ courses à¤®à¤¿à¤²à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤ à¤¯à¤¹ college à¤•à¤¾ extension à¤¹à¥ˆ!</p>
 
-            <h3>क्यों use करें? (Why use it?)</h3>
-            <p>यह आपको world-class education देता है। Certificates मिलते हैं जो resume में add हो सकते हैं।</p>
+            <h3>à¤•à¥à¤¯à¥‹à¤‚ use à¤•à¤°à¥‡à¤‚? (Why use it?)</h3>
+            <p>à¤¯à¤¹ à¤†à¤ªà¤•à¥‹ world-class education à¤¦à¥‡à¤¤à¤¾ à¤¹à¥ˆà¥¤ Certificates à¤®à¤¿à¤²à¤¤à¥‡ à¤¹à¥ˆà¤‚ à¤œà¥‹ resume à¤®à¥‡à¤‚ add à¤¹à¥‹ à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤</p>
 
-            <h3>कैसे start करें? (How to start)</h3>
+            <h3>à¤•à¥ˆà¤¸à¥‡ start à¤•à¤°à¥‡à¤‚? (How to start)</h3>
             <ol>
-                <li>coursera.org पर जाएँ</li>
-                <li>Free account बनाएँ</li>
-                <li>Courses browse करें</li>
-                <li>Audit mode में free access लें</li>
+                <li>coursera.org à¤ªà¤° à¤œà¤¾à¤à¤</li>
+                <li>Free account à¤¬à¤¨à¤¾à¤à¤</li>
+                <li>Courses browse à¤•à¤°à¥‡à¤‚</li>
+                <li>Audit mode à¤®à¥‡à¤‚ free access à¤²à¥‡à¤‚</li>
             </ol>
 
             <h3>Best Practices</h3>
             <ul>
-                <li>Weekly schedule बनाएँ</li>
-                <li>Assignments complete करें</li>
-                <li>Discussion forums में participate करें</li>
+                <li>Weekly schedule à¤¬à¤¨à¤¾à¤à¤</li>
+                <li>Assignments complete à¤•à¤°à¥‡à¤‚</li>
+                <li>Discussion forums à¤®à¥‡à¤‚ participate à¤•à¤°à¥‡à¤‚</li>
             </ul>
             '''
         },
         'stackoverflow': {
             'title': 'Stack Overflow - Programming Q&A',
             'content': '''
-            <h3>क्या है Stack Overflow? (What is Stack Overflow?)</h3>
-            <p>Programming का largest Q&A community। जब भी stuck हों, यहाँ answer मिलेगा!</p>
+            <h3>à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ Stack Overflow? (What is Stack Overflow?)</h3>
+            <p>Programming à¤•à¤¾ largest Q&A communityà¥¤ à¤œà¤¬ à¤­à¥€ stuck à¤¹à¥‹à¤‚, à¤¯à¤¹à¤¾à¤ answer à¤®à¤¿à¤²à¥‡à¤—à¤¾!</p>
 
-            <h3>क्यों use करें? (Why use it?)</h3>
-            <p>Learn करने के लिए best place। Questions पूछें और answers दें।</p>
+            <h3>à¤•à¥à¤¯à¥‹à¤‚ use à¤•à¤°à¥‡à¤‚? (Why use it?)</h3>
+            <p>Learn à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ best placeà¥¤ Questions à¤ªà¥‚à¤›à¥‡à¤‚ à¤”à¤° answers à¤¦à¥‡à¤‚à¥¤</p>
 
-            <h3>कैसे use करें? (How to use)</h3>
+            <h3>à¤•à¥ˆà¤¸à¥‡ use à¤•à¤°à¥‡à¤‚? (How to use)</h3>
             <ol>
-                <li>stackoverflow.com पर जाएँ</li>
-                <li>Account बनाएँ</li>
-                <li>Questions search करें</li>
-                <li>Helpful answers upvote करें</li>
+                <li>stackoverflow.com à¤ªà¤° à¤œà¤¾à¤à¤</li>
+                <li>Account à¤¬à¤¨à¤¾à¤à¤</li>
+                <li>Questions search à¤•à¤°à¥‡à¤‚</li>
+                <li>Helpful answers upvote à¤•à¤°à¥‡à¤‚</li>
             </ol>
 
             <h3>Best Practices</h3>
             <ul>
-                <li>Proper questions पूछें</li>
-                <li>Answers को research करें</li>
-                <li>Helpful बनें</li>
+                <li>Proper questions à¤ªà¥‚à¤›à¥‡à¤‚</li>
+                <li>Answers à¤•à¥‹ research à¤•à¤°à¥‡à¤‚</li>
+                <li>Helpful à¤¬à¤¨à¥‡à¤‚</li>
             </ul>
+            '''
+        },
+        'apply_guide': {
+            'title': 'Internship Apply Guide - Trusted Companies & Official Links',
+            'content': '''
+            <h3>About this Apply Guide</h3>
+            <p>This page provides a curated and professional roadmap for internship applications across major industries and Maharashtra regions. It is designed to help students identify reputable companies, use verified career pages, and make more informed application decisions.</p>
+
+            <h3>How to use this guide</h3>
+            <ul>
+                <li>Choose the industry that best fits your skills and interests.</li>
+                <li>Visit the official career page for each company before applying.</li>
+                <li>Use platforms such as Internshala, LinkedIn, Naukri.com and AngelList carefully for verified listings.</li>
+                <li>Apply early, prepare a polished resume, and write a concise cover note.</li>
+            </ul>
+
+            <h3>Top companies by field</h3>
+            <div class="company-section">
+                <p><strong>Technology & IT:</strong> Google, Microsoft, Amazon, Adobe, IBM</p>
+                <p><strong>Core Engineering:</strong> Larsen & Toubro (L&T), Tata Motors, Mahindra & Mahindra, Siemens, Bosch</p>
+                <p><strong>Finance & Consulting:</strong> Deloitte, EY, PwC, KPMG, Goldman Sachs</p>
+                <p><strong>Pharma & Healthcare:</strong> Sun Pharma, Dr. Reddy's Laboratories, Cipla, Apollo Hospitals</p>
+                <p><strong>Marketing & Business:</strong> Unilever, Procter & Gamble (P&G), Zomato, Swiggy</p>
+            </div>
+
+            <h3>Trusted internship platforms</h3>
+            <div class="company-section">
+                <ul>
+                    <li><strong>Internshala</strong> - Student-focused internship listings</li>
+                    <li><strong>LinkedIn</strong> - Professional networking and job opportunities</li>
+                    <li><strong>Naukri.com</strong> - Comprehensive job and internship portal</li>
+                    <li><strong>AngelList (Wellfound)</strong> - Startup and tech company listings</li>
+                </ul>
+            </div>
+
+            <h3>Strong Maharashtra internship hubs</h3>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="company-section">
+                        <h4>Pune</h4>
+                        <ul>
+                            <li>Persistent Systems</li>
+                            <li>KPIT Technologies</li>
+                            <li>Zensar Technologies</li>
+                            <li>Cybage</li>
+                            <li>Veritas Technologies</li>
+                            <li>PubMatic</li>
+                            <li>MindTickle</li>
+                            <li>Icertis</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="company-section">
+                        <h4>Mumbai</h4>
+                        <ul>
+                            <li>Morgan Stanley</li>
+                            <li>JPMorgan Chase</li>
+                            <li>Nomura</li>
+                            <li>CRISIL</li>
+                            <li>Tata Capital</li>
+                            <li>Aditya Birla Group</li>
+                            <li>Nykaa</li>
+                            <li>BookMyShow</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="company-section">
+                        <h4>Nashik</h4>
+                        <ul>
+                            <li>Mahindra Sanyo Special Steel</li>
+                            <li>Kirloskar Oil Engines</li>
+                            <li>CEAT</li>
+                            <li>Hindustan Aeronautics Limited (HAL)</li>
+                            <li>Crompton Greaves</li>
+                            <li>Bosch India</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <h3>Industry strengths in Maharashtra</h3>
+            <div class="company-section">
+                <p><strong>Manufacturing & Industrial:</strong> Bajaj Auto, Thermax, Forbes Marshall, Finolex Industries</p>
+                <p><strong>Analytics, Data & Product:</strong> Fractal Analytics, Mu Sigma, Quantiphi, Tredence</p>
+                <p><strong>Fast-growing startups:</strong> Razorpay, CRED, Meesho, Upstox</p>
+            </div>
+
+            <h3>Why this list matters</h3>
+            <ul>
+                <li>Combines local and national companies with high internship potential.</li>
+                <li>Focuses on safe application behavior and verified opportunities.</li>
+                <li>Helps students select employers that match their skills and goals.</li>
+                <li>Supports Maharashtra students with regional company recommendations.</li>
+            </ul>
+
+            <h3>Application best practices</h3>
+            <div class="company-section">
+                <ul>
+                    <li><strong>Official channels only:</strong> Always use official career pages or trusted employer websites.</li>
+                    <li><strong>Avoid suspicious links:</strong> Do not use unknown, suspicious, or unverified links.</li>
+                    <li><strong>Tailored applications:</strong> Customize your resume and cover note for each internship.</li>
+                    <li><strong>Track applications:</strong> Maintain a tracking sheet for applications, interviews and follow-ups.</li>
+                    <li><strong>Balance opportunities:</strong> Apply to both large firms and strong startups.</li>
+                </ul>
+            </div>
             '''
         },
         'youtube': {
             'title': 'YouTube Learning Channels',
             'content': '''
-            <h3>क्या है YouTube Learning? (What is YouTube Learning?)</h3>
-            <p>YouTube पर free educational content का ocean है। Videos से learn करना easy है!</p>
+            <h3>à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ YouTube Learning? (What is YouTube Learning?)</h3>
+            <p>YouTube à¤ªà¤° free educational content à¤•à¤¾ ocean à¤¹à¥ˆà¥¤ Videos à¤¸à¥‡ learn à¤•à¤°à¤¨à¤¾ easy à¤¹à¥ˆ!</p>
 
-            <h3>क्यों use करें? (Why use it?)</h3>
-            <p>Visual learning best है। Free resources मिलते हैं।</p>
+            <h3>à¤•à¥à¤¯à¥‹à¤‚ use à¤•à¤°à¥‡à¤‚? (Why use it?)</h3>
+            <p>Visual learning best à¤¹à¥ˆà¥¤ Free resources à¤®à¤¿à¤²à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤</p>
 
             <h3>Recommended Channels</h3>
             <ul>
@@ -1793,70 +2917,70 @@ def learn_platform(platform):
 
             <h3>Best Practices</h3>
             <ul>
-                <li>Playlist follow करें</li>
-                <li>Notes बनाते जाएँ</li>
-                <li>Practice करते जाएँ</li>
+                <li>Playlist follow à¤•à¤°à¥‡à¤‚</li>
+                <li>Notes à¤¬à¤¨à¤¾à¤¤à¥‡ à¤œà¤¾à¤à¤</li>
+                <li>Practice à¤•à¤°à¤¤à¥‡ à¤œà¤¾à¤à¤</li>
             </ul>
             '''
         },
         'bca': {
             'title': 'BCA Students - IT Career Guidance',
             'content': '''
-            <h3>BCA क्या है? (What is BCA?)</h3>
-            <p>BCA (Bachelor of Computer Applications) computer science का graduation course है। यह IT field में strong foundation देता है।</p>
+            <h3>BCA à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ? (What is BCA?)</h3>
+            <p>BCA (Bachelor of Computer Applications) computer science à¤•à¤¾ graduation course à¤¹à¥ˆà¥¤ à¤¯à¤¹ IT field à¤®à¥‡à¤‚ strong foundation à¤¦à¥‡à¤¤à¤¾ à¤¹à¥ˆà¥¤</p>
 
-            <h3>कैरियर के लिए जरूरी Platforms (Essential Platforms for Career)</h3>
+            <h3>à¤•à¥ˆà¤°à¤¿à¤¯à¤° à¤•à¥‡ à¤²à¤¿à¤ à¤œà¤°à¥‚à¤°à¥€ Platforms (Essential Platforms for Career)</h3>
 
             <h4>1. LinkedIn</h4>
-            <p>IT jobs के लिए must। Profile बनाएँ और IT companies follow करें।</p>
+            <p>IT jobs à¤•à¥‡ à¤²à¤¿à¤ mustà¥¤ Profile à¤¬à¤¨à¤¾à¤à¤ à¤”à¤° IT companies follow à¤•à¤°à¥‡à¤‚à¥¤</p>
 
             <h4>2. GitHub</h4>
-            <p>Code showcase करने के लिए। Mini projects upload करें।</p>
+            <p>Code showcase à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤à¥¤ Mini projects upload à¤•à¤°à¥‡à¤‚à¥¤</p>
 
             <h4>3. LeetCode / HackerRank</h4>
-            <p>Coding skills improve करने के लिए। Daily practice करें।</p>
+            <p>Coding skills improve à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤à¥¤ Daily practice à¤•à¤°à¥‡à¤‚à¥¤</p>
 
             <h4>4. Coursera / Udemy</h4>
-            <p>IT certifications के लिए। Python, Java, Web Development courses लें।</p>
+            <p>IT certifications à¤•à¥‡ à¤²à¤¿à¤à¥¤ Python, Java, Web Development courses à¤²à¥‡à¤‚à¥¤</p>
 
             <h4>5. Stack Overflow</h4>
-            <p>Programming doubts solve करने के लिए।</p>
+            <p>Programming doubts solve à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤à¥¤</p>
 
-            <h3>Daily Routine बनाएँ (Create Daily Routine)</h3>
+            <h3>Daily Routine à¤¬à¤¨à¤¾à¤à¤ (Create Daily Routine)</h3>
             <ul>
                 <li>1 hour coding practice</li>
-                <li>LinkedIn पर 10 posts पढ़ें</li>
-                <li>1 new technology learn करें</li>
-                <li>GitHub पर code upload करें</li>
+                <li>LinkedIn à¤ªà¤° 10 posts à¤ªà¤¢à¤¼à¥‡à¤‚</li>
+                <li>1 new technology learn à¤•à¤°à¥‡à¤‚</li>
+                <li>GitHub à¤ªà¤° code upload à¤•à¤°à¥‡à¤‚</li>
             </ul>
 
             <h3>Common Mistakes BCA Students Do</h3>
             <ul>
-                <li>Only theory पढ़ना, practical कम करना</li>
-                <li>Resume में projects न डालना</li>
-                <li>Soft skills ignore करना</li>
-                <li>Internships न करना</li>
+                <li>Only theory à¤ªà¤¢à¤¼à¤¨à¤¾, practical à¤•à¤® à¤•à¤°à¤¨à¤¾</li>
+                <li>Resume à¤®à¥‡à¤‚ projects à¤¨ à¤¡à¤¾à¤²à¤¨à¤¾</li>
+                <li>Soft skills ignore à¤•à¤°à¤¨à¤¾</li>
+                <li>Internships à¤¨ à¤•à¤°à¤¨à¤¾</li>
             </ul>
 
             <h3>Best Career Tips</h3>
             <ul>
-                <li>6th semester में internship जरूर करें</li>
-                <li>Multiple programming languages learn करें</li>
-                <li>Real projects बनाएँ</li>
-                <li>Networking करें - tech events attend करें</li>
-                <li>English communication improve करें</li>
+                <li>6th semester à¤®à¥‡à¤‚ internship à¤œà¤°à¥‚à¤° à¤•à¤°à¥‡à¤‚</li>
+                <li>Multiple programming languages learn à¤•à¤°à¥‡à¤‚</li>
+                <li>Real projects à¤¬à¤¨à¤¾à¤à¤</li>
+                <li>Networking à¤•à¤°à¥‡à¤‚ - tech events attend à¤•à¤°à¥‡à¤‚</li>
+                <li>English communication improve à¤•à¤°à¥‡à¤‚</li>
             </ul>
 
             <div class="alert alert-success">
-                <strong>Pro Tip:</strong> BCA के बाद MCA या IT jobs - दोनों options open हैं!
+                <strong>Pro Tip:</strong> BCA à¤•à¥‡ à¤¬à¤¾à¤¦ MCA à¤¯à¤¾ IT jobs - à¤¦à¥‹à¤¨à¥‹à¤‚ options open à¤¹à¥ˆà¤‚!
             </div>
             '''
         },
         'bsc': {
             'title': 'BSc Students - Science Career Guidance',
             'content': '''
-            <h3>BSc क्या है? (What is BSc?)</h3>
-            <p>BSc (Bachelor of Science) science subjects में specialization देता है - Physics, Chemistry, Mathematics, Biology, etc.</p>
+            <h3>BSc à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ? (What is BSc?)</h3>
+            <p>BSc (Bachelor of Science) science subjects à¤®à¥‡à¤‚ specialization à¤¦à¥‡à¤¤à¤¾ à¤¹à¥ˆ - Physics, Chemistry, Mathematics, Biology, etc.</p>
 
             <h3>Domain-wise Career Platforms</h3>
 
@@ -1909,28 +3033,28 @@ def learn_platform(platform):
 
             <h3>Best Practices</h3>
             <ul>
-                <li>Summer internships करें</li>
-                <li>Scientific journals पढ़ें</li>
-                <li>Projects और research work करें</li>
-                <li>English और communication skills develop करें</li>
-                <li>Online certifications लें</li>
+                <li>Summer internships à¤•à¤°à¥‡à¤‚</li>
+                <li>Scientific journals à¤ªà¤¢à¤¼à¥‡à¤‚</li>
+                <li>Projects à¤”à¤° research work à¤•à¤°à¥‡à¤‚</li>
+                <li>English à¤”à¤° communication skills develop à¤•à¤°à¥‡à¤‚</li>
+                <li>Online certifications à¤²à¥‡à¤‚</li>
             </ul>
 
             <div class="alert alert-info">
-                <strong>Remember:</strong> BSc flexible degree है - many career paths open!
+                <strong>Remember:</strong> BSc flexible degree à¤¹à¥ˆ - many career paths open!
             </div>
             '''
         },
         'pharmacy': {
             'title': 'Pharmacy Students - Pharmaceutical Career Guidance',
             'content': '''
-            <h3>Pharmacy Course क्या है? (What is Pharmacy?)</h3>
-            <p>Pharmacy medicines, drugs, और healthcare से related field है। B.Pharm या D.Pharm से career options बहुत हैं।</p>
+            <h3>Pharmacy Course à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ? (What is Pharmacy?)</h3>
+            <p>Pharmacy medicines, drugs, à¤”à¤° healthcare à¤¸à¥‡ related field à¤¹à¥ˆà¥¤ B.Pharm à¤¯à¤¾ D.Pharm à¤¸à¥‡ career options à¤¬à¤¹à¥à¤¤ à¤¹à¥ˆà¤‚à¥¤</p>
 
             <h3>Essential Platforms for Pharmacy Students</h3>
 
             <h4>1. LinkedIn</h4>
-            <p>Pharma companies, hospitals, medical representatives के साथ connect करें।</p>
+            <p>Pharma companies, hospitals, medical representatives à¤•à¥‡ à¤¸à¤¾à¤¥ connect à¤•à¤°à¥‡à¤‚à¥¤</p>
 
             <h4>2. Research Platforms</h4>
             <ul>
@@ -1955,10 +3079,10 @@ def learn_platform(platform):
 
             <h3>Daily Learning Routine</h3>
             <ul>
-                <li>Drug information study करें</li>
-                <li>Medical news पढ़ें</li>
-                <li>Case studies analyze करें</li>
-                <li>Soft skills develop करें</li>
+                <li>Drug information study à¤•à¤°à¥‡à¤‚</li>
+                <li>Medical news à¤ªà¤¢à¤¼à¥‡à¤‚</li>
+                <li>Case studies analyze à¤•à¤°à¥‡à¤‚</li>
+                <li>Soft skills develop à¤•à¤°à¥‡à¤‚</li>
             </ul>
 
             <h3>Career Options</h3>
@@ -1973,31 +3097,31 @@ def learn_platform(platform):
 
             <h3>Common Mistakes</h3>
             <ul>
-                <li>Only theory focus करना</li>
-                <li>Communication skills ignore करना</li>
+                <li>Only theory focus à¤•à¤°à¤¨à¤¾</li>
+                <li>Communication skills ignore à¤•à¤°à¤¨à¤¾</li>
                 <li>No industry exposure</li>
-                <li>Licensing exams ignore करना</li>
+                <li>Licensing exams ignore à¤•à¤°à¤¨à¤¾</li>
             </ul>
 
             <h3>Best Practices</h3>
             <ul>
-                <li>Hospital pharmacy internships करें</li>
-                <li>Drug information centers में volunteer करें</li>
-                <li>Pharma conferences attend करें</li>
-                <li>English communication improve करें</li>
-                <li>Computer skills learn करें</li>
+                <li>Hospital pharmacy internships à¤•à¤°à¥‡à¤‚</li>
+                <li>Drug information centers à¤®à¥‡à¤‚ volunteer à¤•à¤°à¥‡à¤‚</li>
+                <li>Pharma conferences attend à¤•à¤°à¥‡à¤‚</li>
+                <li>English communication improve à¤•à¤°à¥‡à¤‚</li>
+                <li>Computer skills learn à¤•à¤°à¥‡à¤‚</li>
             </ul>
 
             <div class="alert alert-warning">
-                <strong>Important:</strong> Pharmacy Council registration जरूरी है!
+                <strong>Important:</strong> Pharmacy Council registration à¤œà¤°à¥‚à¤°à¥€ à¤¹à¥ˆ!
             </div>
             '''
         },
         'medical': {
             'title': 'Medical Students - MBBS & Allied Health Guidance',
             'content': '''
-            <h3>Medical Education क्या है? (What is Medical Education?)</h3>
-            <p>MBBS doctors बनने का course है। Allied health (Nursing, Physiotherapy, etc.) भी medical field का important part है।</p>
+            <h3>Medical Education à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ? (What is Medical Education?)</h3>
+            <p>MBBS doctors à¤¬à¤¨à¤¨à¥‡ à¤•à¤¾ course à¤¹à¥ˆà¥¤ Allied health (Nursing, Physiotherapy, etc.) à¤­à¥€ medical field à¤•à¤¾ important part à¤¹à¥ˆà¥¤</p>
 
             <h3>Essential Platforms for Medical Students</h3>
 
@@ -2033,10 +3157,10 @@ def learn_platform(platform):
 
             <h3>Daily Learning Routine</h3>
             <ul>
-                <li>Medical journals पढ़ें</li>
-                <li>Case discussions करें</li>
-                <li>Clinical skills practice करें</li>
-                <li>Research papers study करें</li>
+                <li>Medical journals à¤ªà¤¢à¤¼à¥‡à¤‚</li>
+                <li>Case discussions à¤•à¤°à¥‡à¤‚</li>
+                <li>Clinical skills practice à¤•à¤°à¥‡à¤‚</li>
+                <li>Research papers study à¤•à¤°à¥‡à¤‚</li>
             </ul>
 
             <h3>Career Options</h3>
@@ -2058,23 +3182,23 @@ def learn_platform(platform):
 
             <h3>Best Practices</h3>
             <ul>
-                <li>Regular hospital postings attend करें</li>
-                <li>Medical conferences participate करें</li>
-                <li>Research projects करें</li>
-                <li>Professional networking करें</li>
-                <li>Continuous learning maintain करें</li>
+                <li>Regular hospital postings attend à¤•à¤°à¥‡à¤‚</li>
+                <li>Medical conferences participate à¤•à¤°à¥‡à¤‚</li>
+                <li>Research projects à¤•à¤°à¥‡à¤‚</li>
+                <li>Professional networking à¤•à¤°à¥‡à¤‚</li>
+                <li>Continuous learning maintain à¤•à¤°à¥‡à¤‚</li>
             </ul>
 
             <div class="alert alert-success">
-                <strong>Remember:</strong> Medicine में lifelong learning जरूरी है!
+                <strong>Remember:</strong> Medicine à¤®à¥‡à¤‚ lifelong learning à¤œà¤°à¥‚à¤°à¥€ à¤¹à¥ˆ!
             </div>
             '''
         },
         'agriculture': {
             'title': 'Agriculture Students - Agri-Tech Career Guidance',
             'content': '''
-            <h3>Agriculture Course क्या है? (What is Agriculture?)</h3>
-            <p>Agriculture farming, crop science, और modern agri-tech से related field है। B.Sc Agriculture से traditional और modern career options मिलते हैं।</p>
+            <h3>Agriculture Course à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ? (What is Agriculture?)</h3>
+            <p>Agriculture farming, crop science, à¤”à¤° modern agri-tech à¤¸à¥‡ related field à¤¹à¥ˆà¥¤ B.Sc Agriculture à¤¸à¥‡ traditional à¤”à¤° modern career options à¤®à¤¿à¤²à¤¤à¥‡ à¤¹à¥ˆà¤‚à¥¤</p>
 
             <h3>Essential Platforms for Agriculture Students</h3>
 
@@ -2137,28 +3261,28 @@ def learn_platform(platform):
 
             <h3>Best Practices</h3>
             <ul>
-                <li>Farm internships करें</li>
-                <li>Krishi Vigyan Kendras visit करें</li>
-                <li>Agriculture exhibitions attend करें</li>
-                <li>Modern farming techniques learn करें</li>
-                <li>English communication develop करें</li>
+                <li>Farm internships à¤•à¤°à¥‡à¤‚</li>
+                <li>Krishi Vigyan Kendras visit à¤•à¤°à¥‡à¤‚</li>
+                <li>Agriculture exhibitions attend à¤•à¤°à¥‡à¤‚</li>
+                <li>Modern farming techniques learn à¤•à¤°à¥‡à¤‚</li>
+                <li>English communication develop à¤•à¤°à¥‡à¤‚</li>
             </ul>
 
             <div class="alert alert-info">
-                <strong>Future Scope:</strong> Agri-tech में huge opportunities हैं!
+                <strong>Future Scope:</strong> Agri-tech à¤®à¥‡à¤‚ huge opportunities à¤¹à¥ˆà¤‚!
             </div>
             '''
         },
         'mpsc': {
             'title': 'MPSC Aspirants - Maharashtra PSC Exam Guidance',
             'content': '''
-            <h3>MPSC क्या है? (What is MPSC?)</h3>
-            <p>MPSC (Maharashtra Public Service Commission) Maharashtra government में administrative posts के लिए competitive exam है।</p>
+            <h3>MPSC à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ? (What is MPSC?)</h3>
+            <p>MPSC (Maharashtra Public Service Commission) Maharashtra government à¤®à¥‡à¤‚ administrative posts à¤•à¥‡ à¤²à¤¿à¤ competitive exam à¤¹à¥ˆà¥¤</p>
 
             <h3>Essential Platforms for MPSC Preparation</h3>
 
             <h4>1. Official MPSC Website</h4>
-            <p>mpsc.gov.in - सभी notifications, syllabus, और exam dates यहाँ मिलेंगे।</p>
+            <p>mpsc.gov.in - à¤¸à¤­à¥€ notifications, syllabus, à¤”à¤° exam dates à¤¯à¤¹à¤¾à¤ à¤®à¤¿à¤²à¥‡à¤‚à¤—à¥‡à¥¤</p>
 
             <h4>2. Exam Preparation Platforms</h4>
             <ul>
@@ -2215,28 +3339,28 @@ def learn_platform(platform):
 
             <h3>Best Preparation Tips</h3>
             <ul>
-                <li>Consistent study schedule बनाएँ</li>
-                <li>Previous year papers solve करें</li>
+                <li>Consistent study schedule à¤¬à¤¨à¤¾à¤à¤</li>
+                <li>Previous year papers solve à¤•à¤°à¥‡à¤‚</li>
                 <li>Join test series</li>
                 <li>Stay updated with Maharashtra news</li>
-                <li>Answer writing practice करें</li>
+                <li>Answer writing practice à¤•à¤°à¥‡à¤‚</li>
             </ul>
 
             <div class="alert alert-warning">
-                <strong>Important:</strong> MPSC में Marathi language जरूरी है!
+                <strong>Important:</strong> MPSC à¤®à¥‡à¤‚ Marathi language à¤œà¤°à¥‚à¤°à¥€ à¤¹à¥ˆ!
             </div>
             '''
         },
         'upsc': {
             'title': 'UPSC Aspirants - Civil Services Exam Guidance',
             'content': '''
-            <h3>UPSC क्या है? (What is UPSC?)</h3>
-            <p>UPSC (Union Public Service Commission) India के top administrative services (IAS, IPS, IFS, etc.) के लिए entrance exam है।</p>
+            <h3>UPSC à¤•à¥à¤¯à¤¾ à¤¹à¥ˆ? (What is UPSC?)</h3>
+            <p>UPSC (Union Public Service Commission) India à¤•à¥‡ top administrative services (IAS, IPS, IFS, etc.) à¤•à¥‡ à¤²à¤¿à¤ entrance exam à¤¹à¥ˆà¥¤</p>
 
             <h3>Essential Platforms for UPSC Preparation</h3>
 
             <h4>1. Official UPSC Website</h4>
-            <p>upsc.gov.in - सभी notifications, syllabus, और exam details यहाँ मिलेंगे।</p>
+            <p>upsc.gov.in - à¤¸à¤­à¥€ notifications, syllabus, à¤”à¤° exam details à¤¯à¤¹à¤¾à¤ à¤®à¤¿à¤²à¥‡à¤‚à¤—à¥‡à¥¤</p>
 
             <h4>2. Exam Preparation Platforms</h4>
             <ul>
@@ -2294,21 +3418,21 @@ def learn_platform(platform):
                 <li>Ignoring revision</li>
                 <li>No answer writing practice</li>
                 <li>Following unreliable sources</li>
-                <li>Health neglect करना</li>
+                <li>Health neglect à¤•à¤°à¤¨à¤¾</li>
             </ul>
 
             <h3>Best Preparation Tips</h3>
             <ul>
-                <li>NCERT books से foundation strong करें</li>
-                <li>Consistent study schedule follow करें</li>
-                <li>Daily answer writing practice करें</li>
-                <li>Multiple mock tests दें</li>
+                <li>NCERT books à¤¸à¥‡ foundation strong à¤•à¤°à¥‡à¤‚</li>
+                <li>Consistent study schedule follow à¤•à¤°à¥‡à¤‚</li>
+                <li>Daily answer writing practice à¤•à¤°à¥‡à¤‚</li>
+                <li>Multiple mock tests à¤¦à¥‡à¤‚</li>
                 <li>Stay updated with current affairs</li>
-                <li>Physical and mental health maintain करें</li>
+                <li>Physical and mental health maintain à¤•à¤°à¥‡à¤‚</li>
             </ul>
 
             <div class="alert alert-success">
-                <strong>Motivation:</strong> UPSC clear करने के लिए consistency और smart work जरूरी है!
+                <strong>Motivation:</strong> UPSC clear à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ consistency à¤”à¤° smart work à¤œà¤°à¥‚à¤°à¥€ à¤¹à¥ˆ!
             </div>
             '''
         }
@@ -2330,18 +3454,511 @@ def chatbot_home():
     return render_template('chatbot/index.html')
 
 @app.route('/chatbot/message', methods=['POST'])
+@login_required
 def chatbot_message():
     try:
-        data = request.json
-        user_message = data.get('message', '').strip().lower()
-        
-        # Get chatbot response
-        response = get_chatbot_response(user_message)
-        
-        return {'response': response, 'success': True}
+        data = request.get_json(silent=True) or {}
+        user_message = (data.get('message') or '').strip()
+        history = data.get('history') if isinstance(data.get('history'), list) else []
+
+        if not user_message:
+            return jsonify({'response': '', 'success': False, 'error': 'Message is required.'}), 400
+
+        response = get_advanced_local_chatbot_response(user_message, history)
+        return jsonify({'response': response, 'success': True, 'mode': 'local'})
     except Exception as e:
         print(f"Chatbot error: {e}")
-        return {'response': 'Sorry, I encountered an error. Please try again!', 'success': False}, 500
+        print(f"Chatbot traceback: {traceback.format_exc()}")
+        return jsonify({
+            'response': 'I hit a local processing issue. Please retry with a shorter question.',
+            'success': False
+        }), 500
+
+_LOCAL_SITE_TOPICS = [
+    {
+        'keywords': ('career quiz', 'quiz', 'career test', 'interest test'),
+        'response': (
+            'Take the career quiz here: /career/quiz\n'
+            '1. Answer all questions honestly\n'
+            '2. Submit to view role suggestions\n'
+            '3. Open /career/browse to compare options'
+        )
+    },
+    {
+        'keywords': ('career browse', 'browse careers', 'career options', 'career path'),
+        'response': 'Explore careers here: /career/browse. Use filters for category, difficulty, and growth.'
+    },
+    {
+        'keywords': ('resume', 'cv', 'portfolio', 'resume review'),
+        'response': (
+            'Use resume review at /career/resume-review.\n'
+            'Share your target role and resume text, then apply top suggestions with measurable impact bullets.'
+        )
+    },
+    {
+        'keywords': ('internship', 'internships', 'apply internship'),
+        'response': (
+            'Internship pages:\n'
+            '- Browse: /internships/browse\n'
+            '- Community stories: /internships/community\n'
+            '- Share your experience: /internships/share'
+        )
+    },
+    {
+        'keywords': ('skills', 'learning resources', 'course', 'upskill', 'skill saathi'),
+        'response': 'Find courses and skill resources at /skill/browse. Filter by topic and difficulty.'
+    },
+    {
+        'keywords': ('ai tools', 'tool recommendations', 'chatgpt', 'copilot'),
+        'response': 'Explore curated AI tools at /ai/tools by category and use case.'
+    },
+    {
+        'keywords': ('mental health', 'stress', 'mood', 'breathing'),
+        'response': 'Mental wellness tools: mood tracking at /mental/mood and guided breathing at /mental/breathing.'
+    },
+    {
+        'keywords': ('gyan', 'wisdom', 'gita', 'shloka'),
+        'response': 'Spiritual learning: daily wisdom at /gyan/daily and search at /gyan/search.'
+    },
+    {
+        'keywords': ('mentor', 'mentoring', 'expert guidance'),
+        'response': 'Mentor support is available at /mentor-connect for requests and guidance.'
+    },
+    {
+        'keywords': ('todo', 'task', 'productivity'),
+        'response': 'Manage your tasks at /todo with priority and deadline tracking.'
+    },
+    {
+        'keywords': ('progress', 'dashboard', 'activity'),
+        'response': 'Track your learning and activity at /progress.'
+    },
+    {
+        'keywords': ('student community', 'community chat', 'connect students'),
+        'response': 'Connect and chat with peers at /student-community.'
+    }
+]
+
+_FIELD_GUIDES = [
+    {
+        'keywords': ('python', 'django', 'flask', 'backend'),
+        'response': (
+            'Python roadmap:\n'
+            '1. Learn core Python, OOP, and file handling\n'
+            '2. Build Flask or Django CRUD apps\n'
+            '3. Learn SQL + APIs + deployment\n'
+            '4. Ship 3 portfolio projects with README and metrics'
+        )
+    },
+    {
+        'keywords': ('data science', 'data analyst', 'analytics', 'sql', 'power bi'),
+        'response': (
+            'Data path:\n'
+            '1. Excel + SQL + Python basics\n'
+            '2. Statistics + EDA + visualization\n'
+            '3. Build dashboards (Power BI/Tableau)\n'
+            '4. Publish 2 end-to-end case studies'
+        )
+    },
+    {
+        'keywords': ('machine learning', 'ai', 'ml', 'deep learning'),
+        'response': (
+            'AI/ML plan:\n'
+            '1. Python + linear algebra + probability\n'
+            '2. Scikit-learn models and evaluation\n'
+            '3. Deep learning basics (PyTorch/TensorFlow)\n'
+            '4. Deploy one ML app with API and UI'
+        )
+    },
+    {
+        'keywords': ('web development', 'full stack', 'frontend', 'react', 'javascript'),
+        'response': (
+            'Web dev plan:\n'
+            '1. HTML/CSS/JavaScript fundamentals\n'
+            '2. React for frontend + Flask/Node for backend\n'
+            '3. Auth, database, and API integration\n'
+            '4. Deploy full-stack projects and document tradeoffs'
+        )
+    },
+    {
+        'keywords': ('cyber security', 'cybersecurity', 'network security', 'ethical hacking'),
+        'response': (
+            'Cybersecurity track:\n'
+            '1. Networking + Linux fundamentals\n'
+            '2. Web security basics (OWASP Top 10)\n'
+            '3. Practice labs (CTF, TryHackMe)\n'
+            '4. Build a security portfolio and write reports'
+        )
+    },
+    {
+        'keywords': ('cloud', 'aws', 'azure', 'devops'),
+        'response': (
+            'Cloud/DevOps path:\n'
+            '1. Linux + networking + scripting\n'
+            '2. AWS/Azure core services\n'
+            '3. CI/CD + Docker basics\n'
+            '4. Deploy a monitored production-style app'
+        )
+    },
+    {
+        'keywords': ('finance', 'trading', 'investment', 'accounting'),
+        'response': (
+            'Finance growth plan:\n'
+            '1. Core accounting and valuation concepts\n'
+            '2. Excel modeling and market basics\n'
+            '3. Risk management and portfolio thinking\n'
+            '4. Build a thesis-based project and track outcomes'
+        )
+    }
+]
+
+_ALLOWED_MATH_BINOPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+    ast.FloorDiv: operator.floordiv
+}
+
+_ALLOWED_MATH_UNARYOPS = {
+    ast.UAdd: operator.pos,
+    ast.USub: operator.neg
+}
+
+def _absolute_link(path):
+    base = request.host_url.rstrip('/') if has_request_context() and request.host_url else 'http://127.0.0.1:5000'
+    if not path.startswith('/'):
+        path = f'/{path}'
+    return f'{base}{path}'
+
+def _absolutize_links_in_text(text):
+    if not text:
+        return text
+    pattern = re.compile(r'(?<![A-Za-z0-9_])(\/[-a-zA-Z0-9_./]+)')
+
+    def _replace(match):
+        raw = match.group(1)
+        if raw.startswith('//'):
+            return raw
+        if match.start() > 0 and text[match.start() - 1] == ':':
+            return raw
+        prefix = text[max(0, match.start() - 8):match.start()].lower()
+        if prefix.endswith('http://') or prefix.endswith('https://'):
+            return raw
+        cleaned = raw.rstrip('.,;:!?')
+        tail = raw[len(cleaned):]
+        return f'{_absolute_link(cleaned)}{tail}'
+
+    return pattern.sub(_replace, text)
+
+def _split_multi_values(value):
+    if not value:
+        return []
+    parts = re.split(r'[;,/]| and ', str(value), flags=re.IGNORECASE)
+    return [p.strip() for p in parts if p and p.strip()]
+
+def _parse_roadmap_field(query):
+    q = _clean_chat_text(query).lower()
+    patterns = [
+        r'(?:roadmap|plan|path)\s*(?:for|to become|to be|for becoming)?\s*([a-z0-9\+\-\/\s]{2,})',
+        r'how\s+to\s+become\s+(?:a|an)?\s*([a-z0-9\+\-\/\s]{2,})',
+        r'career\s+in\s+([a-z0-9\+\-\/\s]{2,})',
+        r'([a-z0-9\+\-\/\s]{2,})\s+(?:roadmap|plan|path)$'
+    ]
+    for pattern in patterns:
+        m = re.search(pattern, q)
+        if m:
+            field = m.group(1).strip(' .?')
+            field = re.sub(
+                r'\b(?:please|give|create|make|me|a|an|the|i|want|need|for|to|become|career|roadmap|plan|path)\b',
+                '',
+                field
+            ).strip()
+            field = re.sub(r'\s+', ' ', field).strip()
+            if len(field) >= 2:
+                return field
+    return ''
+
+def _get_career_candidates(field, limit=6):
+    conn = get_db_connection()
+    try:
+        term = field.lower().strip()
+        like = f'%{term}%'
+        rows = conn.execute(
+            '''
+            SELECT title, category, description, required_skills, education_required, growth_rate, difficulty_level, job_roles
+            FROM careers
+            WHERE lower(title) LIKE ?
+               OR lower(category) LIKE ?
+               OR lower(description) LIKE ?
+               OR lower(required_skills) LIKE ?
+               OR lower(job_roles) LIKE ?
+            LIMIT 30
+            ''',
+            (like, like, like, like, like)
+        ).fetchall()
+
+        if rows:
+            return rows[:limit]
+
+        tokens = [t for t in re.findall(r'[a-z0-9\+#]+', term) if len(t) > 2]
+        if not tokens:
+            return []
+
+        conditions = []
+        params = []
+        for token in tokens[:5]:
+            token_like = f'%{token}%'
+            conditions.append(
+                '(lower(title) LIKE ? OR lower(category) LIKE ? OR lower(description) LIKE ? OR lower(required_skills) LIKE ? OR lower(job_roles) LIKE ?)'
+            )
+            params.extend([token_like, token_like, token_like, token_like, token_like])
+        sql = f'''
+            SELECT title, category, description, required_skills, education_required, growth_rate, difficulty_level, job_roles
+            FROM careers
+            WHERE {' OR '.join(conditions)}
+            LIMIT 30
+        '''
+        token_rows = conn.execute(sql, params).fetchall()
+        return token_rows[:limit]
+    finally:
+        conn.close()
+
+def _build_dynamic_field_roadmap(field, candidates):
+    if not candidates:
+        return (
+            f'I could not find an exact match for "{field}" in the career dataset.\n'
+            'Try a close career title and I will generate a role-specific roadmap.\n'
+            f'You can explore all careers here: {_absolute_link("/career/browse")}'
+        )
+
+    top = candidates[0]
+    skills = []
+    roles = []
+    education = []
+    growth_signals = []
+    for row in candidates:
+        skills.extend(_split_multi_values(row['required_skills']))
+        roles.extend(_split_multi_values(row['job_roles']))
+        if row['education_required']:
+            education.append(str(row['education_required']).strip())
+        if row['growth_rate']:
+            growth_signals.append(str(row['growth_rate']).strip())
+
+    def _top_unique(items, limit=6):
+        seen = set()
+        ordered = []
+        for item in items:
+            key = item.lower()
+            if key and key not in seen:
+                seen.add(key)
+                ordered.append(item)
+            if len(ordered) >= limit:
+                break
+        return ordered
+
+    top_skills = _top_unique(skills, 6)
+    top_roles = _top_unique(roles, 5)
+    top_education = _top_unique(education, 3)
+    top_growth = _top_unique(growth_signals, 2)
+
+    skills_line = ', '.join(top_skills) if top_skills else 'core domain fundamentals'
+    roles_line = ', '.join(top_roles) if top_roles else top['title']
+    education_line = '; '.join(top_education) if top_education else 'role-aligned degree or certification'
+    growth_line = ', '.join(top_growth) if top_growth else 'steady growth'
+
+    return (
+        f'Roadmap for {field.title()} (based on Career Browse data):\n'
+        f'Target roles: {roles_line}\n'
+        f'Primary skills: {skills_line}\n'
+        f'Education path: {education_line}\n'
+        f'Growth outlook: {growth_line}\n\n'
+        'Phase 1 (Month 1-2): Build foundation\n'
+        '- Learn the top 3 skills and complete one mini project\n'
+        '- Create notes and weekly practice schedule\n\n'
+        'Phase 2 (Month 3-4): Build portfolio\n'
+        '- Build 2 role-specific projects with measurable outcomes\n'
+        '- Add project summaries and proof links\n\n'
+        'Phase 3 (Month 5-6): Job readiness\n'
+        '- Prepare resume for target role and practice interviews\n'
+        '- Apply to internships/jobs with tailored applications\n\n'
+        f'Direct links:\n- Career Browse: {_absolute_link("/career/browse")}\n- Resume Review: {_absolute_link("/career/resume-review")}'
+    )
+
+def _clean_chat_text(text):
+    return re.sub(r'\s+', ' ', (text or '')).strip()
+
+def _extract_last_user_query(history):
+    for item in reversed(history or []):
+        if isinstance(item, dict) and (item.get('role') == 'user'):
+            value = _clean_chat_text(item.get('content', ''))
+            if value:
+                return value
+    return ''
+
+def _merge_with_context(message, history):
+    msg = _clean_chat_text(message)
+    if len(msg.split()) > 4:
+        return msg
+    if any(token in msg.lower() for token in ('and', 'also', 'same', 'more', 'next', 'this')):
+        prev = _extract_last_user_query(history)
+        if prev:
+            return f'{prev} {msg}'
+    return msg
+
+def _safe_eval_math(expr):
+    node = ast.parse(expr, mode='eval')
+
+    def _eval(n):
+        if isinstance(n, ast.Expression):
+            return _eval(n.body)
+        if isinstance(n, ast.Constant) and isinstance(n.value, (int, float)):
+            return n.value
+        if isinstance(n, ast.UnaryOp) and type(n.op) in _ALLOWED_MATH_UNARYOPS:
+            return _ALLOWED_MATH_UNARYOPS[type(n.op)](_eval(n.operand))
+        if isinstance(n, ast.BinOp) and type(n.op) in _ALLOWED_MATH_BINOPS:
+            return _ALLOWED_MATH_BINOPS[type(n.op)](_eval(n.left), _eval(n.right))
+        raise ValueError('Unsupported expression')
+
+    return _eval(node)
+
+def _try_math_response(message):
+    cleaned = message.lower().replace('calculate', '').replace('what is', '').strip(' ?')
+    if not cleaned:
+        return None
+    if not re.fullmatch(r'[0-9\.\+\-\*\/%\(\)\s\^]+', cleaned):
+        return None
+    expr = cleaned.replace('^', '**')
+    try:
+        result = _safe_eval_math(expr)
+        if isinstance(result, float):
+            result = round(result, 6)
+        return f'The answer is {result}.'
+    except Exception:
+        return None
+
+def _topic_match_score(query, keywords):
+    query_lower = query.lower()
+    score = 0
+    for kw in keywords:
+        kw_l = kw.lower()
+        if kw_l in query_lower:
+            score += 3 if ' ' in kw_l else 2
+    query_tokens = set(re.findall(r'[a-z0-9\+#]+', query_lower))
+    keyword_tokens = set()
+    for kw in keywords:
+        keyword_tokens.update(re.findall(r'[a-z0-9\+#]+', kw.lower()))
+    score += len(query_tokens.intersection(keyword_tokens))
+    return score
+
+def _match_site_topic(query):
+    best_response = None
+    best_score = 0
+    for topic in _LOCAL_SITE_TOPICS:
+        score = _topic_match_score(query, topic['keywords'])
+        if score > best_score:
+            best_score = score
+            best_response = topic['response']
+    return best_response if best_score >= 2 else None
+
+def _match_field_guide(query):
+    best_response = None
+    best_score = 0
+    for guide in _FIELD_GUIDES:
+        score = _topic_match_score(query, guide['keywords'])
+        if score > best_score:
+            best_score = score
+            best_response = guide['response']
+    return best_response if best_score >= 2 else None
+
+def _generic_explanation_response(query):
+    lower = query.lower()
+    prefixes = ('what is ', 'explain ', 'define ', 'tell me about ')
+    topic = ''
+    for prefix in prefixes:
+        if lower.startswith(prefix):
+            topic = query[len(prefix):].strip(' ?.')
+            break
+    if not topic or len(topic) < 2:
+        return None
+    return (
+        f'{topic} is an important concept. Here is a practical way to understand it:\n'
+        f'1. Definition: understand the core purpose and vocabulary of {topic}\n'
+        f'2. Why it matters: connect it to real projects or career outcomes\n'
+        f'3. First practice: complete one beginner task using {topic}\n'
+        f'4. Progress step: build one mini project and review what improved'
+    )
+
+def _local_capabilities_response():
+    return (
+        'I can answer questions without any API key.\n'
+        'Website help:\n'
+        '- Career quiz and role exploration\n'
+        '- Resume review and internships\n'
+        '- Skills, mentor, mood, gyan, todo, progress\n'
+        '- Student community and chatbot support\n'
+        f'- Feature hub: {_absolute_link("/")} \n'
+        f'- Career quiz: {_absolute_link("/career/quiz")} \n'
+        f'- Career browse: {_absolute_link("/career/browse")} \n'
+        f'- Resume review: {_absolute_link("/career/resume-review")} \n'
+        f'- Internships: {_absolute_link("/internships/browse")} \n'
+        f'- Skills: {_absolute_link("/skill/browse")} \n'
+        f'- AI tools: {_absolute_link("/ai/tools")} \n'
+        f'- Mentor connect: {_absolute_link("/mentor-connect")} \n'
+        f'- Mood tracker: {_absolute_link("/mental/mood")} \n'
+        f'- Student community: {_absolute_link("/student-community")} \n'
+        'General help:\n'
+        '- Learning roadmaps for tech and non-tech fields\n'
+        '- Interview and study planning\n'
+        '- Basic math calculations and concept explanations'
+    )
+
+def get_advanced_local_chatbot_response(message, history=None):
+    resolved = _merge_with_context(message, history or [])
+    lower = resolved.lower()
+
+    if any(greet in lower for greet in ('hello', 'hi', 'hey', 'namaste', 'good morning', 'good evening')):
+        return _absolutize_links_in_text(
+            (
+            'Hello! I am your Marg Darshak offline assistant.\n'
+            'Ask me about any website feature, career path, or learning plan, and I will guide you step by step.\n'
+            f'You can start from: {_absolute_link("/chatbot")}'
+            )
+        )
+
+    if any(key in lower for key in ('help', 'what can you do', 'how can you help', 'features', 'all features')):
+        return _absolutize_links_in_text(_local_capabilities_response())
+
+    math_reply = _try_math_response(resolved)
+    if math_reply:
+        return _absolutize_links_in_text(math_reply)
+
+    roadmap_field = _parse_roadmap_field(resolved)
+    if roadmap_field:
+        candidates = _get_career_candidates(roadmap_field, limit=6)
+        return _absolutize_links_in_text(_build_dynamic_field_roadmap(roadmap_field, candidates))
+
+    site_reply = _match_site_topic(resolved)
+    if site_reply:
+        return _absolutize_links_in_text(site_reply)
+
+    field_reply = _match_field_guide(resolved)
+    if field_reply:
+        return _absolutize_links_in_text(field_reply + f'\n\nExplore related roles: {_absolute_link("/career/browse")}')
+
+    concept_reply = _generic_explanation_response(resolved)
+    if concept_reply:
+        return _absolutize_links_in_text(concept_reply)
+
+    return _absolutize_links_in_text(
+        (
+        'I can help with this. Share one clear goal, your current level, and timeline.\n'
+        'Example: "I am a beginner in data science and want an internship in 3 months."\n'
+        'Then I will give you a detailed step-by-step plan.\n'
+        f'If you want, start with Career Browse: {_absolute_link("/career/browse")}'
+        )
+    )
 
 def get_chatbot_response(message):
     """Simple rule-based chatbot for Marg Darshak guidance"""
@@ -2349,296 +3966,296 @@ def get_chatbot_response(message):
     # Greeting responses
     greetings = ['hello', 'hi', 'hey', 'namaste', 'good morning', 'good evening']
     if any(greet in message for greet in greetings):
-        return "नमस्ते! मैं आपका मार्गदर्शक हूं। मैं आपकी career, education, mental health, wisdom, skills, AI tools, mentoring, productivity, और overall development में मदद कर सकता हूं। आप क्या जानना चाहेंगे? (Hello! I'm your Marg Darshak guide. I can help you with career, education, mental health, wisdom, skills, AI tools, mentoring, productivity, and overall development. What would you like to know?)"
+        return "à¤¨à¤®à¤¸à¥à¤¤à¥‡! à¤®à¥ˆà¤‚ à¤†à¤ªà¤•à¤¾ à¤®à¤¾à¤°à¥à¤—à¤¦à¤°à¥à¤¶à¤• à¤¹à¥‚à¤‚à¥¤ à¤®à¥ˆà¤‚ à¤†à¤ªà¤•à¥€ career, education, mental health, wisdom, skills, AI tools, mentoring, productivity, à¤”à¤° overall development à¤®à¥‡à¤‚ à¤®à¤¦à¤¦ à¤•à¤° à¤¸à¤•à¤¤à¤¾ à¤¹à¥‚à¤‚à¥¤ à¤†à¤ª à¤•à¥à¤¯à¤¾ à¤œà¤¾à¤¨à¤¨à¤¾ à¤šà¤¾à¤¹à¥‡à¤‚à¤—à¥‡? (Hello! I'm your Marg Darshak guide. I can help you with career, education, mental health, wisdom, skills, AI tools, mentoring, productivity, and overall development. What would you like to know?)"
     
     # Career related queries
-    if any(word in message for word in ['career', 'job', 'profession', 'कैरियर', 'नौकरी']):
+    if any(word in message for word in ['career', 'job', 'profession', 'à¤•à¥ˆà¤°à¤¿à¤¯à¤°', 'à¤¨à¥Œà¤•à¤°à¥€']):
         if 'quiz' in message or 'test' in message:
-            return """<strong>Career Quiz देने के लिए:</strong><br>
-1. <a href="/career/quiz" target="_blank" class="btn btn-primary btn-sm">Career Quiz</a> पर जाएं<br>
-2. Questions answer करें<br>
-3. Results देखें और career suggestions पाएं<br><br>
-यह quiz आपकी interests के आधार पर suitable careers suggest करेगा!"""
+            return """<strong>Career Quiz à¤¦à¥‡à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+1. <a href="/career/quiz" target="_blank" class="btn btn-primary btn-sm">Career Quiz</a> à¤ªà¤° à¤œà¤¾à¤à¤‚<br>
+2. Questions answer à¤•à¤°à¥‡à¤‚<br>
+3. Results à¤¦à¥‡à¤–à¥‡à¤‚ à¤”à¤° career suggestions à¤ªà¤¾à¤à¤‚<br><br>
+à¤¯à¤¹ quiz à¤†à¤ªà¤•à¥€ interests à¤•à¥‡ à¤†à¤§à¤¾à¤° à¤ªà¤° suitable careers suggest à¤•à¤°à¥‡à¤—à¤¾!"""
         
         elif 'browse' in message or 'careers' in message:
-            return """<strong>सभी careers browse करने के लिए:</strong><br>
-<a href="/career/browse" target="_blank" class="btn btn-success btn-sm">Browse Careers</a> पर जाएं<br>
-• Category select करें (Technology, Business, Creative, etc.)<br>
-• Difficulty level choose करें<br>
-• Interesting careers पर click करें और details पढ़ें<br><br>
-हर career की salary, skills, और growth information मिलेगी!"""
+            return """<strong>à¤¸à¤­à¥€ careers browse à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+<a href="/career/browse" target="_blank" class="btn btn-success btn-sm">Browse Careers</a> à¤ªà¤° à¤œà¤¾à¤à¤‚<br>
+â€¢ Category select à¤•à¤°à¥‡à¤‚ (Technology, Business, Creative, etc.)<br>
+â€¢ Difficulty level choose à¤•à¤°à¥‡à¤‚<br>
+â€¢ Interesting careers à¤ªà¤° click à¤•à¤°à¥‡à¤‚ à¤”à¤° details à¤ªà¤¢à¤¼à¥‡à¤‚<br><br>
+à¤¹à¤° career à¤•à¥€ salary, skills, à¤”à¤° growth information à¤®à¤¿à¤²à¥‡à¤—à¥€!"""
         
         else:
-            return """<strong>Career guidance के लिए आप ये कर सकते हैं:</strong><br>
-• <a href="/career/quiz" target="_blank">Career Interest Quiz</a> दें<br>
-• <a href="/career/browse" target="_blank">सभी careers browse</a> करें<br>
-• Specific career details देखें<br>
-• Resume और portfolio बनाएं<br><br>
-मैं आपकी help कर सकता हूं - बताएं आप किस field में interested हैं?"""
+            return """<strong>Career guidance à¤•à¥‡ à¤²à¤¿à¤ à¤†à¤ª à¤¯à¥‡ à¤•à¤° à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚:</strong><br>
+â€¢ <a href="/career/quiz" target="_blank">Career Interest Quiz</a> à¤¦à¥‡à¤‚<br>
+â€¢ <a href="/career/browse" target="_blank">à¤¸à¤­à¥€ careers browse</a> à¤•à¤°à¥‡à¤‚<br>
+â€¢ Specific career details à¤¦à¥‡à¤–à¥‡à¤‚<br>
+â€¢ Resume à¤”à¤° portfolio à¤¬à¤¨à¤¾à¤à¤‚<br><br>
+à¤®à¥ˆà¤‚ à¤†à¤ªà¤•à¥€ help à¤•à¤° à¤¸à¤•à¤¤à¤¾ à¤¹à¥‚à¤‚ - à¤¬à¤¤à¤¾à¤à¤‚ à¤†à¤ª à¤•à¤¿à¤¸ field à¤®à¥‡à¤‚ interested à¤¹à¥ˆà¤‚?"""
     
     # Education/Platforms queries
-    if any(word in message for word in ['learn', 'education', 'platform', 'tool', 'study', 'सीखना', 'प्लेटफॉर्म']):
+    if any(word in message for word in ['learn', 'education', 'platform', 'tool', 'study', 'à¤¸à¥€à¤–à¤¨à¤¾', 'à¤ªà¥à¤²à¥‡à¤Ÿà¤«à¥‰à¤°à¥à¤®']):
         if 'github' in message:
-            return """<strong>GitHub use करने के लिए step-by-step guide:</strong><br>
-1. <a href="https://github.com" target="_blank">github.com</a> पर जाएं और account बनाएं<br>
-2. Profile complete करें (bio, photo add करें)<br>
-3. First repository बनाएं ("New repository" click करें)<br>
-4. Code files upload करें या create करें<br>
-5. README.md file add करें project description के साथ<br><br>
-Practice projects upload करके अपना portfolio strong बनाएं!"""
+            return """<strong>GitHub use à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ step-by-step guide:</strong><br>
+1. <a href="https://github.com" target="_blank">github.com</a> à¤ªà¤° à¤œà¤¾à¤à¤‚ à¤”à¤° account à¤¬à¤¨à¤¾à¤à¤‚<br>
+2. Profile complete à¤•à¤°à¥‡à¤‚ (bio, photo add à¤•à¤°à¥‡à¤‚)<br>
+3. First repository à¤¬à¤¨à¤¾à¤à¤‚ ("New repository" click à¤•à¤°à¥‡à¤‚)<br>
+4. Code files upload à¤•à¤°à¥‡à¤‚ à¤¯à¤¾ create à¤•à¤°à¥‡à¤‚<br>
+5. README.md file add à¤•à¤°à¥‡à¤‚ project description à¤•à¥‡ à¤¸à¤¾à¤¥<br><br>
+Practice projects upload à¤•à¤°à¤•à¥‡ à¤…à¤ªà¤¨à¤¾ portfolio strong à¤¬à¤¨à¤¾à¤à¤‚!"""
         
         elif 'linkedin' in message:
-            return """<strong>LinkedIn profile बनाने के लिए:</strong><br>
-1. <a href="https://linkedin.com" target="_blank">linkedin.com</a> पर sign up करें<br>
-2. Professional photo और headline add करें<br>
-3. Education और experience भरें<br>
-4. Skills section में अपनी skills add करें<br>
-5. Connections send करें (colleagues, seniors)<br><br>
-Daily 10-15 minutes में posts पढ़ें और networking करें!"""
+            return """<strong>LinkedIn profile à¤¬à¤¨à¤¾à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+1. <a href="https://linkedin.com" target="_blank">linkedin.com</a> à¤ªà¤° sign up à¤•à¤°à¥‡à¤‚<br>
+2. Professional photo à¤”à¤° headline add à¤•à¤°à¥‡à¤‚<br>
+3. Education à¤”à¤° experience à¤­à¤°à¥‡à¤‚<br>
+4. Skills section à¤®à¥‡à¤‚ à¤…à¤ªà¤¨à¥€ skills add à¤•à¤°à¥‡à¤‚<br>
+5. Connections send à¤•à¤°à¥‡à¤‚ (colleagues, seniors)<br><br>
+Daily 10-15 minutes à¤®à¥‡à¤‚ posts à¤ªà¤¢à¤¼à¥‡à¤‚ à¤”à¤° networking à¤•à¤°à¥‡à¤‚!"""
         
         elif 'leetcode' in message or 'coding' in message:
-            return """<strong>Coding practice के लिए LeetCode:</strong><br>
-1. <a href="https://leetcode.com" target="_blank">leetcode.com</a> पर account बनाएं<br>
-2. Easy problems से start करें<br>
-3. हर problem को understand करें और solve करें<br>
-4. Solutions analyze करें<br>
-5. Daily 1-2 problems practice करें<br><br>
-Consistent practice से interview ready बनेंगे!"""
+            return """<strong>Coding practice à¤•à¥‡ à¤²à¤¿à¤ LeetCode:</strong><br>
+1. <a href="https://leetcode.com" target="_blank">leetcode.com</a> à¤ªà¤° account à¤¬à¤¨à¤¾à¤à¤‚<br>
+2. Easy problems à¤¸à¥‡ start à¤•à¤°à¥‡à¤‚<br>
+3. à¤¹à¤° problem à¤•à¥‹ understand à¤•à¤°à¥‡à¤‚ à¤”à¤° solve à¤•à¤°à¥‡à¤‚<br>
+4. Solutions analyze à¤•à¤°à¥‡à¤‚<br>
+5. Daily 1-2 problems practice à¤•à¤°à¥‡à¤‚<br><br>
+Consistent practice à¤¸à¥‡ interview ready à¤¬à¤¨à¥‡à¤‚à¤—à¥‡!"""
         
         else:
-            return """<strong>Learning के लिए हमारे पास हैं:</strong><br>
-• <a href="/ai/tools" target="_blank">AI Tools</a> - ChatGPT, Coursera, YouTube, etc.<br>
-• Learning Guides - Platform-wise tutorials<br>
-• <a href="/skill/browse" target="_blank">Skill Saathi</a> - Curated learning resources<br><br>
-आप कौन सा subject या skill learn करना चाहते हैं? मैं guide कर सकता हूं!"""
+            return """<strong>Learning à¤•à¥‡ à¤²à¤¿à¤ à¤¹à¤®à¤¾à¤°à¥‡ à¤ªà¤¾à¤¸ à¤¹à¥ˆà¤‚:</strong><br>
+â€¢ <a href="/ai/tools" target="_blank">AI Tools</a> - ChatGPT, Coursera, YouTube, etc.<br>
+â€¢ Learning Guides - Platform-wise tutorials<br>
+â€¢ <a href="/skill/browse" target="_blank">Skill Saathi</a> - Curated learning resources<br><br>
+à¤†à¤ª à¤•à¥Œà¤¨ à¤¸à¤¾ subject à¤¯à¤¾ skill learn à¤•à¤°à¤¨à¤¾ à¤šà¤¾à¤¹à¤¤à¥‡ à¤¹à¥ˆà¤‚? à¤®à¥ˆà¤‚ guide à¤•à¤° à¤¸à¤•à¤¤à¤¾ à¤¹à¥‚à¤‚!"""
     
     # Mental health queries
-    if any(word in message for word in ['mental', 'health', 'stress', 'mood', 'मन', 'तनाव', 'मनोदशा']):
-        if 'breathing' in message or 'सांस' in message:
-            return """<strong>Guided breathing exercise के लिए:</strong><br>
-<a href="/mental/breathing" target="_blank" class="btn btn-info btn-sm">Breathing Exercise</a> पर जाएं<br>
-• Instructions follow करें<br>
-• Deep breaths लें और relax करें<br><br>
-Daily 5-10 minutes का practice mental health को strong बनाता है!"""
+    if any(word in message for word in ['mental', 'health', 'stress', 'mood', 'à¤®à¤¨', 'à¤¤à¤¨à¤¾à¤µ', 'à¤®à¤¨à¥‹à¤¦à¤¶à¤¾']):
+        if 'breathing' in message or 'à¤¸à¤¾à¤‚à¤¸' in message:
+            return """<strong>Guided breathing exercise à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+<a href="/mental/breathing" target="_blank" class="btn btn-info btn-sm">Breathing Exercise</a> à¤ªà¤° à¤œà¤¾à¤à¤‚<br>
+â€¢ Instructions follow à¤•à¤°à¥‡à¤‚<br>
+â€¢ Deep breaths à¤²à¥‡à¤‚ à¤”à¤° relax à¤•à¤°à¥‡à¤‚<br><br>
+Daily 5-10 minutes à¤•à¤¾ practice mental health à¤•à¥‹ strong à¤¬à¤¨à¤¾à¤¤à¤¾ à¤¹à¥ˆ!"""
         
         elif 'mood' in message or 'track' in message:
-            return """<strong>Mood tracking करने के लिए:</strong><br>
-<a href="/mental/mood" target="_blank" class="btn btn-warning btn-sm">Mood Assessment</a> पर जाएं<br>
-• Date select करें<br>
-• Questions answer करें (energy, stress, optimism)<br>
-• Notes add करें<br>
-• Submit करें<br><br>
-आपका mood history track हो जाएगा और patterns देख सकते हैं!"""
+            return """<strong>Mood tracking à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+<a href="/mental/mood" target="_blank" class="btn btn-warning btn-sm">Mood Assessment</a> à¤ªà¤° à¤œà¤¾à¤à¤‚<br>
+â€¢ Date select à¤•à¤°à¥‡à¤‚<br>
+â€¢ Questions answer à¤•à¤°à¥‡à¤‚ (energy, stress, optimism)<br>
+â€¢ Notes add à¤•à¤°à¥‡à¤‚<br>
+â€¢ Submit à¤•à¤°à¥‡à¤‚<br><br>
+à¤†à¤ªà¤•à¤¾ mood history track à¤¹à¥‹ à¤œà¤¾à¤à¤—à¤¾ à¤”à¤° patterns à¤¦à¥‡à¤– à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚!"""
         
         else:
-            return """<strong>Mental wellness के लिए:</strong><br>
-• <a href="/mental/mood" target="_blank">Daily mood tracking</a> करें<br>
-• <a href="/mental/breathing" target="_blank">Guided breathing exercises</a> करें<br>
-• Stress management tips follow करें<br>
-• Regular breaks लें और exercise करें<br><br>
-आपको क्या help चाहिए - breathing, mood tracking, या general tips?"""
+            return """<strong>Mental wellness à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+â€¢ <a href="/mental/mood" target="_blank">Daily mood tracking</a> à¤•à¤°à¥‡à¤‚<br>
+â€¢ <a href="/mental/breathing" target="_blank">Guided breathing exercises</a> à¤•à¤°à¥‡à¤‚<br>
+â€¢ Stress management tips follow à¤•à¤°à¥‡à¤‚<br>
+â€¢ Regular breaks à¤²à¥‡à¤‚ à¤”à¤° exercise à¤•à¤°à¥‡à¤‚<br><br>
+à¤†à¤ªà¤•à¥‹ à¤•à¥à¤¯à¤¾ help à¤šà¤¾à¤¹à¤¿à¤ - breathing, mood tracking, à¤¯à¤¾ general tips?"""
     
     # Wisdom/Spiritual queries
-    if any(word in message for word in ['wisdom', 'gyan', 'spiritual', 'shloka', 'गीता', 'ज्ञान']):
+    if any(word in message for word in ['wisdom', 'gyan', 'spiritual', 'shloka', 'à¤—à¥€à¤¤à¤¾', 'à¤œà¥à¤žà¤¾à¤¨']):
         if 'daily' in message:
-            return """<strong>Daily wisdom पाने के लिए:</strong><br>
-<a href="/gyan/daily" target="_blank" class="btn btn-secondary btn-sm">Daily Wisdom</a> पर जाएं<br>
-• Bhagavad Gita का random shloka मिलेगा<br>
-• Hindi/English meaning पढ़ें<br>
-• Practical application समझें<br><br>
-Daily spiritual wisdom से motivation मिलती है!"""
+            return """<strong>Daily wisdom à¤ªà¤¾à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+<a href="/gyan/daily" target="_blank" class="btn btn-secondary btn-sm">Daily Wisdom</a> à¤ªà¤° à¤œà¤¾à¤à¤‚<br>
+â€¢ Bhagavad Gita à¤•à¤¾ random shloka à¤®à¤¿à¤²à¥‡à¤—à¤¾<br>
+â€¢ Hindi/English meaning à¤ªà¤¢à¤¼à¥‡à¤‚<br>
+â€¢ Practical application à¤¸à¤®à¤à¥‡à¤‚<br><br>
+Daily spiritual wisdom à¤¸à¥‡ motivation à¤®à¤¿à¤²à¤¤à¥€ à¤¹à¥ˆ!"""
         
         elif 'search' in message:
-            return """<strong>Shloka search करने के लिए:</strong><br>
-<a href="/gyan/search" target="_blank" class="btn btn-dark btn-sm">Search Shlokas</a> पर जाएं<br>
-• Keyword enter करें (peace, karma, dharma, etc.)<br>
-• Results देखें<br>
-• Detailed view में click करें<br><br>
-Spiritual guidance के लिए perfect tool है!"""
+            return """<strong>Shloka search à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+<a href="/gyan/search" target="_blank" class="btn btn-dark btn-sm">Search Shlokas</a> à¤ªà¤° à¤œà¤¾à¤à¤‚<br>
+â€¢ Keyword enter à¤•à¤°à¥‡à¤‚ (peace, karma, dharma, etc.)<br>
+â€¢ Results à¤¦à¥‡à¤–à¥‡à¤‚<br>
+â€¢ Detailed view à¤®à¥‡à¤‚ click à¤•à¤°à¥‡à¤‚<br><br>
+Spiritual guidance à¤•à¥‡ à¤²à¤¿à¤ perfect tool à¤¹à¥ˆ!"""
         
         else:
-            return """<strong>Spiritual guidance के लिए:</strong><br>
-• <a href="/gyan/daily" target="_blank">Daily Bhagavad Gita shlokas</a> पढ़ें<br>
-• <a href="/gyan/search" target="_blank">Search करें</a> specific topics पर<br>
-• Practical applications समझें<br>
-• Daily practice में implement करें<br><br>
-आप किस topic पर guidance चाहते हैं?"""
+            return """<strong>Spiritual guidance à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+â€¢ <a href="/gyan/daily" target="_blank">Daily Bhagavad Gita shlokas</a> à¤ªà¤¢à¤¼à¥‡à¤‚<br>
+â€¢ <a href="/gyan/search" target="_blank">Search à¤•à¤°à¥‡à¤‚</a> specific topics à¤ªà¤°<br>
+â€¢ Practical applications à¤¸à¤®à¤à¥‡à¤‚<br>
+â€¢ Daily practice à¤®à¥‡à¤‚ implement à¤•à¤°à¥‡à¤‚<br><br>
+à¤†à¤ª à¤•à¤¿à¤¸ topic à¤ªà¤° guidance à¤šà¤¾à¤¹à¤¤à¥‡ à¤¹à¥ˆà¤‚?"""
     
     # Skills/Resources queries
-    if any(word in message for word in ['skill', 'resource', 'course', 'learning', 'स्किल', 'रिसोर्स']):
-        return """<strong>Learning resources के लिए:</strong><br>
-<a href="/skill/browse" target="_blank" class="btn btn-warning btn-sm">Skill Saathi</a> पर जाएं<br>
-• Topic select करें (Programming, Design, Business, etc.)<br>
-• Difficulty level choose करें<br>
-• Free resources filter करें<br>
-• Best courses और tutorials मिलेंगे<br><br>
-सभी resources quality score के साथ ranked हैं!"""
+    if any(word in message for word in ['skill', 'resource', 'course', 'learning', 'à¤¸à¥à¤•à¤¿à¤²', 'à¤°à¤¿à¤¸à¥‹à¤°à¥à¤¸']):
+        return """<strong>Learning resources à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+<a href="/skill/browse" target="_blank" class="btn btn-warning btn-sm">Skill Saathi</a> à¤ªà¤° à¤œà¤¾à¤à¤‚<br>
+â€¢ Topic select à¤•à¤°à¥‡à¤‚ (Programming, Design, Business, etc.)<br>
+â€¢ Difficulty level choose à¤•à¤°à¥‡à¤‚<br>
+â€¢ Free resources filter à¤•à¤°à¥‡à¤‚<br>
+â€¢ Best courses à¤”à¤° tutorials à¤®à¤¿à¤²à¥‡à¤‚à¤—à¥‡<br><br>
+à¤¸à¤­à¥€ resources quality score à¤•à¥‡ à¤¸à¤¾à¤¥ ranked à¤¹à¥ˆà¤‚!"""
     
     # AI Tools queries
-    if any(word in message for word in ['ai', 'tool', 'chatgpt', 'artificial', 'एआई', 'टूल']):
-        return """<strong>AI tools के recommendations के लिए:</strong><br>
-<a href="/ai/tools" target="_blank" class="btn btn-secondary btn-sm">AI Tools</a> पर जाएं<br>
-• Category select करें (Writing, Coding, Design, etc.)<br>
-• Free/Paid filter apply करें<br>
-• Tool details और tutorials देखें<br>
-• Best tools try करें<br><br>
-ChatGPT, GitHub Copilot, Canva, etc. जैसे tools मिलेंगे!"""
+    if any(word in message for word in ['ai', 'tool', 'chatgpt', 'artificial', 'à¤à¤†à¤ˆ', 'à¤Ÿà¥‚à¤²']):
+        return """<strong>AI tools à¤•à¥‡ recommendations à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+<a href="/ai/tools" target="_blank" class="btn btn-secondary btn-sm">AI Tools</a> à¤ªà¤° à¤œà¤¾à¤à¤‚<br>
+â€¢ Category select à¤•à¤°à¥‡à¤‚ (Writing, Coding, Design, etc.)<br>
+â€¢ Free/Paid filter apply à¤•à¤°à¥‡à¤‚<br>
+â€¢ Tool details à¤”à¤° tutorials à¤¦à¥‡à¤–à¥‡à¤‚<br>
+â€¢ Best tools try à¤•à¤°à¥‡à¤‚<br><br>
+ChatGPT, GitHub Copilot, Canva, etc. à¤œà¥ˆà¤¸à¥‡ tools à¤®à¤¿à¤²à¥‡à¤‚à¤—à¥‡!"""
     
     # Mentor queries
-    if any(word in message for word in ['mentor', 'guidance', 'teacher', 'expert', 'मेंटर']):
+    if any(word in message for word in ['mentor', 'guidance', 'teacher', 'expert', 'à¤®à¥‡à¤‚à¤Ÿà¤°']):
         if 'connect' in message or 'chat' in message:
-            return """<strong>Mentor से connect करने के लिए:</strong><br>
-<a href="/mentor/connect" target="_blank" class="btn btn-danger btn-sm">Mentor Connect</a> पर जाएं<br>
-• Available mentors browse करें<br>
-• Profile देखें और message send करें<br>
-• Chat शुरू करें<br>
-• <a href="/mentor/payment" target="_blank">Payment</a> और <a href="/mentor/upgrade" target="_blank">upgrade</a> options check करें<br><br>
-Personalized guidance मिलेगी!"""
+            return """<strong>Mentor à¤¸à¥‡ connect à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+<a href="/mentor/connect" target="_blank" class="btn btn-danger btn-sm">Mentor Connect</a> à¤ªà¤° à¤œà¤¾à¤à¤‚<br>
+â€¢ Available mentors browse à¤•à¤°à¥‡à¤‚<br>
+â€¢ Profile à¤¦à¥‡à¤–à¥‡à¤‚ à¤”à¤° message send à¤•à¤°à¥‡à¤‚<br>
+â€¢ Chat à¤¶à¥à¤°à¥‚ à¤•à¤°à¥‡à¤‚<br>
+â€¢ <a href="/mentor/payment" target="_blank">Payment</a> à¤”à¤° <a href="/mentor/upgrade" target="_blank">upgrade</a> options check à¤•à¤°à¥‡à¤‚<br><br>
+Personalized guidance à¤®à¤¿à¤²à¥‡à¤—à¥€!"""
         
         else:
-            return """<strong>Mentor guidance के लिए:</strong><br>
-• <a href="/mentor/connect" target="_blank">Available experts से chat</a> करें<br>
-• Career advice लें<br>
-• Resume review करवाएं<br>
-• Interview preparation करें<br><br>
-आप किस field में mentor चाहते हैं?"""
+            return """<strong>Mentor guidance à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+â€¢ <a href="/mentor/connect" target="_blank">Available experts à¤¸à¥‡ chat</a> à¤•à¤°à¥‡à¤‚<br>
+â€¢ Career advice à¤²à¥‡à¤‚<br>
+â€¢ Resume review à¤•à¤°à¤µà¤¾à¤à¤‚<br>
+â€¢ Interview preparation à¤•à¤°à¥‡à¤‚<br><br>
+à¤†à¤ª à¤•à¤¿à¤¸ field à¤®à¥‡à¤‚ mentor à¤šà¤¾à¤¹à¤¤à¥‡ à¤¹à¥ˆà¤‚?"""
     
     # Todo/Productivity queries
-    if any(word in message for word in ['todo', 'task', 'productivity', 'list', 'टूडू', 'टास्क']):
-        return """<strong>Todo list manage करने के लिए:</strong><br>
-<a href="/todo" target="_blank" class="btn btn-light text-dark btn-sm">Todo List</a> पर जाएं<br>
-• New task add करें<br>
-• Priority set करें (High, Medium, Low)<br>
-• Deadline set करें<br>
-• Tasks complete mark करें<br><br>
-आपकी productivity track हो जाएगी!"""
+    if any(word in message for word in ['todo', 'task', 'productivity', 'list', 'à¤Ÿà¥‚à¤¡à¥‚', 'à¤Ÿà¤¾à¤¸à¥à¤•']):
+        return """<strong>Todo list manage à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+<a href="/todo" target="_blank" class="btn btn-light text-dark btn-sm">Todo List</a> à¤ªà¤° à¤œà¤¾à¤à¤‚<br>
+â€¢ New task add à¤•à¤°à¥‡à¤‚<br>
+â€¢ Priority set à¤•à¤°à¥‡à¤‚ (High, Medium, Low)<br>
+â€¢ Deadline set à¤•à¤°à¥‡à¤‚<br>
+â€¢ Tasks complete mark à¤•à¤°à¥‡à¤‚<br><br>
+à¤†à¤ªà¤•à¥€ productivity track à¤¹à¥‹ à¤œà¤¾à¤à¤—à¥€!"""
     
     # Games/Mind fresh queries
-    if any(word in message for word in ['game', 'fun', 'joke', 'relax', 'मनोरंजन']):
-        return """<strong>Mind refresh करने के लिए:</strong><br>
-<a href="/mindfresh" target="_blank" class="btn btn-success btn-sm">Mind Fresh</a> पर जाएं<br>
-• Fun games play करें (Riddles, Jokes, Puzzles)<br>
-• Daily challenges complete करें<br>
-• Scores track करें<br><br>
-Short breaks में creativity और energy boost मिलता है!"""
+    if any(word in message for word in ['game', 'fun', 'joke', 'relax', 'à¤®à¤¨à¥‹à¤°à¤‚à¤œà¤¨']):
+        return """<strong>Mind refresh à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+<a href="/mindfresh" target="_blank" class="btn btn-success btn-sm">Mind Fresh</a> à¤ªà¤° à¤œà¤¾à¤à¤‚<br>
+â€¢ Fun games play à¤•à¤°à¥‡à¤‚ (Riddles, Jokes, Puzzles)<br>
+â€¢ Daily challenges complete à¤•à¤°à¥‡à¤‚<br>
+â€¢ Scores track à¤•à¤°à¥‡à¤‚<br><br>
+Short breaks à¤®à¥‡à¤‚ creativity à¤”à¤° energy boost à¤®à¤¿à¤²à¤¤à¤¾ à¤¹à¥ˆ!"""
     
     # Progress/Dashboard queries
-    if any(word in message for word in ['progress', 'dashboard', 'activity', 'प्रगति']):
-        return """<strong>आपकी progress देखने के लिए:</strong><br>
-<a href="/progress" target="_blank" class="btn btn-info btn-sm">Progress Dashboard</a> पर जाएं<br>
-• Total activities देखें<br>
-• Module-wise stats check करें<br>
-• Recent activities देखें<br>
-• Badges और streaks celebrate करें<br><br>
-आपका learning journey track होता है!"""
+    if any(word in message for word in ['progress', 'dashboard', 'activity', 'à¤ªà¥à¤°à¤—à¤¤à¤¿']):
+        return """<strong>à¤†à¤ªà¤•à¥€ progress à¤¦à¥‡à¤–à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+<a href="/progress" target="_blank" class="btn btn-info btn-sm">Progress Dashboard</a> à¤ªà¤° à¤œà¤¾à¤à¤‚<br>
+â€¢ Total activities à¤¦à¥‡à¤–à¥‡à¤‚<br>
+â€¢ Module-wise stats check à¤•à¤°à¥‡à¤‚<br>
+â€¢ Recent activities à¤¦à¥‡à¤–à¥‡à¤‚<br>
+â€¢ Badges à¤”à¤° streaks celebrate à¤•à¤°à¥‡à¤‚<br><br>
+à¤†à¤ªà¤•à¤¾ learning journey track à¤¹à¥‹à¤¤à¤¾ à¤¹à¥ˆ!"""
     
     # Student Essentials queries
-    if any(word in message for word in ['essential', 'student', 'study', 'notes', 'एसेंशियल', 'स्टूडेंट']):
-        return """<strong>Student essentials के लिए:</strong><br>
-<a href="/essentials" target="_blank" class="btn btn-primary btn-sm">Student Essentials</a> पर जाएं<br>
-• Study materials download करें<br>
-• Important notes और guides access करें<br>
-• Exam preparation resources use करें<br>
-• Academic tools explore करें<br><br>
-सभी essential resources एक जगह मिलेंगे!"""
+    if any(word in message for word in ['essential', 'student', 'study', 'notes', 'à¤à¤¸à¥‡à¤‚à¤¶à¤¿à¤¯à¤²', 'à¤¸à¥à¤Ÿà¥‚à¤¡à¥‡à¤‚à¤Ÿ']):
+        return """<strong>Student essentials à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+<a href="/essentials" target="_blank" class="btn btn-primary btn-sm">Student Essentials</a> à¤ªà¤° à¤œà¤¾à¤à¤‚<br>
+â€¢ Study materials download à¤•à¤°à¥‡à¤‚<br>
+â€¢ Important notes à¤”à¤° guides access à¤•à¤°à¥‡à¤‚<br>
+â€¢ Exam preparation resources use à¤•à¤°à¥‡à¤‚<br>
+â€¢ Academic tools explore à¤•à¤°à¥‡à¤‚<br><br>
+à¤¸à¤­à¥€ essential resources à¤à¤• à¤œà¤—à¤¹ à¤®à¤¿à¤²à¥‡à¤‚à¤—à¥‡!"""
     
     # Download/App queries
-    if any(word in message for word in ['download', 'app', 'apk', 'mobile', 'डाउनलोड', 'ऐप']):
-        return """<strong>Marg Darshak App download करने के लिए:</strong><br>
+    if any(word in message for word in ['download', 'app', 'apk', 'mobile', 'à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡', 'à¤à¤ª']):
+        return """<strong>Marg Darshak App download à¤•à¤°à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
 <strong>Available on:</strong><br>
-• <a href="https://play.google.com/store/search?q=margdarshak" target="_blank" class="btn btn-danger btn-sm"><i class="fab fa-google-play"></i> Google Play Store</a><br>
-• <a href="https://apkpure.com/search?q=margdarshak" target="_blank" class="btn btn-primary btn-sm"><i class="fas fa-store"></i> APKPure</a><br>
-• <a href="https://en.uptodown.com/android/search/margdarshak" target="_blank" class="btn btn-success btn-sm"><i class="fas fa-mobile-alt"></i> Uptodown</a><br>
-• <a href="/static/MargDarshak-App.apk" download class="btn btn-warning btn-sm"><i class="fas fa-file-download"></i> Direct APK</a><br><br>
+â€¢ <a href="https://play.google.com/store/search?q=margdarshak" target="_blank" class="btn btn-danger btn-sm"><i class="fab fa-google-play"></i> Google Play Store</a><br>
+â€¢ <a href="https://apkpure.com/search?q=margdarshak" target="_blank" class="btn btn-primary btn-sm"><i class="fas fa-store"></i> APKPure</a><br>
+â€¢ <a href="https://en.uptodown.com/android/search/margdarshak" target="_blank" class="btn btn-success btn-sm"><i class="fas fa-mobile-alt"></i> Uptodown</a><br>
+â€¢ <a href="/static/MargDarshak-App.apk" download class="btn btn-warning btn-sm"><i class="fas fa-file-download"></i> Direct APK</a><br><br>
 <strong>Features:</strong> Offline access, push notifications, enhanced mobile experience!<br>
 <strong>Trusted app</strong> - Also coming soon on APKPure & Uptodown and Play Store."""
     
     # Roadmap/Career path queries
-    if any(word in message for word in ['roadmap', 'path', 'career path', 'रोडमैप', 'पथ']):
-        return """<strong>Career roadmap बनाने के लिए:</strong><br>
-<a href="/career/browse" target="_blank" class="btn btn-info btn-sm">Career Browse</a> पर जाएं और अपनी interested career select करें<br><br>
+    if any(word in message for word in ['roadmap', 'path', 'career path', 'à¤°à¥‹à¤¡à¤®à¥ˆà¤ª', 'à¤ªà¤¥']):
+        return """<strong>Career roadmap à¤¬à¤¨à¤¾à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
+<a href="/career/browse" target="_blank" class="btn btn-info btn-sm">Career Browse</a> à¤ªà¤° à¤œà¤¾à¤à¤‚ à¤”à¤° à¤…à¤ªà¤¨à¥€ interested career select à¤•à¤°à¥‡à¤‚<br><br>
 <strong>General roadmap steps:</strong><br>
-1. <strong>Self-assessment:</strong> Skills और interests identify करें<br>
-2. <strong>Education:</strong> Required qualifications complete करें<br>
-3. <strong>Skills development:</strong> <a href="/skill/browse" target="_blank">Skill Saathi</a> से learn करें<br>
-4. <strong>Experience:</strong> Internships/projects करें<br>
-5. <strong>Networking:</strong> <a href="/mentor/connect" target="_blank">Mentors</a> से connect करें<br>
-6. <strong>Continuous learning:</strong> <a href="/ai/tools" target="_blank">AI tools</a> use करें<br><br>
-मैं आपकी specific career के लिए detailed roadmap बना सकता हूं!"""
+1. <strong>Self-assessment:</strong> Skills à¤”à¤° interests identify à¤•à¤°à¥‡à¤‚<br>
+2. <strong>Education:</strong> Required qualifications complete à¤•à¤°à¥‡à¤‚<br>
+3. <strong>Skills development:</strong> <a href="/skill/browse" target="_blank">Skill Saathi</a> à¤¸à¥‡ learn à¤•à¤°à¥‡à¤‚<br>
+4. <strong>Experience:</strong> Internships/projects à¤•à¤°à¥‡à¤‚<br>
+5. <strong>Networking:</strong> <a href="/mentor/connect" target="_blank">Mentors</a> à¤¸à¥‡ connect à¤•à¤°à¥‡à¤‚<br>
+6. <strong>Continuous learning:</strong> <a href="/ai/tools" target="_blank">AI tools</a> use à¤•à¤°à¥‡à¤‚<br><br>
+à¤®à¥ˆà¤‚ à¤†à¤ªà¤•à¥€ specific career à¤•à¥‡ à¤²à¤¿à¤ detailed roadmap à¤¬à¤¨à¤¾ à¤¸à¤•à¤¤à¤¾ à¤¹à¥‚à¤‚!"""
     
     # Resume/Portfolio queries
-    if any(word in message for word in ['resume', 'cv', 'portfolio', 'रिज्यूम', 'पोर्टफोलियो']):
-        return """<strong>Resume और portfolio बनाने के लिए tips:</strong><br>
-1. <strong>Format:</strong> Clean, professional layout use करें<br>
-2. <strong>Content:</strong> Achievements quantify करें<br>
-3. <strong>Skills:</strong> Relevant skills highlight करें<br>
-4. <strong>Projects:</strong> <a href="https://github.com" target="_blank">GitHub</a> links add करें<br>
-5. <strong>LinkedIn:</strong> <a href="https://linkedin.com" target="_blank">Profile</a> optimize करें<br><br>
-<strong>Tools:</strong> Canva, Google Docs, or professional templates use करें<br>
-<a href="/mentor/connect" target="_blank">Mentors से resume review</a> करवा सकते हैं!"""
+    if any(word in message for word in ['resume', 'cv', 'portfolio', 'à¤°à¤¿à¤œà¥à¤¯à¥‚à¤®', 'à¤ªà¥‹à¤°à¥à¤Ÿà¤«à¥‹à¤²à¤¿à¤¯à¥‹']):
+        return """<strong>Resume à¤”à¤° portfolio à¤¬à¤¨à¤¾à¤¨à¥‡ à¤•à¥‡ à¤²à¤¿à¤ tips:</strong><br>
+1. <strong>Format:</strong> Clean, professional layout use à¤•à¤°à¥‡à¤‚<br>
+2. <strong>Content:</strong> Achievements quantify à¤•à¤°à¥‡à¤‚<br>
+3. <strong>Skills:</strong> Relevant skills highlight à¤•à¤°à¥‡à¤‚<br>
+4. <strong>Projects:</strong> <a href="https://github.com" target="_blank">GitHub</a> links add à¤•à¤°à¥‡à¤‚<br>
+5. <strong>LinkedIn:</strong> <a href="https://linkedin.com" target="_blank">Profile</a> optimize à¤•à¤°à¥‡à¤‚<br><br>
+<strong>Tools:</strong> Canva, Google Docs, or professional templates use à¤•à¤°à¥‡à¤‚<br>
+<a href="/mentor/connect" target="_blank">Mentors à¤¸à¥‡ resume review</a> à¤•à¤°à¤µà¤¾ à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚!"""
     
     # Help/General queries
-    if any(word in message for word in ['help', 'how', 'what', 'मदद', 'कैसे']):
-        return """मैं आपकी ये मदद कर सकता हूं:
-• Career guidance, quiz, और roadmap
-• Platform tutorials (GitHub, LinkedIn, LeetCode)
-• Mental health tips और mood tracking
-• Daily wisdom shlokas और spiritual guidance
-• Learning resources और skill development
-• AI tools recommendations
-• Mentor connections और personalized guidance
-• Student essentials और study materials
-• Student essentials और study materials
-• Fun games और mind refresh activities
-• Progress tracking और dashboard analytics
-• App download और mobile features
-• Career roadmaps और resume building tips
-• Step-by-step instructions for all features
+    if any(word in message for word in ['help', 'how', 'what', 'à¤®à¤¦à¤¦', 'à¤•à¥ˆà¤¸à¥‡']):
+        return """à¤®à¥ˆà¤‚ à¤†à¤ªà¤•à¥€ à¤¯à¥‡ à¤®à¤¦à¤¦ à¤•à¤° à¤¸à¤•à¤¤à¤¾ à¤¹à¥‚à¤‚:
+â€¢ Career guidance, quiz, à¤”à¤° roadmap
+â€¢ Platform tutorials (GitHub, LinkedIn, LeetCode)
+â€¢ Mental health tips à¤”à¤° mood tracking
+â€¢ Daily wisdom shlokas à¤”à¤° spiritual guidance
+â€¢ Learning resources à¤”à¤° skill development
+â€¢ AI tools recommendations
+â€¢ Mentor connections à¤”à¤° personalized guidance
+â€¢ Student essentials à¤”à¤° study materials
+â€¢ Student essentials à¤”à¤° study materials
+â€¢ Fun games à¤”à¤° mind refresh activities
+â€¢ Progress tracking à¤”à¤° dashboard analytics
+â€¢ App download à¤”à¤° mobile features
+â€¢ Career roadmaps à¤”à¤° resume building tips
+â€¢ Step-by-step instructions for all features
 
-आप क्या जानना चाहते हैं? बताएं! 😊"""
+à¤†à¤ª à¤•à¥à¤¯à¤¾ à¤œà¤¾à¤¨à¤¨à¤¾ à¤šà¤¾à¤¹à¤¤à¥‡ à¤¹à¥ˆà¤‚? à¤¬à¤¤à¤¾à¤à¤‚! ðŸ˜Š"""
     
     # Default response
     if not any(keyword in message.lower() for keyword in [
-        'career', 'job', 'profession', 'कैरियर', 'नौकरी', 'quiz', 'test', 'browse', 'careers',
-        'learn', 'education', 'platform', 'tool', 'study', 'सीखना', 'प्लेटफॉर्म', 'github', 'linkedin', 'leetcode', 'coding',
-        'mental', 'health', 'stress', 'mood', 'मन', 'तनाव', 'मनोदशा', 'breathing', 'सांस', 'track',
-        'wisdom', 'gyan', 'spiritual', 'shloka', 'गीता', 'ज्ञान', 'daily', 'search',
-        'skill', 'resource', 'course', 'learning', 'स्किल', 'रिसोर्स',
-        'ai', 'chatgpt', 'artificial', 'एआई', 'टूल',
-        'mentor', 'guidance', 'teacher', 'expert', 'मेंटर', 'connect', 'chat',
-        'todo', 'task', 'productivity', 'list', 'टूडू', 'टास्क',
-        'game', 'fun', 'joke', 'relax', 'मनोरंजन',
-        'progress', 'dashboard', 'activity', 'प्रगति',
-        'essential', 'student', 'notes', 'एसेंशियल', 'स्टूडेंट',
-        'download', 'app', 'apk', 'mobile', 'डाउनलोड', 'ऐप',
-        'roadmap', 'path', 'रोडमैप', 'पथ',
-        'resume', 'cv', 'portfolio', 'रिज्यूम', 'पोर्टफोलियो',
-        'help', 'how', 'what', 'मदद', 'कैसे'
+        'career', 'job', 'profession', 'à¤•à¥ˆà¤°à¤¿à¤¯à¤°', 'à¤¨à¥Œà¤•à¤°à¥€', 'quiz', 'test', 'browse', 'careers',
+        'learn', 'education', 'platform', 'tool', 'study', 'à¤¸à¥€à¤–à¤¨à¤¾', 'à¤ªà¥à¤²à¥‡à¤Ÿà¤«à¥‰à¤°à¥à¤®', 'github', 'linkedin', 'leetcode', 'coding',
+        'mental', 'health', 'stress', 'mood', 'à¤®à¤¨', 'à¤¤à¤¨à¤¾à¤µ', 'à¤®à¤¨à¥‹à¤¦à¤¶à¤¾', 'breathing', 'à¤¸à¤¾à¤‚à¤¸', 'track',
+        'wisdom', 'gyan', 'spiritual', 'shloka', 'à¤—à¥€à¤¤à¤¾', 'à¤œà¥à¤žà¤¾à¤¨', 'daily', 'search',
+        'skill', 'resource', 'course', 'learning', 'à¤¸à¥à¤•à¤¿à¤²', 'à¤°à¤¿à¤¸à¥‹à¤°à¥à¤¸',
+        'ai', 'chatgpt', 'artificial', 'à¤à¤†à¤ˆ', 'à¤Ÿà¥‚à¤²',
+        'mentor', 'guidance', 'teacher', 'expert', 'à¤®à¥‡à¤‚à¤Ÿà¤°', 'connect', 'chat',
+        'todo', 'task', 'productivity', 'list', 'à¤Ÿà¥‚à¤¡à¥‚', 'à¤Ÿà¤¾à¤¸à¥à¤•',
+        'game', 'fun', 'joke', 'relax', 'à¤®à¤¨à¥‹à¤°à¤‚à¤œà¤¨',
+        'progress', 'dashboard', 'activity', 'à¤ªà¥à¤°à¤—à¤¤à¤¿',
+        'essential', 'student', 'notes', 'à¤à¤¸à¥‡à¤‚à¤¶à¤¿à¤¯à¤²', 'à¤¸à¥à¤Ÿà¥‚à¤¡à¥‡à¤‚à¤Ÿ',
+        'download', 'app', 'apk', 'mobile', 'à¤¡à¤¾à¤‰à¤¨à¤²à¥‹à¤¡', 'à¤à¤ª',
+        'roadmap', 'path', 'à¤°à¥‹à¤¡à¤®à¥ˆà¤ª', 'à¤ªà¤¥',
+        'resume', 'cv', 'portfolio', 'à¤°à¤¿à¤œà¥à¤¯à¥‚à¤®', 'à¤ªà¥‹à¤°à¥à¤Ÿà¤«à¥‹à¤²à¤¿à¤¯à¥‹',
+        'help', 'how', 'what', 'à¤®à¤¦à¤¦', 'à¤•à¥ˆà¤¸à¥‡'
     ]):
         # Fallback to helpful response for general questions
-        return """<strong>मैं आपका मार्गदर्शक हूं!</strong> मैं career, education, mental health, wisdom, skills, AI tools, mentoring, productivity, और overall development में help कर सकता हूं। 
+        return """<strong>à¤®à¥ˆà¤‚ à¤†à¤ªà¤•à¤¾ à¤®à¤¾à¤°à¥à¤—à¤¦à¤°à¥à¤¶à¤• à¤¹à¥‚à¤‚!</strong> à¤®à¥ˆà¤‚ career, education, mental health, wisdom, skills, AI tools, mentoring, productivity, à¤”à¤° overall development à¤®à¥‡à¤‚ help à¤•à¤° à¤¸à¤•à¤¤à¤¾ à¤¹à¥‚à¤‚à¥¤ 
 
-<strong>कुछ specific पूछें जैसे:</strong><br>
-• <a href="/career/quiz" target="_blank">Career quiz कैसे दें?</a><br>
-• "GitHub कैसे use करें?"<br>
-• <a href="/mental/mood" target="_blank">Mental health tips</a><br>
-• <a href="/ai/tools" target="_blank">AI tools recommendations</a><br>
-• <a href="/mentor/connect" target="_blank">Mentor कैसे connect करें?</a><br>
-• <a href="/gyan/daily" target="_blank">Daily wisdom कैसे पाएं?</a><br>
-• <a href="/todo" target="_blank">Todo list कैसे manage करें?</a><br><br>
-या कोई भी question पूछ सकते हैं - मैं step-by-step guide दूंगा! 🤝"""
+<strong>à¤•à¥à¤› specific à¤ªà¥‚à¤›à¥‡à¤‚ à¤œà¥ˆà¤¸à¥‡:</strong><br>
+â€¢ <a href="/career/quiz" target="_blank">Career quiz à¤•à¥ˆà¤¸à¥‡ à¤¦à¥‡à¤‚?</a><br>
+â€¢ "GitHub à¤•à¥ˆà¤¸à¥‡ use à¤•à¤°à¥‡à¤‚?"<br>
+â€¢ <a href="/mental/mood" target="_blank">Mental health tips</a><br>
+â€¢ <a href="/ai/tools" target="_blank">AI tools recommendations</a><br>
+â€¢ <a href="/mentor/connect" target="_blank">Mentor à¤•à¥ˆà¤¸à¥‡ connect à¤•à¤°à¥‡à¤‚?</a><br>
+â€¢ <a href="/gyan/daily" target="_blank">Daily wisdom à¤•à¥ˆà¤¸à¥‡ à¤ªà¤¾à¤à¤‚?</a><br>
+â€¢ <a href="/todo" target="_blank">Todo list à¤•à¥ˆà¤¸à¥‡ manage à¤•à¤°à¥‡à¤‚?</a><br><br>
+à¤¯à¤¾ à¤•à¥‹à¤ˆ à¤­à¥€ question à¤ªà¥‚à¤› à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚ - à¤®à¥ˆà¤‚ step-by-step guide à¤¦à¥‚à¤‚à¤—à¤¾! ðŸ¤"""
     # Fallback default response for unmatched specific queries
-    return """<strong>मैं आपका मार्गदर्शक हूं!</strong> मैं career, education, mental health, wisdom, skills, AI tools, mentoring, productivity, और overall development में help कर सकता हूं। 
+    return """<strong>à¤®à¥ˆà¤‚ à¤†à¤ªà¤•à¤¾ à¤®à¤¾à¤°à¥à¤—à¤¦à¤°à¥à¤¶à¤• à¤¹à¥‚à¤‚!</strong> à¤®à¥ˆà¤‚ career, education, mental health, wisdom, skills, AI tools, mentoring, productivity, à¤”à¤° overall development à¤®à¥‡à¤‚ help à¤•à¤° à¤¸à¤•à¤¤à¤¾ à¤¹à¥‚à¤‚à¥¤ 
 
-<strong>कुछ specific पूछें जैसे:</strong><br>
-• <a href="/career/quiz" target="_blank">"Career quiz कैसे दें?"</a><br>
-• "GitHub कैसे use करें?"<br>
-• <a href="/mental/mood" target="_blank">"Mental health tips"</a><br>
-• <a href="/ai/tools" target="_blank">"AI tools recommendations"</a><br>
-• <a href="/mentor/connect" target="_blank">"Mentor कैसे connect करें?"</a><br>
-• <a href="/gyan/daily" target="_blank">"Daily wisdom कैसे पाएं?"</a><br>
-• <a href="/todo" target="_blank">"Todo list कैसे manage करें?"</a><br><br>
-या कोई भी question पूछ सकते हैं - मैं step-by-step guide दूंगा! 🤝"""
+<strong>à¤•à¥à¤› specific à¤ªà¥‚à¤›à¥‡à¤‚ à¤œà¥ˆà¤¸à¥‡:</strong><br>
+â€¢ <a href="/career/quiz" target="_blank">"Career quiz à¤•à¥ˆà¤¸à¥‡ à¤¦à¥‡à¤‚?"</a><br>
+â€¢ "GitHub à¤•à¥ˆà¤¸à¥‡ use à¤•à¤°à¥‡à¤‚?"<br>
+â€¢ <a href="/mental/mood" target="_blank">"Mental health tips"</a><br>
+â€¢ <a href="/ai/tools" target="_blank">"AI tools recommendations"</a><br>
+â€¢ <a href="/mentor/connect" target="_blank">"Mentor à¤•à¥ˆà¤¸à¥‡ connect à¤•à¤°à¥‡à¤‚?"</a><br>
+â€¢ <a href="/gyan/daily" target="_blank">"Daily wisdom à¤•à¥ˆà¤¸à¥‡ à¤ªà¤¾à¤à¤‚?"</a><br>
+â€¢ <a href="/todo" target="_blank">"Todo list à¤•à¥ˆà¤¸à¥‡ manage à¤•à¤°à¥‡à¤‚?"</a><br><br>
+à¤¯à¤¾ à¤•à¥‹à¤ˆ à¤­à¥€ question à¤ªà¥‚à¤› à¤¸à¤•à¤¤à¥‡ à¤¹à¥ˆà¤‚ - à¤®à¥ˆà¤‚ step-by-step guide à¤¦à¥‚à¤‚à¤—à¤¾! ðŸ¤"""
 
 # ==================== MIND FRESH GAME MODULE ====================
 @app.route('/mindfresh')
@@ -2811,7 +4428,7 @@ def add_task():
             conn.commit()
             conn.close()
             
-            flash('Task added successfully! 🎉', 'success')
+            flash('Task added successfully! ðŸŽ‰', 'success')
             return redirect(url_for('todo'))
         except Exception as e:
             print(f"Add task error: {e}")
@@ -2841,7 +4458,7 @@ def edit_task(task_id):
                 WHERE id = ? AND user_id = ?
             ''', (title, description, category, priority, deadline, task_id, user_id))
             conn.commit()
-            flash('Task updated successfully! ✏️', 'success')
+            flash('Task updated successfully! âœï¸', 'success')
             return redirect(url_for('todo'))
         
         # GET request - show edit form
@@ -2871,7 +4488,7 @@ def delete_task(task_id):
         conn.commit()
         conn.close()
         
-        flash('Task deleted successfully! 🗑️', 'success')
+        flash('Task deleted successfully! ðŸ—‘ï¸', 'success')
         return redirect(url_for('todo'))
     except Exception as e:
         print(f"Delete task error: {e}")
@@ -2898,7 +4515,7 @@ def complete_task(task_id):
                     SET status = 'Completed', completed_at = CURRENT_TIMESTAMP 
                     WHERE id = ?
                 ''', (task_id,))
-                flash('Great job! Task completed! 🎉', 'success')
+                flash('Great job! Task completed! ðŸŽ‰', 'success')
             else:
                 # Mark as pending
                 conn.execute('''
@@ -3162,6 +4779,779 @@ def toggle_mentor(user_id):
 
 
 
+# ==================== INTERNSHIP MODULE ====================
+def normalize_apply_link(raw_link):
+    """Return a normalized apply link (http/https/mailto) or '' if not provided."""
+    link = (raw_link or '').strip()
+    if not link:
+        return ''
+
+    # Disallow script-style links.
+    if link.lower().startswith(('javascript:', 'data:', 'vbscript:')):
+        return None
+
+    if link.lower().startswith('mailto:'):
+        email = link[7:].strip()
+        if '@' in email:
+            return f'mailto:{email}'
+        return None
+
+    candidate = link if '://' in link else f'https://{link}'
+    parsed = urlparse(candidate)
+    if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+        return None
+    return candidate
+
+
+def get_or_create_internship_record(conn, internship_company, role, city, mode, apply_link=''):
+    normalized_company = internship_company.lower()
+    normalized_role = role.lower()
+    normalized_city = city.lower()
+    normalized_mode = mode.lower()
+
+    internship = conn.execute(
+        'SELECT id, apply_link FROM internships WHERE lower(company)=? AND lower(role)=? AND lower(city)=? AND lower(mode)=?',
+        (normalized_company, normalized_role, normalized_city, normalized_mode)
+    ).fetchone()
+
+    if internship:
+        internship_id = internship['id']
+        existing_link = (internship['apply_link'] or '').strip() if 'apply_link' in internship.keys() else ''
+        if apply_link and (not existing_link):
+            conn.execute('UPDATE internships SET apply_link = ? WHERE id = ?', (apply_link, internship_id))
+        return internship_id
+
+    cursor = conn.execute(
+        'INSERT INTO internships (company, role, city, mode, stipend, apply_link, source) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        (internship_company, role, city, mode, 'Not Disclosed', apply_link, 'student')
+    )
+    return cursor.lastrowid
+
+
+@app.route('/internships')
+@login_required
+def internships_page():
+    log_activity('page_view', 'internships', 'Browsed internships')
+    try:
+        # Get search parameter
+        search_query = request.args.get('search', '').strip()
+
+        conn = get_db_connection()
+        internship_count = conn.execute('SELECT COUNT(*) as count FROM internships').fetchone()['count']
+        experience_count = conn.execute('SELECT COUNT(*) as count FROM internship_experiences').fetchone()['count']
+        conn.close()
+
+        return render_template('internships/browse.html',
+                             internship_count=internship_count,
+                             experience_count=experience_count,
+                             search_query=search_query)
+    except Exception as e:
+        print(f"Internships page count error: {e}")
+        return render_template('internships/browse.html',
+                             internship_count=0,
+                             experience_count=0,
+                             search_query='')
+
+@app.route('/internships/share-experience')
+@login_required
+def share_experience_page():
+    log_activity('page_view', 'internship_experience', 'Viewed internship experience form')
+    return render_template('internships/share_experience.html')
+
+@app.route('/internships/community')
+@login_required
+def internship_community():
+    log_activity('page_view', 'internship_community', 'Viewed internship community')
+    return render_template('internships/community.html')
+
+@app.route('/add-experience', methods=['POST'])
+@login_required
+def add_experience():
+    data = request.get_json() if request.is_json else request.form
+    name = (data.get('name') or '').strip() or g.current_user.get('username', '')
+    college = (data.get('college') or '').strip()
+    internship_company = (data.get('internship_company') or '').strip()
+    city = (data.get('city') or '').strip()
+    mode = (data.get('mode') or '').strip().title()
+    role = (data.get('role') or '').strip()
+    how_got = (data.get('how_got') or '').strip()
+    tips = (data.get('tips') or '').strip()
+    interview_questions = (data.get('interview_questions') or '').strip()
+    apply_link = normalize_apply_link(data.get('apply_link'))
+
+    if not college:
+        return jsonify({'error': 'College is required.'}), 400
+    if not internship_company:
+        return jsonify({'error': 'Internship Company is required.'}), 400
+    if not role:
+        return jsonify({'error': 'Role is required.'}), 400
+    if not how_got:
+        return jsonify({'error': 'How they got the internship is required.'}), 400
+    if not tips:
+        return jsonify({'error': 'Tips are required.'}), 400
+    if apply_link is None:
+        return jsonify({'error': 'Please provide a valid apply link (http/https or mailto).'}), 400
+
+    conn = get_db_connection()
+    internship_id = get_or_create_internship_record(
+        conn,
+        internship_company=internship_company,
+        role=role,
+        city=city,
+        mode=mode,
+        apply_link=apply_link or ''
+    )
+
+    conn.execute(
+        'INSERT INTO internship_experiences (internship_id, user_id, name, college, internship_company, city, mode, role, how_got, tips, interview_questions, apply_link) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        (internship_id, g.current_user['id'], name, college, internship_company, city, mode, role, how_got, tips, interview_questions, apply_link or '')
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({'success': True, 'message': 'Your experience has been shared successfully.'})
+
+
+@app.route('/update-experience/<int:experience_id>', methods=['POST', 'PUT'])
+@login_required
+def update_experience(experience_id):
+    data = request.get_json() if request.is_json else request.form
+    name = (data.get('name') or '').strip() or g.current_user.get('username', '')
+    college = (data.get('college') or '').strip()
+    internship_company = (data.get('internship_company') or '').strip()
+    city = (data.get('city') or '').strip()
+    mode = (data.get('mode') or '').strip().title()
+    role = (data.get('role') or '').strip()
+    how_got = (data.get('how_got') or '').strip()
+    tips = (data.get('tips') or '').strip()
+    interview_questions = (data.get('interview_questions') or '').strip()
+    apply_link = normalize_apply_link(data.get('apply_link'))
+
+    if not college:
+        return jsonify({'error': 'College is required.'}), 400
+    if not internship_company:
+        return jsonify({'error': 'Internship Company is required.'}), 400
+    if not role:
+        return jsonify({'error': 'Role is required.'}), 400
+    if not how_got:
+        return jsonify({'error': 'How they got the internship is required.'}), 400
+    if not tips:
+        return jsonify({'error': 'Tips are required.'}), 400
+    if apply_link is None:
+        return jsonify({'error': 'Please provide a valid apply link (http/https or mailto).'}), 400
+
+    conn = get_db_connection()
+    existing = conn.execute(
+        'SELECT id, user_id FROM internship_experiences WHERE id = ?',
+        (experience_id,)
+    ).fetchone()
+    if not existing:
+        conn.close()
+        return jsonify({'error': 'Story not found.'}), 404
+    if existing['user_id'] != g.current_user['id']:
+        conn.close()
+        return jsonify({'error': 'You can edit only your own story.'}), 403
+
+    internship_id = get_or_create_internship_record(
+        conn,
+        internship_company=internship_company,
+        role=role,
+        city=city,
+        mode=mode,
+        apply_link=apply_link or ''
+    )
+
+    conn.execute(
+        '''UPDATE internship_experiences
+           SET internship_id = ?, name = ?, college = ?, internship_company = ?, city = ?, mode = ?,
+               role = ?, how_got = ?, tips = ?, interview_questions = ?, apply_link = ?
+           WHERE id = ?''',
+        (internship_id, name, college, internship_company, city, mode, role, how_got, tips, interview_questions, apply_link or '', experience_id)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Your story has been updated successfully.'})
+
+@app.route('/get-experiences')
+@login_required
+def get_experiences():
+    try:
+        company = request.args.get('company', '').strip().lower()
+        city = request.args.get('city', '').strip().lower()
+        mode = request.args.get('mode', '').strip().lower()
+
+        query = 'SELECT * FROM internship_experiences WHERE 1=1'
+        params = []
+        if company:
+            query += ' AND lower(internship_company) LIKE ?'
+            params.append(f'%{company}%')
+        if city and city != 'all':
+            query += ' AND lower(city) LIKE ?'
+            params.append(f'%{city}%')
+        if mode and mode != 'all':
+            query += ' AND lower(mode) LIKE ?'
+            params.append(f'%{mode}%')
+
+        query += ' ORDER BY created_at DESC'
+
+        conn = get_db_connection()
+        rows = conn.execute(query, params).fetchall()
+        conn.close()
+
+        data = []
+        for row in rows:
+            owner_id = row['user_id'] if 'user_id' in row.keys() else None
+            data.append({
+                'id': row['id'],
+                'name': row['name'],
+                'college': row['college'],
+                'internship_company': row['internship_company'],
+                'city': row['city'],
+                'mode': row['mode'],
+                'role': row['role'],
+                'how_got': row['how_got'],
+                'tips': row['tips'],
+                'interview_questions': row['interview_questions'],
+                'apply_link': row['apply_link'],
+                'created_at': row['created_at'],
+                'can_edit': bool(owner_id and owner_id == g.current_user['id'])
+            })
+
+        return jsonify({'count': len(data), 'data': data})
+    except Exception as e:
+        print(f"Error fetching internship experiences: {e}")
+        return jsonify({'count': 0, 'data': [], 'error': str(e)}), 500
+
+
+# ==================== STUDENT COMMUNITY CHAT MODULE ====================
+def get_student_connection(conn, user_a, user_b):
+    return conn.execute(
+        '''SELECT * FROM student_connections
+           WHERE (requester_id = ? AND addressee_id = ?)
+              OR (requester_id = ? AND addressee_id = ?)
+           ORDER BY id DESC
+           LIMIT 1''',
+        (user_a, user_b, user_b, user_a)
+    ).fetchone()
+
+
+def get_accepted_connection(conn, user_a, user_b):
+    return conn.execute(
+        '''SELECT * FROM student_connections
+           WHERE status = 'accepted'
+             AND ((requester_id = ? AND addressee_id = ?)
+               OR (requester_id = ? AND addressee_id = ?))
+           LIMIT 1''',
+        (user_a, user_b, user_b, user_a)
+    ).fetchone()
+
+
+def get_student_connection_ids(conn, user_id):
+    rows = conn.execute(
+        '''SELECT requester_id, addressee_id FROM student_connections
+           WHERE status = 'accepted'
+             AND (requester_id = ? OR addressee_id = ?)''',
+        (user_id, user_id)
+    ).fetchall()
+    return {row['addressee_id'] if row['requester_id'] == user_id else row['requester_id'] for row in rows}
+
+
+def serialize_student_user(conn, user, viewer_connections=None):
+    current_user_id = g.current_user['id']
+    other_id = user['id']
+    connection = get_student_connection(conn, current_user_id, other_id)
+    other_connections = get_student_connection_ids(conn, other_id)
+    viewer_connections = viewer_connections if viewer_connections is not None else get_student_connection_ids(conn, current_user_id)
+
+    status = 'none'
+    direction = 'none'
+    request_id = None
+    if connection:
+        status = connection['status']
+        request_id = connection['id']
+        if status == 'pending':
+            direction = 'sent' if connection['requester_id'] == current_user_id else 'received'
+        elif status == 'accepted':
+            direction = 'connected'
+        else:
+            direction = 'rejected'
+
+    return {
+        'id': other_id,
+        'username': user['username'] or 'Student',
+        'connection_status': status,
+        'request_direction': direction,
+        'request_id': request_id,
+        'connection_count': len(other_connections),
+        'mutual_count': len(viewer_connections.intersection(other_connections)),
+        'joined_at': user['created_at']
+    }
+
+
+@app.route('/student-community')
+@login_required
+def student_community():
+    log_activity('page_view', 'student_community', 'Viewed student community chat')
+    return render_template('community/student.html')
+
+
+@app.route('/api/student-community/users')
+@login_required
+def student_community_users():
+    try:
+        query = (request.args.get('q') or '').strip().lower()
+        current_user_id = g.current_user['id']
+        conn = get_db_connection()
+        viewer_connections = get_student_connection_ids(conn, current_user_id)
+
+        if query:
+            rows = conn.execute(
+                '''SELECT id, username, email, created_at FROM users
+                   WHERE id != ?
+                     AND (lower(username) LIKE ? OR lower(email) LIKE ?)
+                   ORDER BY username COLLATE NOCASE
+                   LIMIT 60''',
+                (current_user_id, f'%{query}%', f'%{query}%')
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                '''SELECT id, username, email, created_at FROM users
+                   WHERE id != ?
+                   ORDER BY created_at DESC
+                   LIMIT 60''',
+                (current_user_id,)
+            ).fetchall()
+
+        users = [serialize_student_user(conn, row, viewer_connections) for row in rows]
+        conn.close()
+        return jsonify({'users': users})
+    except Exception as e:
+        print(f"Student community users error: {e}")
+        return jsonify({'error': 'Unable to load students.'}), 500
+
+
+@app.route('/api/student-community/requests', methods=['GET'])
+@login_required
+def student_connection_requests():
+    try:
+        current_user_id = g.current_user['id']
+        conn = get_db_connection()
+        rows = conn.execute(
+            '''SELECT sc.id, sc.created_at, u.id AS user_id, u.username, u.created_at AS joined_at
+               FROM student_connections sc
+               JOIN users u ON u.id = sc.requester_id
+               WHERE sc.addressee_id = ? AND sc.status = 'pending'
+               ORDER BY sc.created_at DESC''',
+            (current_user_id,)
+        ).fetchall()
+        requests_data = []
+        for row in rows:
+            requests_data.append({
+                'id': row['id'],
+                'user_id': row['user_id'],
+                'username': row['username'] or 'Student',
+                'created_at': row['created_at'],
+                'joined_at': row['joined_at']
+            })
+        conn.close()
+        return jsonify({'requests': requests_data})
+    except Exception as e:
+        print(f"Student connection requests error: {e}")
+        return jsonify({'error': 'Unable to load requests.'}), 500
+
+
+@app.route('/api/student-community/connect/<int:user_id>', methods=['POST'])
+@login_required
+def send_student_connection_request(user_id):
+    current_user_id = g.current_user['id']
+    if user_id == current_user_id:
+        return jsonify({'error': 'You cannot connect with yourself.'}), 400
+
+    try:
+        conn = get_db_connection()
+        target = conn.execute('SELECT id FROM users WHERE id = ?', (user_id,)).fetchone()
+        if not target:
+            conn.close()
+            return jsonify({'error': 'Student not found.'}), 404
+
+        existing = get_student_connection(conn, current_user_id, user_id)
+        if existing:
+            if existing['status'] == 'accepted':
+                conn.close()
+                return jsonify({'message': 'You are already connected.', 'status': 'accepted'})
+            if existing['status'] == 'pending' and existing['requester_id'] == current_user_id:
+                conn.close()
+                return jsonify({'message': 'Connection request already sent.', 'status': 'pending'})
+            if existing['status'] == 'pending' and existing['addressee_id'] == current_user_id:
+                conn.execute(
+                    "UPDATE student_connections SET status = 'accepted', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    (existing['id'],)
+                )
+                conn.commit()
+                conn.close()
+                return jsonify({'message': 'Connection accepted.', 'status': 'accepted'})
+            if existing['status'] == 'rejected':
+                conn.execute(
+                    '''UPDATE student_connections
+                       SET requester_id = ?, addressee_id = ?, status = 'pending', updated_at = CURRENT_TIMESTAMP
+                       WHERE id = ?''',
+                    (current_user_id, user_id, existing['id'])
+                )
+                conn.commit()
+                conn.close()
+                return jsonify({'message': 'Connection request sent again.', 'status': 'pending'})
+
+        conn.execute(
+            'INSERT INTO student_connections (requester_id, addressee_id, status) VALUES (?, ?, ?)',
+            (current_user_id, user_id, 'pending')
+        )
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Connection request sent.', 'status': 'pending'})
+    except Exception as e:
+        print(f"Send connection request error: {e}")
+        return jsonify({'error': 'Unable to send connection request.'}), 500
+
+
+@app.route('/api/student-community/requests/<int:request_id>/<action>', methods=['POST'])
+@login_required
+def handle_student_connection_request(request_id, action):
+    if action not in ('accept', 'reject'):
+        return jsonify({'error': 'Invalid action.'}), 400
+
+    try:
+        current_user_id = g.current_user['id']
+        new_status = 'accepted' if action == 'accept' else 'rejected'
+        conn = get_db_connection()
+        request_row = conn.execute(
+            '''SELECT id FROM student_connections
+               WHERE id = ? AND addressee_id = ? AND status = 'pending' ''',
+            (request_id, current_user_id)
+        ).fetchone()
+        if not request_row:
+            conn.close()
+            return jsonify({'error': 'Request not found.'}), 404
+
+        conn.execute(
+            'UPDATE student_connections SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            (new_status, request_id)
+        )
+        conn.commit()
+        conn.close()
+        return jsonify({'message': f'Request {new_status}.', 'status': new_status})
+    except Exception as e:
+        print(f"Handle connection request error: {e}")
+        return jsonify({'error': 'Unable to update request.'}), 500
+
+
+@app.route('/api/student-community/connections')
+@login_required
+def student_connections():
+    try:
+        current_user_id = g.current_user['id']
+        conn = get_db_connection()
+        viewer_connections = get_student_connection_ids(conn, current_user_id)
+        rows = conn.execute(
+            '''SELECT sc.id AS connection_id,
+                      CASE WHEN sc.requester_id = ? THEN sc.addressee_id ELSE sc.requester_id END AS user_id,
+                      u.username,
+                      u.created_at AS joined_at,
+                      sc.updated_at,
+                      (
+                        SELECT message FROM student_messages sm
+                        WHERE sm.connection_id = sc.id
+                        ORDER BY sm.created_at DESC, sm.id DESC
+                        LIMIT 1
+                      ) AS last_message,
+                      (
+                        SELECT created_at FROM student_messages sm
+                        WHERE sm.connection_id = sc.id
+                        ORDER BY sm.created_at DESC, sm.id DESC
+                        LIMIT 1
+                      ) AS last_message_at,
+                      (
+                        SELECT COUNT(*) FROM student_messages sm
+                        WHERE sm.connection_id = sc.id
+                          AND sm.receiver_id = ?
+                          AND sm.is_read = 0
+                      ) AS unread_count
+               FROM student_connections sc
+               JOIN users u ON u.id = CASE WHEN sc.requester_id = ? THEN sc.addressee_id ELSE sc.requester_id END
+               WHERE sc.status = 'accepted'
+                 AND (sc.requester_id = ? OR sc.addressee_id = ?)
+               ORDER BY COALESCE(last_message_at, sc.updated_at) DESC''',
+            (current_user_id, current_user_id, current_user_id, current_user_id, current_user_id)
+        ).fetchall()
+
+        data = []
+        for row in rows:
+            other_connections = get_student_connection_ids(conn, row['user_id'])
+            data.append({
+                'connection_id': row['connection_id'],
+                'user_id': row['user_id'],
+                'username': row['username'] or 'Student',
+                'joined_at': row['joined_at'],
+                'connected_at': row['updated_at'],
+                'last_message': row['last_message'],
+                'last_message_at': row['last_message_at'],
+                'unread_count': row['unread_count'],
+                'connection_count': len(other_connections),
+                'mutual_count': len(viewer_connections.intersection(other_connections))
+            })
+        conn.close()
+        return jsonify({'connections': data, 'count': len(data)})
+    except Exception as e:
+        print(f"Student connections error: {e}")
+        return jsonify({'error': 'Unable to load connections.'}), 500
+
+
+@app.route('/api/student-community/messages/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+def student_messages(user_id):
+    current_user_id = g.current_user['id']
+    if user_id == current_user_id:
+        return jsonify({'error': 'Choose another student to chat with.'}), 400
+
+    try:
+        conn = get_db_connection()
+        connection = get_accepted_connection(conn, current_user_id, user_id)
+        if not connection:
+            conn.close()
+            return jsonify({'error': 'You can chat only after the connection is accepted.'}), 403
+
+        if request.method == 'POST':
+            data = request.get_json() if request.is_json else request.form
+            message = (data.get('message') or '').strip()
+            if not message:
+                conn.close()
+                return jsonify({'error': 'Message cannot be empty.'}), 400
+            if len(message) > 1000:
+                conn.close()
+                return jsonify({'error': 'Message is too long.'}), 400
+
+            conn.execute(
+                '''INSERT INTO student_messages (connection_id, sender_id, receiver_id, message)
+                   VALUES (?, ?, ?, ?)''',
+                (connection['id'], current_user_id, user_id, message)
+            )
+            conn.commit()
+
+        conn.execute(
+            '''UPDATE student_messages
+               SET is_read = 1
+               WHERE connection_id = ? AND receiver_id = ?''',
+            (connection['id'], current_user_id)
+        )
+        conn.commit()
+
+        rows = conn.execute(
+            '''SELECT id, sender_id, receiver_id, message, is_read, created_at
+               FROM student_messages
+               WHERE connection_id = ?
+               ORDER BY created_at ASC, id ASC
+               LIMIT 200''',
+            (connection['id'],)
+        ).fetchall()
+        messages = []
+        for row in rows:
+            messages.append({
+                'id': row['id'],
+                'sender_id': row['sender_id'],
+                'receiver_id': row['receiver_id'],
+                'message': row['message'],
+                'is_own': row['sender_id'] == current_user_id,
+                'is_read': bool(row['is_read']),
+                'created_at': row['created_at']
+            })
+        conn.close()
+        return jsonify({'messages': messages})
+    except Exception as e:
+        print(f"Student messages error: {e}")
+        return jsonify({'error': 'Unable to load messages.'}), 500
+
+
+@app.route('/api/internships')
+def get_internships_api():
+    try:
+        print("API: Starting request...")
+        file_path = os.path.join(BASE_DIR, 'data', 'internships_300_updated-1.xlsx')
+
+        title = request.args.get('title', '').strip().lower()
+        domain = request.args.get('domain', '').strip().lower()
+        field = request.args.get('field', '').strip().lower()
+        city = request.args.get('city', '').strip().lower()
+        mode = request.args.get('mode', '').strip().lower()
+        stipend_filter = request.args.get('stipend', '').strip().lower()
+
+        excel_rows = []
+        if os.path.exists(file_path):
+            try:
+                print("API: Reading Excel...")
+                df = pd.read_excel(file_path, engine="openpyxl")
+                print("API: Excel loaded.")
+                df.columns = df.columns.str.strip()
+                df = df.fillna('')
+
+                records = df.to_dict(orient='records')
+                for row in records:
+                    if title and title not in str(row.get('Title', '')).lower():
+                        continue
+                    if domain and domain not in str(row.get('Company Name', '')).lower():
+                        continue
+                    if field and field not in str(row.get('Field', '')).lower():
+                        continue
+                    r_city = str(row.get('City', '')).lower()
+                    if city and city != 'all' and city not in r_city:
+                        continue
+                    r_mode = str(row.get('Mode', '')).lower()
+                    if mode and mode != 'all' and mode not in r_mode:
+                        continue
+
+                    stipend_val = str(row.get('Stipend', '')).strip().lower()
+                    is_unpaid = (not stipend_val or stipend_val == '0' or stipend_val == 'unpaid' or stipend_val == 'none')
+                    if stipend_filter == 'paid' and is_unpaid:
+                        continue
+                    if stipend_filter == 'unpaid' and not is_unpaid:
+                        continue
+
+                    excel_rows.append({
+                        'Title': row.get('Title', ''),
+                        'Company Name': row.get('Company Name', ''),
+                        'City': row.get('City', ''),
+                        'Mode': row.get('Mode', ''),
+                        'Field': row.get('Field', ''),
+                        'Stipend': row.get('Stipend', ''),
+                        'Duration': row.get('Duration', ''),
+                        'Skills Required': row.get('Skills Required', ''),
+                        'Apply Link': row.get('Apply Link', ''),
+                        'How to Apply': row.get('How to Apply', ''),
+                        'Source': row.get('Source', ''),
+                        'Verified': row.get('Verified', ''),
+                        'student_added': False
+                    })
+            except Exception as excel_error:
+                print(f"API: Error reading Excel file: {excel_error}")
+
+        conn = get_db_connection()
+        db_query = 'SELECT * FROM internships WHERE 1=1'
+        db_params = []
+        if title:
+            db_query += ' AND lower(role) LIKE ?'
+            db_params.append(f'%{title}%')
+        if domain:
+            db_query += ' AND lower(company) LIKE ?'
+            db_params.append(f'%{domain}%')
+        if city and city != 'all':
+            db_query += ' AND lower(city) LIKE ?'
+            db_params.append(f'%{city}%')
+        if mode and mode != 'all':
+            db_query += ' AND lower(mode) LIKE ?'
+            db_params.append(f'%{mode}%')
+        if stipend_filter == 'paid':
+            db_query += ' AND lower(stipend) NOT IN (?, ?, ?)' 
+            db_params.extend(['', '0', 'not disclosed'])
+        elif stipend_filter == 'unpaid':
+            db_query += ' AND lower(stipend) IN (?, ?, ?, ?)' 
+            db_params.extend(['', '0', 'unpaid', 'not disclosed'])
+
+        student_rows = []
+        db_rows = conn.execute(db_query, db_params).fetchall()
+        conn.close()
+        for row in db_rows:
+            stipend_val = str(row['stipend'] or '').strip()
+            student_rows.append({
+                'Title': row['role'],
+                'Company Name': row['company'],
+                'City': row['city'],
+                'Mode': row['mode'],
+                'Field': '',
+                'Stipend': stipend_val or 'Not Disclosed',
+                'Duration': '',
+                'Skills Required': '',
+                'Apply Link': row['apply_link'] if 'apply_link' in row.keys() else '',
+                'How to Apply': '',
+                'Source': 'Student',
+                'Verified': 'No',
+                'student_added': True
+            })
+
+        combined = excel_rows + student_rows
+        return jsonify({'count': len(combined), 'data': combined})
+    except Exception as e:
+        print(f"Error reading internships API: {e}")
+        return jsonify({'count': 0, 'data': [], 'error': str(e)}), 500
+
+
+@app.route('/api/notifications')
+@login_required
+def get_notifications_api():
+    """Lightweight real-time notifications for header popup."""
+    try:
+        user_id = g.current_user['id']
+        conn = get_db_connection()
+
+        notifications = []
+
+        # Pending student connection requests.
+        pending_count = conn.execute(
+            'SELECT COUNT(*) AS c FROM student_connections WHERE addressee_id = ? AND status = ?',
+            (user_id, 'pending')
+        ).fetchone()['c']
+        if pending_count:
+            notifications.append({
+                'id': f'pending-requests-{pending_count}',
+                'title': 'Student Community',
+                'message': f'You have {pending_count} pending connection request(s).',
+                'link': '/student-community'
+            })
+
+        # Unread community chat messages.
+        unread_count = conn.execute(
+            'SELECT COUNT(*) AS c FROM student_messages WHERE receiver_id = ? AND is_read = 0',
+            (user_id,)
+        ).fetchone()['c']
+        if unread_count:
+            latest_message = conn.execute(
+                '''SELECT sm.message, u.username
+                   FROM student_messages sm
+                   JOIN users u ON u.id = sm.sender_id
+                   WHERE sm.receiver_id = ? AND sm.is_read = 0
+                   ORDER BY sm.created_at DESC, sm.id DESC
+                   LIMIT 1''',
+                (user_id,)
+            ).fetchone()
+            preview = (latest_message['message'][:55] + '...') if latest_message and latest_message['message'] and len(latest_message['message']) > 55 else (latest_message['message'] if latest_message else '')
+            sender = latest_message['username'] if latest_message else 'a student'
+            notifications.append({
+                'id': f'unread-messages-{unread_count}',
+                'title': 'New Messages',
+                'message': f'{unread_count} unread message(s). Latest from {sender}: {preview}',
+                'link': '/student-community'
+            })
+
+        # New internship stories in last 24 hours (community pulse).
+        recent_stories = conn.execute(
+            "SELECT COUNT(*) AS c FROM internship_experiences WHERE created_at >= datetime('now', '-1 day')"
+        ).fetchone()['c']
+        if recent_stories:
+            notifications.append({
+                'id': f'recent-stories-{recent_stories}',
+                'title': 'Internship Community',
+                'message': f'{recent_stories} new internship story(s) shared in the last 24 hours.',
+                'link': '/internships/community'
+            })
+
+        conn.close()
+        return jsonify({
+            'success': True,
+            'unread_count': len(notifications),
+            'notifications': notifications,
+            'generated_at': datetime.utcnow().isoformat() + 'Z'
+        })
+    except Exception as e:
+        print(f"Notifications API error: {e}")
+        return jsonify({'success': False, 'notifications': [], 'unread_count': 0}), 500
+
 # ==================== ERROR HANDLERS ====================
 @app.errorhandler(404)
 def page_not_found(e):
@@ -3177,3 +5567,4 @@ def internal_error(e):
 # ==================== RUN APP ====================
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+# trigger reload

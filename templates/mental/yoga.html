@@ -174,6 +174,16 @@
                         </div>
                     </div>
 
+                    <div class="video-section text-center mb-4">
+                        <h6 class="text-center mb-3">📹 Watch Sequence Video</h6>
+                        <div class="ratio ratio-16x9 sequence-video-wrapper mx-auto">
+                            <iframe id="sequenceVideo" src="" title="Yoga Sequence Video" frameborder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowfullscreen style="border-radius: 8px;">
+                            </iframe>
+                        </div>
+                    </div>
+
                     <div class="sequence-controls text-center mt-4">
                         <div class="timer-display mb-3">
                             <h4 id="sequenceTimer">00:00</h4>
@@ -329,6 +339,11 @@
     align-items: center;
     justify-content: center;
 }
+
+.sequence-video-wrapper {
+    max-width: 480px;
+    width: 100%;
+}
 </style>
 
 <script>
@@ -378,7 +393,7 @@ const yogaSequences = {
     'evening': {
         name: 'Evening Wind Down',
         duration: 20,
-        videoUrl: 'https://www.youtube.com/embed/8TuA0lAa2n0',
+        videoUrl: 'https://www.youtube.com/embed/BiWDsfZ3zbo',
         poses: [
             {
                 name: 'Seated Meditation',
@@ -420,7 +435,7 @@ const yogaSequences = {
     'stress-relief': {
         name: 'Stress Relief Flow',
         duration: 10,
-        videoUrl: 'https://www.youtube.com/embed/v7pWVTf9PX0',
+        videoUrl: 'https://www.youtube.com/embed/yqeirBfn2j4',
         poses: [
             {
                 name: 'Easy Pose',
@@ -466,7 +481,7 @@ const poseDetails = {
         name: 'Vrksasana (Tree Pose)',
         description: 'A balancing pose that improves focus and strengthens the legs.',
         icon: 'fas fa-tree',
-        videoUrl: 'https://youtu.be/ZIAnRmD7FqY?si=SNqRrE4WgOq9MYv_',
+        videoUrl: 'https://www.youtube.com/embed/ZIAnRmD7FqY',
         steps: [
             'Stand tall in Mountain Pose',
             'Shift weight to left foot',
@@ -485,7 +500,7 @@ const poseDetails = {
         name: 'Virabhadrasana II (Warrior II)',
         description: 'A powerful standing pose that builds strength and confidence.',
         icon: 'fas fa-shield-alt',
-        videoUrl: 'https://youtu.be/bcYeuESSrP0?si=rLNh7ubjYS_YIHjD',
+        videoUrl: 'https://www.youtube.com/embed/yxNtoOJ9500',
         steps: [
             'Step feet wide apart',
             'Turn right foot out 90 degrees',
@@ -504,7 +519,7 @@ const poseDetails = {
         name: 'Adho Mukha Svanasana (Downward Dog)',
         description: 'An inversion that stretches the entire body and builds strength.',
         icon: 'fas fa-dog',
-        videoUrl: 'https://youtu.be/zK1cLctwBsk?si=emgmRbXy99NNHTP',
+        videoUrl: 'https://www.youtube.com/embed/zK1cLctwBsk',
         steps: [
             'Start on hands and knees',
             'Lift hips up and back',
@@ -523,7 +538,7 @@ const poseDetails = {
         name: 'Balasana (Child\'s Pose)',
         description: 'A restorative pose that promotes relaxation and introspection.',
         icon: 'fas fa-pray',
-        videoUrl: 'https://youtu.be/2MJGg-dUKh0?si=qjMjgCTBMZyDk5CW',
+        videoUrl: 'https://www.youtube.com/embed/2MJGg-dUKh0',
         steps: [
             'Kneel on mat with knees wide',
             'Fold forward, arms extended',
@@ -578,6 +593,11 @@ function startYogaSequence(sequenceKey) {
 
     const modal = new bootstrap.Modal(document.getElementById('yogaModal'));
     modal.show();
+
+    const sequenceVideo = document.getElementById('sequenceVideo');
+    if (sequenceVideo) {
+        sequenceVideo.src = currentSequence.videoUrl || '';
+    }
 
     resetSequence();
 }

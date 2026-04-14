@@ -1,7 +1,11 @@
 Flask
 Flask-CORS
 pandas
+openpyxl
 numpy
 scikit-learn
 gunicorn
 python-dotenv
+openai
+PyPDF2
+spacy

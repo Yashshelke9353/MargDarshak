@@ -1,0 +1,763 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Community - Marg Darshak{% endblock %}
+
+{% block content %}
+<style>
+    .student-community-page {
+        --community-bg: #f8fafc;
+        --community-panel: rgba(255, 255, 255, 0.92);
+        --community-text: #111827;
+        --community-muted: #64748b;
+        --community-border: rgba(15, 23, 42, 0.1);
+        --community-accent: #2563eb;
+        --community-green: #10b981;
+        --community-soft: #eff6ff;
+        color: var(--community-text);
+        min-height: 80vh;
+    }
+
+    body.dark-mode .student-community-page {
+        --community-bg: #0f172a;
+        --community-panel: rgba(15, 23, 42, 0.82);
+        --community-text: #e2e8f0;
+        --community-muted: #94a3b8;
+        --community-border: rgba(255, 255, 255, 0.12);
+        --community-accent: #60a5fa;
+        --community-soft: rgba(30, 41, 59, 0.86);
+    }
+
+    .community-title {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 900;
+        font-size: clamp(2rem, 4vw, 3.4rem);
+        letter-spacing: -0.02em;
+        color: var(--community-text);
+    }
+
+    .community-subtitle {
+        color: var(--community-muted);
+        max-width: 720px;
+        margin: 0 auto;
+    }
+
+    .community-panel {
+        background: var(--community-panel);
+        border: 1px solid var(--community-border);
+        border-radius: 8px;
+        box-shadow: 0 16px 44px rgba(15, 23, 42, 0.08);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+    }
+
+    body.dark-mode .community-panel {
+        box-shadow: 0 16px 44px rgba(0, 0, 0, 0.32);
+    }
+
+    .community-side-panel {
+        position: sticky;
+        top: 96px;
+    }
+
+    .community-tabs {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.5rem;
+    }
+
+    .community-tab {
+        border: 1px solid var(--community-border);
+        background: transparent;
+        color: var(--community-muted);
+        border-radius: 8px;
+        padding: 0.65rem 0.75rem;
+        font-weight: 700;
+        transition: all 0.2s ease;
+    }
+
+    .community-tab.active,
+    .community-tab:hover {
+        background: var(--community-accent);
+        color: #ffffff;
+        border-color: var(--community-accent);
+    }
+
+    .community-section {
+        display: none;
+    }
+
+    .community-section.active {
+        display: block;
+    }
+
+    .community-search {
+        background: #ffffff;
+        border: 1px solid var(--community-border);
+        border-radius: 8px;
+        color: #111827;
+        padding: 0.75rem 0.9rem;
+    }
+
+    body.dark-mode .community-search {
+        background: rgba(15, 23, 42, 0.86);
+        color: #e2e8f0;
+    }
+
+    .student-card,
+    .request-card,
+    .connection-card {
+        border: 1px solid var(--community-border);
+        border-radius: 8px;
+        padding: 0.9rem;
+        margin-bottom: 0.75rem;
+        background: rgba(255, 255, 255, 0.72);
+        color: var(--community-text);
+        transition: all 0.2s ease;
+    }
+
+    body.dark-mode .student-card,
+    body.dark-mode .request-card,
+    body.dark-mode .connection-card {
+        background: rgba(30, 41, 59, 0.62);
+    }
+
+    .student-card:hover,
+    .request-card:hover,
+    .connection-card:hover,
+    .connection-card.active {
+        border-color: rgba(37, 99, 235, 0.45);
+        box-shadow: 0 12px 24px rgba(37, 99, 235, 0.12);
+        transform: translateY(-1px);
+    }
+
+    .connection-card {
+        cursor: pointer;
+    }
+
+    .connection-card.active {
+        background: var(--community-soft);
+    }
+
+    .student-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        color: #ffffff;
+        font-weight: 800;
+        background: linear-gradient(135deg, #2563eb, #10b981);
+        flex: 0 0 auto;
+    }
+
+    .student-name {
+        color: var(--community-text);
+        font-weight: 800;
+        margin-bottom: 0.15rem;
+    }
+
+    .student-meta,
+    .chat-meta {
+        color: var(--community-muted);
+        font-size: 0.85rem;
+    }
+
+    .community-action {
+        border: 0;
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        background: var(--community-accent);
+        color: #ffffff;
+        font-weight: 700;
+        transition: all 0.2s ease;
+    }
+
+    .community-action:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 18px rgba(37, 99, 235, 0.18);
+    }
+
+    .community-action.secondary {
+        background: transparent;
+        border: 1px solid var(--community-border);
+        color: var(--community-text);
+    }
+
+    .community-action.success {
+        background: var(--community-green);
+    }
+
+    .community-action.danger {
+        background: #ef4444;
+    }
+
+    .community-action:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .chat-shell {
+        min-height: 650px;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        overflow: hidden;
+    }
+
+    .chat-header {
+        border-bottom: 1px solid var(--community-border);
+        background: linear-gradient(135deg, #1d4ed8, #0f766e);
+        color: #ffffff;
+    }
+
+    .chat-header .chat-meta {
+        color: rgba(255, 255, 255, 0.76);
+    }
+
+    .chat-header .student-avatar {
+        background: rgba(255, 255, 255, 0.16);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
+    }
+
+    .chat-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.45rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.14);
+        color: rgba(255, 255, 255, 0.88);
+        font-weight: 700;
+        font-size: 0.82rem;
+        white-space: nowrap;
+    }
+
+    .chat-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #34d399;
+        box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.18);
+    }
+
+    .chat-messages {
+        height: 490px;
+        overflow-y: auto;
+        padding: 1.25rem;
+        background:
+            linear-gradient(rgba(255, 255, 255, 0.38) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.38) 1px, transparent 1px),
+            radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.08), transparent 30%),
+            radial-gradient(circle at 80% 70%, rgba(16, 185, 129, 0.08), transparent 28%),
+            var(--community-bg);
+        background-size: 28px 28px, 28px 28px, auto, auto, auto;
+    }
+
+    body.dark-mode .chat-messages {
+        background:
+            linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+            radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.14), transparent 30%),
+            radial-gradient(circle at 80% 70%, rgba(16, 185, 129, 0.12), transparent 28%),
+            var(--community-bg);
+        background-size: 28px 28px, 28px 28px, auto, auto, auto;
+    }
+
+    .message-row {
+        display: flex;
+        margin-bottom: 0.8rem;
+    }
+
+    .message-row.own {
+        justify-content: flex-end;
+    }
+
+    .message-bubble {
+        max-width: min(76%, 560px);
+        border-radius: 8px;
+        padding: 0.75rem 0.9rem;
+        background: #ffffff;
+        border: 1px solid var(--community-border);
+        color: #111827;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+    }
+
+    .message-author {
+        display: block;
+        margin-bottom: 0.25rem;
+        font-size: 0.75rem;
+        color: #2563eb;
+        letter-spacing: 0;
+    }
+
+    .message-row.own .message-bubble {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #ffffff;
+    }
+
+    .message-row.own .message-author {
+        color: rgba(255, 255, 255, 0.86);
+    }
+
+    body.dark-mode .message-bubble {
+        background: rgba(30, 41, 59, 0.92);
+        color: #e2e8f0;
+    }
+
+    body.dark-mode .message-row.own .message-bubble {
+        background: #2563eb;
+        color: #ffffff;
+    }
+
+    .message-time {
+        display: block;
+        margin-top: 0.35rem;
+        font-size: 0.75rem;
+        opacity: 0.72;
+    }
+
+    .chat-input-row {
+        border-top: 1px solid var(--community-border);
+        padding: 1rem;
+        display: flex;
+        gap: 0.75rem;
+        background: rgba(255, 255, 255, 0.78);
+    }
+
+    body.dark-mode .chat-input-row {
+        background: rgba(15, 23, 42, 0.82);
+    }
+
+    .chat-input-wrap {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        border: 1px solid var(--community-border);
+        border-radius: 8px;
+        padding: 0.3rem 0.75rem;
+        background: #ffffff;
+    }
+
+    body.dark-mode .chat-input-wrap {
+        background: rgba(15, 23, 42, 0.86);
+    }
+
+    .chat-input-wrap i {
+        color: var(--community-muted);
+    }
+
+    .chat-input-wrap .community-search {
+        border: 0;
+        padding-left: 0;
+        padding-right: 0;
+        box-shadow: none;
+        background: transparent;
+    }
+
+    .empty-state {
+        color: var(--community-muted);
+        text-align: center;
+        padding: 2rem 1rem;
+    }
+
+    .unread-badge {
+        background: #ef4444;
+        color: white;
+        border-radius: 999px;
+        padding: 0.15rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 800;
+    }
+
+    @media (max-width: 991px) {
+        .community-side-panel {
+            position: static;
+        }
+
+        .chat-shell {
+            min-height: 560px;
+        }
+
+        .chat-messages {
+            height: 380px;
+        }
+    }
+
+    @media (max-width: 575px) {
+        .community-tabs {
+            grid-template-columns: 1fr;
+        }
+
+        .chat-input-row {
+            flex-direction: column;
+        }
+
+        .chat-header .d-flex {
+            align-items: flex-start !important;
+        }
+
+        .message-bubble {
+            max-width: 88%;
+        }
+    }
+</style>
+
+<div class="container my-5 student-community-page">
+    <div class="text-center mb-4">
+        <h1 class="community-title">Student Community</h1>
+        <p class="community-subtitle">Find logged-in students, send a connection request, accept requests, and chat after both sides connect.</p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="community-panel community-side-panel p-3">
+                <div class="community-tabs mb-3">
+                    <button type="button" class="community-tab active" data-community-tab="discover">Discover</button>
+                    <button type="button" class="community-tab" data-community-tab="requests">Requests</button>
+                    <button type="button" class="community-tab" data-community-tab="connections">Chats</button>
+                </div>
+
+                <div class="community-section active" id="community-discover">
+                    <div class="input-group mb-3">
+                        <input type="search" class="form-control community-search" id="studentSearch" placeholder="Search students...">
+                        <button class="community-action" type="button" id="studentSearchBtn"><i class="fas fa-search"></i></button>
+                    </div>
+                    <div id="studentList"></div>
+                </div>
+
+                <div class="community-section" id="community-requests">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Connection Requests</h5>
+                        <button class="community-action secondary" type="button" id="refreshRequestsBtn"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                    <div id="requestList"></div>
+                </div>
+
+                <div class="community-section" id="community-connections">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Your Connections</h5>
+                        <button class="community-action secondary" type="button" id="refreshConnectionsBtn"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                    <div class="student-meta mb-3" id="connectionCount">0 connections</div>
+                    <div id="connectionList"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="community-panel chat-shell">
+                <div class="chat-header p-3">
+                    <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="student-avatar" id="chatAvatar">MD</div>
+                            <div>
+                                <h4 class="mb-0" id="chatTitle">Choose a connection</h4>
+                                <div class="chat-meta" id="chatMeta">Send or accept a request first, then start chatting.</div>
+                            </div>
+                        </div>
+                        <div class="chat-status-pill"><span class="chat-status-dot"></span> Student Chat</div>
+                    </div>
+                </div>
+
+                <div class="chat-messages" id="chatMessages">
+                    <div class="empty-state">
+                        <i class="fas fa-comments fs-1 mb-3"></i>
+                        <p class="mb-0">Your accepted conversations will open here.</p>
+                    </div>
+                </div>
+
+                <form class="chat-input-row" id="studentChatForm">
+                    <div class="chat-input-wrap">
+                        <i class="fas fa-message"></i>
+                        <input type="text" class="form-control community-search" id="studentChatInput" placeholder="Type a message..." maxlength="1000" disabled>
+                    </div>
+                    <button class="community-action" type="submit" id="studentChatSendBtn" disabled><i class="fas fa-paper-plane me-1"></i>Send</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const currentUserId = {{ g.current_user.id }};
+    let activeChatUser = null;
+    let messagePoll = null;
+
+    const studentList = document.getElementById('studentList');
+    const requestList = document.getElementById('requestList');
+    const connectionList = document.getElementById('connectionList');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatTitle = document.getElementById('chatTitle');
+    const chatMeta = document.getElementById('chatMeta');
+    const chatAvatar = document.getElementById('chatAvatar');
+    const chatInput = document.getElementById('studentChatInput');
+    const chatSendBtn = document.getElementById('studentChatSendBtn');
+
+    function escapeHTML(text) {
+        return String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    function initials(name) {
+        return String(name || 'Student').trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'ST';
+    }
+
+    function formatDate(value) {
+        if (!value) return '';
+        const date = new Date(String(value).replace(' ', 'T'));
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function connectionText(item) {
+        const count = Number(item.connection_count || 0);
+        const mutual = Number(item.mutual_count || 0);
+        const connectionLabel = `${count} connection${count === 1 ? '' : 's'}`;
+        return mutual > 0 ? `${connectionLabel} · ${mutual} mutual` : connectionLabel;
+    }
+
+    function showLoading(target, message) {
+        target.innerHTML = `<div class="empty-state"><i class="fas fa-spinner fa-spin fs-3 mb-3"></i><p class="mb-0">${message}</p></div>`;
+    }
+
+    function showEmpty(target, message, icon = 'fa-inbox') {
+        target.innerHTML = `<div class="empty-state"><i class="fas ${icon} fs-3 mb-3"></i><p class="mb-0">${message}</p></div>`;
+    }
+
+    async function api(url, options = {}) {
+        const response = await fetch(url, options);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.error || 'Something went wrong.');
+        }
+        return data;
+    }
+
+    function renderStudentCard(user) {
+        let actionHtml = `<button class="community-action" type="button" onclick="sendConnectionRequest(${user.id})">Connect</button>`;
+        if (user.connection_status === 'accepted') {
+            actionHtml = `<button class="community-action success" type="button" onclick="openStudentChat(${user.id}, decodeURIComponent('${encodeURIComponent(user.username)}'), ${user.connection_count}, ${user.mutual_count})">Message</button>`;
+        } else if (user.connection_status === 'pending' && user.request_direction === 'sent') {
+            actionHtml = `<button class="community-action secondary" type="button" disabled>Request Sent</button>`;
+        } else if (user.connection_status === 'pending' && user.request_direction === 'received') {
+            actionHtml = `<button class="community-action success" type="button" onclick="respondConnectionRequest(${user.request_id}, 'accept')">Accept</button>`;
+        }
+
+        return `
+            <div class="student-card">
+                <div class="d-flex gap-3 align-items-center justify-content-between">
+                    <div class="d-flex gap-3 align-items-center">
+                        <div class="student-avatar">${escapeHTML(initials(user.username))}</div>
+                        <div>
+                            <div class="student-name">${escapeHTML(user.username)}</div>
+                            <div class="student-meta">${connectionText(user)}</div>
+                        </div>
+                    </div>
+                    <div>${actionHtml}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderRequestCard(requestItem) {
+        return `
+            <div class="request-card">
+                <div class="d-flex gap-3 align-items-center justify-content-between flex-wrap">
+                    <div class="d-flex gap-3 align-items-center">
+                        <div class="student-avatar">${escapeHTML(initials(requestItem.username))}</div>
+                        <div>
+                            <div class="student-name">${escapeHTML(requestItem.username)}</div>
+                            <div class="student-meta">Requested ${formatDate(requestItem.created_at)}</div>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="community-action success" type="button" onclick="respondConnectionRequest(${requestItem.id}, 'accept')">Accept</button>
+                        <button class="community-action danger" type="button" onclick="respondConnectionRequest(${requestItem.id}, 'reject')">Reject</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderConnectionCard(connection) {
+        const unread = Number(connection.unread_count || 0);
+        return `
+            <button type="button" class="connection-card ${activeChatUser && activeChatUser.id === connection.user_id ? 'active' : ''} w-100 text-start" onclick="openStudentChat(${connection.user_id}, decodeURIComponent('${encodeURIComponent(connection.username)}'), ${connection.connection_count}, ${connection.mutual_count})">
+                <div class="d-flex gap-3 align-items-center justify-content-between">
+                    <div class="d-flex gap-3 align-items-center">
+                        <div class="student-avatar">${escapeHTML(initials(connection.username))}</div>
+                        <div>
+                            <div class="student-name">${escapeHTML(connection.username)}</div>
+                            <div class="student-meta">${connectionText(connection)}</div>
+                            <div class="student-meta">${connection.last_message ? escapeHTML(connection.last_message).slice(0, 70) : 'No messages yet'}</div>
+                        </div>
+                    </div>
+                    ${unread ? `<span class="unread-badge">${unread}</span>` : ''}
+                </div>
+            </button>
+        `;
+    }
+
+    async function loadStudents() {
+        showLoading(studentList, 'Finding students...');
+        const q = document.getElementById('studentSearch').value.trim();
+        try {
+            const data = await api(`/api/student-community/users?q=${encodeURIComponent(q)}`);
+            if (!data.users.length) {
+                showEmpty(studentList, 'No students found.', 'fa-user-friends');
+                return;
+            }
+            studentList.innerHTML = data.users.map(renderStudentCard).join('');
+        } catch (error) {
+            showEmpty(studentList, error.message, 'fa-triangle-exclamation');
+        }
+    }
+
+    async function loadRequests() {
+        showLoading(requestList, 'Loading requests...');
+        try {
+            const data = await api('/api/student-community/requests');
+            if (!data.requests.length) {
+                showEmpty(requestList, 'No pending requests.', 'fa-handshake');
+                return;
+            }
+            requestList.innerHTML = data.requests.map(renderRequestCard).join('');
+        } catch (error) {
+            showEmpty(requestList, error.message, 'fa-triangle-exclamation');
+        }
+    }
+
+    async function loadConnections() {
+        showLoading(connectionList, 'Loading chats...');
+        try {
+            const data = await api('/api/student-community/connections');
+            document.getElementById('connectionCount').textContent = `${data.count} connection${data.count === 1 ? '' : 's'}`;
+            if (!data.connections.length) {
+                showEmpty(connectionList, 'No accepted connections yet.', 'fa-comments');
+                return;
+            }
+            connectionList.innerHTML = data.connections.map(renderConnectionCard).join('');
+        } catch (error) {
+            showEmpty(connectionList, error.message, 'fa-triangle-exclamation');
+        }
+    }
+
+    async function loadMessages(keepPosition = false) {
+        if (!activeChatUser) return;
+        const shouldStick = !keepPosition || chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 80;
+        try {
+            const data = await api(`/api/student-community/messages/${activeChatUser.id}`);
+            if (!data.messages.length) {
+                chatMessages.innerHTML = '<div class="empty-state"><i class="fas fa-comment-dots fs-1 mb-3"></i><p class="mb-0">No messages yet. Say hello.</p></div>';
+                return;
+            }
+            chatMessages.innerHTML = data.messages.map(msg => `
+                <div class="message-row ${msg.is_own ? 'own' : ''}">
+                    <div class="message-bubble">
+                        <span class="message-author">${msg.is_own ? 'You' : escapeHTML(activeChatUser.username)}</span>
+                        ${escapeHTML(msg.message)}
+                        <span class="message-time">${formatDate(msg.created_at)}</span>
+                    </div>
+                </div>
+            `).join('');
+            if (shouldStick) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        } catch (error) {
+            chatMessages.innerHTML = `<div class="alert alert-danger m-3">${escapeHTML(error.message)}</div>`;
+        }
+    }
+
+    window.sendConnectionRequest = async function(userId) {
+        try {
+            await api(`/api/student-community/connect/${userId}`, { method: 'POST' });
+            await Promise.all([loadStudents(), loadRequests(), loadConnections()]);
+        } catch (error) {
+            alert(error.message);
+        }
+    };
+
+    window.respondConnectionRequest = async function(requestId, action) {
+        try {
+            await api(`/api/student-community/requests/${requestId}/${action}`, { method: 'POST' });
+            await Promise.all([loadStudents(), loadRequests(), loadConnections()]);
+            switchCommunityTab(action === 'accept' ? 'connections' : 'requests');
+        } catch (error) {
+            alert(error.message);
+        }
+    };
+
+    window.openStudentChat = async function(userId, username, connectionCount, mutualCount) {
+        activeChatUser = { id: userId, username };
+        chatTitle.textContent = username;
+        chatAvatar.textContent = initials(username);
+        chatMeta.textContent = connectionText({ connection_count: connectionCount, mutual_count: mutualCount });
+        chatInput.disabled = false;
+        chatSendBtn.disabled = false;
+        await loadMessages();
+        if (messagePoll) clearInterval(messagePoll);
+        messagePoll = setInterval(() => loadMessages(true), 5000);
+        switchCommunityTab('connections');
+    };
+
+    function switchCommunityTab(tabName) {
+        document.querySelectorAll('.community-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.communityTab === tabName);
+        });
+        document.querySelectorAll('.community-section').forEach(section => {
+            section.classList.toggle('active', section.id === `community-${tabName}`);
+        });
+        if (tabName === 'discover') loadStudents();
+        if (tabName === 'requests') loadRequests();
+        if (tabName === 'connections') loadConnections();
+    }
+
+    document.querySelectorAll('.community-tab').forEach(tab => {
+        tab.addEventListener('click', () => switchCommunityTab(tab.dataset.communityTab));
+    });
+
+    document.getElementById('studentSearchBtn').addEventListener('click', loadStudents);
+    document.getElementById('studentSearch').addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            loadStudents();
+        }
+    });
+    document.getElementById('refreshRequestsBtn').addEventListener('click', loadRequests);
+    document.getElementById('refreshConnectionsBtn').addEventListener('click', loadConnections);
+
+    document.getElementById('studentChatForm').addEventListener('submit', async function(event) {
+        event.preventDefault();
+        if (!activeChatUser) return;
+        const message = chatInput.value.trim();
+        if (!message) return;
+        chatInput.value = '';
+        try {
+            await api(`/api/student-community/messages/${activeChatUser.id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message })
+            });
+            await Promise.all([loadMessages(), loadConnections()]);
+        } catch (error) {
+            alert(error.message);
+            chatInput.value = message;
+        }
+    });
+
+    window.addEventListener('beforeunload', () => {
+        if (messagePoll) clearInterval(messagePoll);
+    });
+
+    loadStudents();
+    loadRequests();
+    loadConnections();
+});
+</script>
+{% endblock %}

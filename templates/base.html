@@ -8,59 +8,20 @@
 
     <link rel="icon" type="image/png" href="/static/favicon.png">
 
-     <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1148087533432609"
-            crossorigin="anonymous"></script>
-            
     <!-- PWA Manifest -->
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Google Fonts Ecosystem -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Unified 3D Physics Engine -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Tailwind CSS (with disabled preflight to prevent Bootstrap conflict) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        corePlugins: {
-          preflight: false,
-        },
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
-            colors: {
-              brand: {
-                50: '#f5f3ff',
-                100: '#ede9fe',
-                200: '#ddd6fe',
-                300: '#c4b5fd',
-                400: '#a78bfa',
-                500: '#8b5cf6',
-                600: '#7c3aed',
-                700: '#6d28d9',
-                800: '#5b21b6',
-                900: '#4c1d95',
-              }
-            }
-          }
-        }
-      }
-    </script>
-    
-    <!-- Motion (Vanilla JS Framer Motion) -->
-    <script src="https://cdn.jsdelivr.net/npm/motion@11.11.13/dist/motion.js"></script>
+    <!-- Local Bootstrap CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.min.css') }}">
+
+    <!-- Local Font Awesome -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
+
+    <!-- Local Vanilla Tilt -->
+    <script src="{{ url_for('static', filename='vendor/vanilla-tilt.min.js') }}"></script>
+
+    <!-- Local Motion JS -->
+    <script src="{{ url_for('static', filename='vendor/motion.js') }}"></script>
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -455,6 +416,8 @@
             <li><a href="/gyan"><i class="fas fa-om text-warning"></i><span>Gyan Kosh</span></a></li>
             <li><a href="/skill"><i class="fas fa-graduation-cap text-success"></i><span>Skill Saathi</span></a></li>
             <li><a href="/mentor-connect"><i class="fas fa-user-astronaut text-danger"></i><span>Mentor Connect ✨</span></a></li>
+            <li><a href="/internships"><i class="fas fa-id-badge text-warning"></i><span>Internships</span></a></li>
+            <li><a href="/student-community"><i class="fas fa-users text-success"></i><span>Student Community</span></a></li>
             <li><a href="/mental"><i class="fas fa-heartbeat text-danger"></i><span>Mental Health Tracker</span></a></li>
             <li><a href="/mindfresh"><i class="fas fa-gamepad text-info"></i><span>Mind Fresh Games</span></a></li>
             <li><a href="/ai/tools"><i class="fas fa-microchip text-primary"></i><span>AI Tool Registry</span></a></li>
@@ -469,8 +432,16 @@
     
     <!-- Floating Buttons (Feature Access Menu) -->
     <div class="floating-buttons" style="z-index: 1000;">
+        <!-- Student Community Quick Access -->
+        <a class="floating-btn sidebar-toggle-btn community-toggle-btn text-decoration-none" href="/student-community" title="Student Community" data-float-toggle data-tilt data-tilt-scale="1.05" data-tilt-max="15">
+            <span class="community-icon"><i class="fas fa-users"></i></span>
+            <div class="hover-menu-text">
+                <span>Community</span>
+            </div>
+        </a>
+
         <!-- 3D Expandable Logo Access Menu -->
-        <button class="floating-btn sidebar-toggle-btn" onclick="toggleSidebar()" title="Access Menu" data-tilt data-tilt-scale="1.05" data-tilt-max="15">
+        <button class="floating-btn sidebar-toggle-btn" onclick="toggleSidebar()" title="Access Menu" data-float-toggle data-tilt data-tilt-scale="1.05" data-tilt-max="15">
             <img src="/static/icon-192.png" alt="MargDarshak Logo">
             <div class="hover-menu-text">
                 <span>Menu</span>
@@ -513,6 +484,144 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .notify-btn {
+            border: 0;
+            border-radius: 999px;
+            padding: 0.55rem 0.95rem;
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-weight: 700;
+            font-size: 0.86rem;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
+            position: relative;
+        }
+        .notify-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 12px 24px rgba(37, 99, 235, 0.3);
+        }
+        .notify-badge {
+            min-width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 6px;
+        }
+        .notify-badge.is-hidden {
+            display: none;
+        }
+        .notify-popup {
+            position: fixed;
+            top: 78px;
+            right: 16px;
+            width: min(360px, calc(100vw - 24px));
+            background: rgba(255, 255, 255, 0.97);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 14px;
+            box-shadow: 0 22px 48px rgba(2, 6, 23, 0.25);
+            z-index: 1200;
+            opacity: 0;
+            transform: translateY(-8px) scale(0.98);
+            pointer-events: none;
+            transition: all 0.2s ease;
+        }
+        .notify-popup.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+        .notify-popup-header {
+            padding: 0.9rem 1rem 0.7rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .notify-popup-header h6 {
+            margin: 0;
+            font-weight: 800;
+            font-size: 0.95rem;
+            color: #0f172a;
+        }
+        .notify-popup-header small {
+            color: #64748b;
+            font-weight: 600;
+        }
+        .notify-list {
+            list-style: none;
+            padding: 0.6rem 0.8rem 0.8rem;
+            margin: 0;
+            max-height: 260px;
+            overflow-y: auto;
+        }
+        .notify-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 0.65rem 0.7rem;
+            margin-bottom: 0.55rem;
+        }
+        .notify-item strong {
+            display: block;
+            color: #1e293b;
+            font-size: 0.82rem;
+            margin-bottom: 0.2rem;
+        }
+        .notify-item p {
+            margin: 0;
+            color: #334155;
+            font-size: 0.8rem;
+            line-height: 1.35;
+        }
+        .notify-toast {
+            position: fixed;
+            right: 16px;
+            bottom: 16px;
+            max-width: min(340px, calc(100vw - 24px));
+            background: #0f172a;
+            color: #fff;
+            border-radius: 12px;
+            padding: 0.72rem 0.85rem;
+            box-shadow: 0 14px 36px rgba(2, 6, 23, 0.4);
+            z-index: 1300;
+            font-size: 0.85rem;
+            opacity: 0;
+            transform: translateY(12px);
+            transition: all 0.25s ease;
+        }
+        .notify-toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        body.dark-mode .notify-popup {
+            background: rgba(15, 23, 42, 0.97);
+            border-color: rgba(148, 163, 184, 0.22);
+        }
+        body.dark-mode .notify-popup-header h6,
+        body.dark-mode .notify-item strong {
+            color: #f8fafc;
+        }
+        body.dark-mode .notify-popup-header small,
+        body.dark-mode .notify-item p {
+            color: #cbd5e1;
+        }
+        body.dark-mode .notify-item {
+            background: #1e293b;
+            border-color: #334155;
+        }
         
         /* Menu Expand Hover Animation */
         .sidebar-toggle-btn {
@@ -539,6 +648,19 @@
             transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             transform: translateZ(10px);
         }
+        .community-toggle-btn .community-icon {
+            width: 40px;
+            height: 40px;
+            min-width: 40px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            color: #fff;
+            background: linear-gradient(135deg, #10b981, #2563eb);
+            box-shadow: 0 5px 15px rgba(16,185,129,0.25);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transform: translateZ(10px);
+        }
         .hover-menu-text {
             max-width: 0;
             opacity: 0;
@@ -555,20 +677,35 @@
             white-space: nowrap;
             display: block;
         }
-        .sidebar-toggle-btn:hover {
+        .sidebar-toggle-btn:hover,
+        .sidebar-toggle-btn.is-hovered {
             max-width: 150px; /* Expand out */
         }
-        .sidebar-toggle-btn:hover .hover-menu-text {
+        .sidebar-toggle-btn:hover .hover-menu-text,
+        .sidebar-toggle-btn.is-hovered .hover-menu-text {
             max-width: 80px; 
             opacity: 1;
         }
-        .sidebar-toggle-btn:hover img {
+        .sidebar-toggle-btn:hover img,
+        .sidebar-toggle-btn.is-hovered img {
             transform: translateZ(30px) rotate(-10deg);
+        }
+        .community-toggle-btn:hover .community-icon,
+        .community-toggle-btn.is-hovered .community-icon {
+            transform: translateZ(30px) rotate(10deg);
+        }
+        .floating-buttons.has-hovered-toggle .sidebar-toggle-btn:not(.is-hovered) {
+            max-width: 54px !important;
+            transform: none !important;
+        }
+        .floating-buttons.has-hovered-toggle .sidebar-toggle-btn:not(.is-hovered) .hover-menu-text {
+            max-width: 0 !important;
+            opacity: 0 !important;
         }
     </style>
     <!-- Top Branding Header -->
     <header class="header-top py-3 sticky-top shadow-sm header-glass">
-        <div class="container d-flex align-items-center justify-content-start">
+        <div class="container d-flex align-items-center justify-content-between">
             <a href="/" class="d-flex align-items-center text-decoration-none">
                 <img src="/static/icon-192.png" alt="MargDarshak Logo" style="width: 42px; height: 42px; margin-right: 12px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
                 <div>
@@ -576,8 +713,22 @@
                     <small style="color: #64748b; font-weight: 600; font-size: 0.75rem; letter-spacing: 1px;">मार्गदर्शक</small>
                 </div>
             </a>
+            <div class="header-actions">
+                <button type="button" class="notify-btn" id="notifyBtn" aria-expanded="false" aria-controls="notifyPopup">
+                    <i class="fas fa-bell"></i>
+                    <span>Notifications</span>
+                    <span class="notify-badge is-hidden" id="notifyBadge">0</span>
+                </button>
+            </div>
         </div>
     </header>
+    <div class="notify-popup" id="notifyPopup" role="dialog" aria-label="Notifications">
+        <div class="notify-popup-header">
+            <h6>Quick Updates</h6>
+            <small id="notifyCountText">0 new</small>
+        </div>
+        <ul class="notify-list" id="notifyList"></ul>
+    </div>
     
     <!-- Main Content -->
     <main>
@@ -594,19 +745,33 @@
         </div>
     </footer>
     
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Local Bootstrap JS -->
+    <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     
     <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
     <script>
         // ========== PAGE LOADER ==========
-        window.addEventListener('load', function() {
+        function hidePageLoader() {
+            const loader = document.getElementById('pageLoader');
+            if (!loader) return;
+            loader.classList.add('hidden');
+            // Remove overlay from layout tree after transition.
             setTimeout(() => {
-                document.getElementById('pageLoader').classList.add('hidden');
+                loader.style.display = 'none';
             }, 500);
+        }
+
+        window.addEventListener('load', function() {
+            setTimeout(hidePageLoader, 250);
         });
+
+        // Fallbacks for pages where a resource blocks full load.
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(hidePageLoader, 1200);
+        });
+        setTimeout(hidePageLoader, 4000);
         
         // ========== DARK MODE ==========
         function toggleDarkMode() {
@@ -631,6 +796,23 @@
         });
         
         // ========== SIDEBAR ==========
+        document.querySelectorAll('[data-float-toggle]').forEach(button => {
+            button.addEventListener('mouseenter', () => {
+                const group = button.closest('.floating-buttons');
+                if (!group) return;
+                group.classList.add('has-hovered-toggle');
+                group.querySelectorAll('[data-float-toggle]').forEach(item => item.classList.remove('is-hovered'));
+                button.classList.add('is-hovered');
+            });
+            button.addEventListener('mouseleave', () => {
+                button.classList.remove('is-hovered');
+                const group = button.closest('.floating-buttons');
+                if (group && !group.querySelector('[data-float-toggle].is-hovered')) {
+                    group.classList.remove('has-hovered-toggle');
+                }
+            });
+        });
+
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebarOverlay');
@@ -673,6 +855,181 @@
         });
         
         
+        // ========== NOTIFICATIONS ==========
+        const notificationState = {
+            items: [],
+            seenIds: new Set(),
+            initialized: false,
+            poller: null
+        };
+        const notificationSeenKey = 'md_notifications_seen_ids_v1';
+
+        function escapeNotifyHtml(text) {
+            return String(text || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function fallbackNotifications() {
+            return [{
+                id: 'local-tip',
+                title: 'System',
+                message: 'Live notifications are initializing. You can still use all modules normally.',
+                link: window.location.pathname || '/'
+            }];
+        }
+
+        function readSeenNotificationIds() {
+            try {
+                const saved = JSON.parse(localStorage.getItem(notificationSeenKey) || '[]');
+                notificationState.seenIds = new Set(Array.isArray(saved) ? saved : []);
+            } catch {
+                notificationState.seenIds = new Set();
+            }
+        }
+
+        function persistSeenNotificationIds() {
+            try {
+                localStorage.setItem(notificationSeenKey, JSON.stringify(Array.from(notificationState.seenIds).slice(-300)));
+            } catch (_) {
+                // ignore storage issues
+            }
+        }
+
+        function unseenNotifications(items) {
+            return (items || []).filter(item => item && item.id && !notificationState.seenIds.has(String(item.id)));
+        }
+
+        function markNotificationsSeen(items) {
+            (items || []).forEach(item => {
+                if (item && item.id) {
+                    notificationState.seenIds.add(String(item.id));
+                }
+            });
+            persistSeenNotificationIds();
+        }
+
+        function showNotifyToast(text) {
+            const toast = document.createElement('div');
+            toast.className = 'notify-toast';
+            toast.textContent = text;
+            document.body.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.add('show'));
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 220);
+            }, 3200);
+        }
+
+        async function fetchRealtimeNotifications() {
+            try {
+                const response = await fetch('/api/notifications', { cache: 'no-store' });
+                if (!response.ok) {
+                    throw new Error('Notifications API unavailable');
+                }
+                const data = await response.json();
+                if (!data || !Array.isArray(data.notifications)) {
+                    throw new Error('Invalid notification payload');
+                }
+                return data.notifications;
+            } catch (error) {
+                return fallbackNotifications();
+            }
+        }
+
+        function renderNotifications(items) {
+            const notifyList = document.getElementById('notifyList');
+            const notifyCountText = document.getElementById('notifyCountText');
+            const notifyBadge = document.getElementById('notifyBadge');
+            if (!notifyList || !notifyCountText || !notifyBadge) return;
+
+            const list = items && items.length ? items : [{
+                id: 'no-updates',
+                title: 'No Updates',
+                message: 'No new notifications right now.',
+                link: ''
+            }];
+
+            notifyList.innerHTML = list.map((item) => {
+                const title = escapeNotifyHtml(item.title || 'Update');
+                const message = escapeNotifyHtml(item.message || '');
+                const body = `<strong>${title}</strong><p>${message}</p>`;
+                if (item.link) {
+                    const link = escapeNotifyHtml(item.link);
+                    return `<li class="notify-item"><a href="${link}" class="text-decoration-none">${body}</a></li>`;
+                }
+                return `<li class="notify-item">${body}</li>`;
+            }).join('');
+
+            const unseen = unseenNotifications(list);
+            notifyCountText.textContent = `${unseen.length} new`;
+            if (unseen.length > 0) {
+                notifyBadge.classList.remove('is-hidden');
+                notifyBadge.textContent = String(unseen.length);
+            } else {
+                notifyBadge.classList.add('is-hidden');
+                notifyBadge.textContent = '0';
+            }
+        }
+
+        async function refreshNotifications(showToastForNew = true) {
+            const items = await fetchRealtimeNotifications();
+            const previousIds = new Set(notificationState.items.map(item => String(item.id || '')));
+            const currentItems = items.map(item => ({
+                id: String(item.id || `${item.title || 'item'}-${item.message || ''}`),
+                title: item.title || 'Update',
+                message: item.message || '',
+                link: item.link || ''
+            }));
+            notificationState.items = currentItems;
+            renderNotifications(currentItems);
+
+            const newItems = currentItems.filter(item => !previousIds.has(String(item.id)) && !notificationState.seenIds.has(String(item.id)));
+            if (showToastForNew && notificationState.initialized && newItems.length > 0) {
+                showNotifyToast(newItems[0].message || newItems[0].title);
+            }
+            notificationState.initialized = true;
+        }
+
+        function initNotifications() {
+            const notifyBtn = document.getElementById('notifyBtn');
+            const notifyPopup = document.getElementById('notifyPopup');
+            if (!notifyBtn || !notifyPopup) return;
+
+            readSeenNotificationIds();
+            refreshNotifications(false);
+            notificationState.poller = setInterval(() => refreshNotifications(true), 30000);
+
+            notifyBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const willOpen = !notifyPopup.classList.contains('show');
+                notifyPopup.classList.toggle('show');
+                notifyBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+                if (willOpen) {
+                    markNotificationsSeen(notificationState.items);
+                    renderNotifications(notificationState.items);
+                }
+            });
+
+            document.addEventListener('click', (event) => {
+                if (!notifyPopup.contains(event.target) && !notifyBtn.contains(event.target)) {
+                    notifyPopup.classList.remove('show');
+                    notifyBtn.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    refreshNotifications(false);
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initNotifications);
+
         // ========== CONSOLE MESSAGE ==========
         console.log('%c🧭 Marg Darshak', 'color: #667eea; font-size: 24px; font-weight: bold;');
         console.log('%cFinding your path to success!', 'color: #764ba2; font-size: 14px;');

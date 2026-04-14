@@ -30,12 +30,13 @@
         </div>
     </div>
 
-    <!-- Price Filter -->
+    <!-- Product Filters -->
     <div class="card mb-5 shadow-sm">
         <div class="card-body">
-            <h3 class="card-title h5 mb-3">🔍 Filter by Price Range</h3>
-            <div class="row">
-                <div class="col-md-6">
+            <h3 class="card-title h5 mb-3">🔍 Filter Essentials</h3>
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <label for="priceFilter" class="form-label fw-semibold">Price Range</label>
                     <select id="priceFilter" class="form-select">
                         <option value="all">All Products</option>
                         <option value="under-15000">Under ₹15,000</option>
@@ -46,11 +47,24 @@
                         <option value="under-3000">Under ₹3,000 (Accessories)</option>
                     </select>
                 </div>
-                <div class="col-md-6 d-flex align-items-center">
-                    <small class="text-muted">Select price range to filter products easily!</small>
+                <div class="col-md-5">
+                    <label for="categoryFilter" class="form-label fw-semibold">Category</label>
+                    <select id="categoryFilter" class="form-select">
+                        <option value="all">All Categories</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="button" id="resetFilters" class="btn btn-outline-secondary w-100">Reset</button>
+                </div>
+                <div class="col-12">
+                    <small class="text-muted">Choose a price range and category like laptops, mobiles, or accessories.</small>
                 </div>
             </div>
         </div>
+    </div>
+
+    <div id="noFilterResults" class="alert alert-info d-none mb-5">
+        No essentials match this filter. Try another price range or category.
     </div>
 
     <!-- Product Categories -->
@@ -551,7 +565,7 @@
         <div class="row">
             {% for essential in user_essentials %}
             <div class="col-md-6 col-lg-4 mb-3">
-                <div class="card h-100 product-card user-essential-card" data-price="{{ essential.price or 0 }}">
+                <div class="card h-100 product-card user-essential-card" data-price="{{ essential.price or 0 }}" data-category="{{ (essential.category or 'other')|lower|replace(' ', '-') }}">
                     <div class="card-body d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h5 class="card-title mb-0">{{ essential.name }}</h5>
@@ -618,66 +632,155 @@
 </div>
 
 <script>
-document.getElementById('priceFilter').addEventListener('change', function() {
-    const selectedRange = this.value;
-    const productCards = document.querySelectorAll('.product-card');
+document.addEventListener('DOMContentLoaded', function() {
+    const priceFilter = document.getElementById('priceFilter');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const resetFilters = document.getElementById('resetFilters');
+    const noFilterResults = document.getElementById('noFilterResults');
 
-    productCards.forEach(card => {
-        const price = parseInt(card.getAttribute('data-price'));
-        let show = false;
+    const categoryLabels = {
+        laptops: 'Laptops',
+        mobiles: 'Mobiles',
+        accessories: 'Accessories',
+        books: 'Books',
+        software: 'Software',
+        other: 'Other',
+        'user-essentials': 'Community Essentials'
+    };
+    const categoryOrder = ['laptops', 'mobiles', 'accessories', 'books', 'software', 'other', 'user-essentials'];
 
+    function getProductCards() {
+        return Array.from(document.querySelectorAll('.product-card'));
+    }
+
+    function normalizeCategory(category) {
+        const normalized = (category || '').toLowerCase().trim().replace(/\s+/g, '-');
+        if (['laptop'].includes(normalized)) {
+            return 'laptops';
+        }
+        if (['phone', 'phones', 'mobile'].includes(normalized)) {
+            return 'mobiles';
+        }
+        return normalized;
+    }
+
+    function getCardCategory(card) {
+        const categorySection = card.closest('.product-category');
+        return normalizeCategory(card.dataset.category || (categorySection && categorySection.dataset.category) || 'other');
+    }
+
+    function priceMatches(price, selectedRange) {
         switch(selectedRange) {
             case 'all':
-                show = true;
-                break;
+                return true;
             case 'under-15000':
-                show = price <= 15000;
-                break;
+                return price <= 15000;
             case '15000-25000':
-                show = price > 15000 && price <= 25000;
-                break;
+                return price > 15000 && price <= 25000;
             case '25000-50000':
-                show = price > 25000 && price <= 50000;
-                break;
+                return price > 25000 && price <= 50000;
             case '50000-65000':
-                show = price > 50000 && price <= 65000;
-                break;
+                return price > 50000 && price <= 65000;
             case '65000-70000':
-                show = price > 65000 && price <= 70000;
-                break;
+                return price > 65000 && price <= 70000;
             case 'under-3000':
-                show = price <= 3000;
-                break;
+                return price <= 3000;
+            default:
+                return true;
         }
+    }
 
-        card.style.display = show ? 'block' : 'none';
+    function populateCategoryFilter() {
+        const categories = new Set(getProductCards().map(getCardCategory).filter(Boolean));
+        const sortedCategories = Array.from(categories).sort((a, b) => {
+            const indexA = categoryOrder.indexOf(a);
+            const indexB = categoryOrder.indexOf(b);
+
+            if (indexA === -1 && indexB === -1) {
+                return a.localeCompare(b);
+            }
+            if (indexA === -1) {
+                return 1;
+            }
+            if (indexB === -1) {
+                return -1;
+            }
+            return indexA - indexB;
+        });
+
+        sortedCategories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = categoryLabels[category] || category.replace(/-/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+            categoryFilter.appendChild(option);
+        });
+    }
+
+    function applyFilters() {
+        const selectedRange = priceFilter.value;
+        const selectedCategory = categoryFilter.value;
+        let visibleCount = 0;
+
+        getProductCards().forEach(card => {
+            const price = Number.parseFloat(card.dataset.price || '0');
+            const category = getCardCategory(card);
+            const showCard = priceMatches(price, selectedRange) && (selectedCategory === 'all' || category === selectedCategory);
+            const cardColumn = card.closest('.col-md-6, .col-lg-4') || card;
+
+            cardColumn.style.display = showCard ? '' : 'none';
+            card.dataset.filterVisible = showCard ? 'true' : 'false';
+
+            if (showCard) {
+                visibleCount += 1;
+            }
+        });
+
+        document.querySelectorAll('.product-category').forEach(section => {
+            const sectionCards = Array.from(section.querySelectorAll('.product-card'));
+            const hasVisibleCard = sectionCards.some(card => card.dataset.filterVisible === 'true');
+
+            if (!sectionCards.length) {
+                section.style.display = selectedRange === 'all' && selectedCategory === 'all' ? '' : 'none';
+                return;
+            }
+
+            section.style.display = hasVisibleCard ? '' : 'none';
+        });
+
+        noFilterResults.classList.toggle('d-none', visibleCount > 0);
+    }
+
+    populateCategoryFilter();
+    applyFilters();
+
+    priceFilter.addEventListener('change', applyFilters);
+    categoryFilter.addEventListener('change', applyFilters);
+    resetFilters.addEventListener('click', function() {
+        priceFilter.value = 'all';
+        categoryFilter.value = 'all';
+        applyFilters();
     });
-});
 
-// Delete essential functionality
-document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.delete-essential').forEach(button => {
         button.addEventListener('click', function() {
             const essentialId = this.getAttribute('data-id');
             if (confirm('Are you sure you want to delete this essential?')) {
                 fetch(`/essentials/delete/${essentialId}`, {
-                    method: 'DELETE',
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     }
                 })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Remove the card from the DOM
-                        this.closest('.col-md-6').remove();
-                        // If no essentials left, show empty message
-                        const remainingEssentials = document.querySelectorAll('.user-essential-card');
-                        if (remainingEssentials.length === 1) { // This one will be removed
-                            location.reload(); // Reload to show empty state
-                        }
-                    } else {
-                        alert('Error deleting essential: ' + data.message);
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Delete failed');
+                    }
+
+                    this.closest('.col-md-6').remove();
+                    applyFilters();
+
+                    if (!document.querySelector('.user-essential-card')) {
+                        location.reload();
                     }
                 })
                 .catch(error => {

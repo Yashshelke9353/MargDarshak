@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+
+{% block title %}Share Your Internship Experience - Skill Saathi{% endblock %}
+
+{% block content %}
+<style>
+    .experience-page {
+        font-family: 'Inter', sans-serif;
+    }
+    .experience-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: clamp(2rem, 4vw, 3rem);
+        font-weight: 900;
+        background: linear-gradient(135deg, #10b981, #3b82f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.04em;
+        margin-bottom: 0.5rem;
+    }
+    .glass-panel {
+        background: rgba(255,255,255,0.72);
+        backdrop-filter: blur(18px);
+        border: 1px solid rgba(255,255,255,0.55);
+        border-radius: 24px;
+        box-shadow: 0 25px 60px rgba(15, 23, 42, 0.08);
+    }
+    body.dark-mode .glass-panel {
+        background: rgba(15, 23, 42, 0.65);
+        border-color: rgba(255,255,255,0.08);
+    }
+    .form-control-premium, .form-select-premium, .form-textarea-premium {
+        background: rgba(255, 255, 255, 0.88);
+        border: 1px solid rgba(0,0,0,0.1);
+        border-radius: 14px;
+        padding: 0.85rem 1rem;
+        transition: all 0.25s ease;
+    }
+    .form-control-premium:focus, .form-select-premium:focus, .form-textarea-premium:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+        background: #fff;
+    }
+    .experience-note {
+        border-left: 4px solid #3b82f6;
+        background: rgba(59, 130, 246, 0.06);
+        padding: 1rem 1rem 1rem 1rem;
+        border-radius: 16px;
+    }
+</style>
+
+<div class="container my-5 experience-page">
+    <div class="text-center mb-5">
+        <h1 class="experience-title">Share Your Internship Experience</h1>
+        <p class="text-muted">Help others by sharing where you interned, how you landed the role, and what interview tips worked for you.</p>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="glass-panel p-4 p-lg-5">
+                <div class="experience-note mb-4">
+                    <strong>Community-led internships.</strong> When you submit your experience, we also add the internship to the main listings so future students can find it.
+                </div>
+
+                <form id="experienceForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Name <span class="text-muted">(optional)</span></label>
+                            <input type="text" class="form-control form-control-premium" id="name" placeholder="Your name">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">College <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-premium" id="college" placeholder="College name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Internship Company <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-premium" id="internshipCompany" placeholder="Company name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Role <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-premium" id="role" placeholder="Internship role" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">City</label>
+                            <input type="text" class="form-control form-control-premium" id="city" placeholder="City or Remote">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Mode</label>
+                            <select class="form-select form-select-premium" id="mode">
+                                <option value="">Select mode</option>
+                                <option value="Online">Online</option>
+                                <option value="Offline">Offline</option>
+                                <option value="Hybrid">Hybrid</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">How You Got the Internship <span class="text-danger">*</span></label>
+                            <textarea class="form-control form-textarea-premium" id="howGot" rows="4" placeholder="Share your application path, referral, interview process, or recruiter details" required></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Tips <span class="text-danger">*</span></label>
+                            <textarea class="form-control form-textarea-premium" id="tips" rows="4" placeholder="What should future students know?" required></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Interview Questions <span class="text-muted">(optional)</span></label>
+                            <textarea class="form-control form-textarea-premium" id="interviewQuestions" rows="4" placeholder="List any questions asked during your interview"></textarea>
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="submit" class="btn apply-btn">Submit Experience</button>
+                        </div>
+                    </div>
+                </form>
+                <div id="experienceAlert" class="alert d-none mt-4" role="alert"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('experienceForm');
+    const alertBox = document.getElementById('experienceAlert');
+
+    function showAlert(type, message) {
+        alertBox.className = `alert alert-${type} mt-4`;
+        alertBox.textContent = message;
+        alertBox.classList.remove('d-none');
+    }
+
+    form.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        alertBox.classList.add('d-none');
+
+        const payload = {
+            name: document.getElementById('name').value,
+            college: document.getElementById('college').value,
+            internship_company: document.getElementById('internshipCompany').value,
+            city: document.getElementById('city').value,
+            mode: document.getElementById('mode').value,
+            role: document.getElementById('role').value,
+            how_got: document.getElementById('howGot').value,
+            tips: document.getElementById('tips').value,
+            interview_questions: document.getElementById('interviewQuestions').value
+        };
+
+        try {
+            const response = await fetch('/add-experience', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || 'Unable to submit your experience.');
+            }
+            showAlert('success', result.message || 'Your internship experience is now live.');
+            form.reset();
+        } catch (error) {
+            showAlert('danger', error.message);
+        }
+    });
+});
+</script>
+{% endblock %}

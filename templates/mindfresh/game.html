@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+ % extends 'base.html' %}
 
 {% block title %}MindFresh Zone 🧠{% endblock %}
 
@@ -220,6 +220,8 @@
         width: 90%;
         max-width: 800px;
         min-height: 500px;
+        max-height: 92vh;
+        overflow-y: auto;
         padding: 3rem 2rem;
         position: relative;
         text-align: center;
@@ -341,6 +343,364 @@
     .past-reflections { margin-top: 2rem; max-width: 500px; width: 100%; text-align: left; }
     .ref-item { background: var(--theme-gold-bg); padding: 1rem; border-radius: 8px; margin-bottom: 10px; font-size: 0.9rem; border-left: 3px solid var(--theme-gold);}
 
+    /* 7. Advanced Flow Garden */
+    .zen-shell {
+        width: 100%;
+        display: grid;
+        gap: 1rem;
+        align-items: start;
+    }
+
+    .zen-topbar {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.75rem;
+        width: 100%;
+        max-width: 720px;
+        margin: 0 auto;
+    }
+
+    .zen-stat {
+        background: var(--theme-card-bg);
+        border: 1px solid var(--theme-card-border);
+        border-radius: 8px;
+        padding: 0.75rem;
+        text-align: center;
+        color: var(--theme-text-main);
+    }
+
+    .zen-stat span {
+        display: block;
+        color: var(--theme-text-sub);
+        font-size: 0.75rem;
+        letter-spacing: 0;
+        text-transform: uppercase;
+        margin-bottom: 0.25rem;
+    }
+
+    .zen-stat strong {
+        font-size: 1.1rem;
+        color: var(--theme-text-main);
+    }
+
+    .zen-board {
+        position: relative;
+        width: 100%;
+        max-width: 720px;
+        margin: 0 auto;
+        aspect-ratio: 16 / 10;
+        min-height: 320px;
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        border-radius: 8px;
+        overflow: hidden;
+        background:
+            radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.18), transparent 32%),
+            radial-gradient(circle at 80% 30%, rgba(59, 130, 246, 0.16), transparent 28%),
+            linear-gradient(135deg, rgba(248, 250, 252, 0.96), rgba(220, 252, 231, 0.88));
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+        touch-action: none;
+    }
+
+    body.dark-mode .zen-board {
+        background:
+            radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.16), transparent 32%),
+            radial-gradient(circle at 80% 30%, rgba(59, 130, 246, 0.18), transparent 28%),
+            linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(17, 24, 39, 0.96));
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    #zenCanvas {
+        display: block;
+        width: 100%;
+        height: 100%;
+    }
+
+    .zen-overlay {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 1rem;
+        background: rgba(248, 250, 252, 0.68);
+        color: #0f172a;
+        text-align: center;
+    }
+
+    body.dark-mode .zen-overlay {
+        background: rgba(15, 23, 42, 0.72);
+        color: #f8fafc;
+    }
+
+    .zen-overlay.d-none {
+        display: none !important;
+    }
+
+    .zen-overlay-inner {
+        max-width: 440px;
+        background: rgba(255, 255, 255, 0.86);
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        border-radius: 8px;
+        padding: 1.25rem;
+    }
+
+    body.dark-mode .zen-overlay-inner {
+        background: rgba(15, 23, 42, 0.9);
+        border-color: rgba(255, 255, 255, 0.14);
+    }
+
+    .zen-overlay h3 {
+        margin-bottom: 0.75rem;
+        color: #047857;
+    }
+
+    body.dark-mode .zen-overlay h3 {
+        color: #34d399;
+    }
+
+    .zen-overlay p {
+        color: #334155;
+        margin-bottom: 0.75rem;
+    }
+
+    body.dark-mode .zen-overlay p {
+        color: #cbd5e1;
+    }
+
+    .zen-controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.75rem;
+    }
+
+    .zen-btn {
+        border: 1px solid #10b981;
+        background: #10b981;
+        color: #ffffff;
+        border-radius: 8px;
+        padding: 0.65rem 1rem;
+        font-weight: 700;
+        min-width: 128px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .zen-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 18px rgba(16, 185, 129, 0.22);
+    }
+
+    .zen-btn.secondary {
+        background: transparent;
+        color: #047857;
+    }
+
+    body.dark-mode .zen-btn.secondary {
+        color: #6ee7b7;
+    }
+
+    .zen-help {
+        max-width: 720px;
+        margin: 0 auto;
+        color: var(--theme-text-sub);
+        font-size: 0.92rem;
+    }
+
+    @media (max-width: 700px) {
+        .zen-topbar {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .zen-board {
+            min-height: 420px;
+            aspect-ratio: 3 / 4;
+        }
+    }
+
+    /* 8. Pattern Bloom */
+    .bloom-shell {
+        width: 100%;
+        max-width: 620px;
+        display: grid;
+        gap: 1rem;
+    }
+
+    .bloom-stats,
+    .constellation-stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
+        width: 100%;
+    }
+
+    .bloom-stat,
+    .constellation-stat {
+        background: var(--theme-card-bg);
+        border: 1px solid var(--theme-card-border);
+        border-radius: 8px;
+        padding: 0.75rem;
+        text-align: center;
+    }
+
+    .bloom-stat span,
+    .constellation-stat span {
+        display: block;
+        color: var(--theme-text-sub);
+        font-size: 0.75rem;
+        letter-spacing: 0;
+        text-transform: uppercase;
+        margin-bottom: 0.2rem;
+    }
+
+    .bloom-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(72px, 1fr));
+        gap: 0.8rem;
+        width: 100%;
+    }
+
+    .bloom-pad {
+        aspect-ratio: 1;
+        border: 1px solid rgba(16, 185, 129, 0.35);
+        border-radius: 8px;
+        background:
+            radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.72), transparent 25%),
+            linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(59, 130, 246, 0.12));
+        color: #047857;
+        font-size: clamp(1.4rem, 4vw, 2.4rem);
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    .bloom-pad:hover,
+    .bloom-pad.active {
+        transform: translateY(-3px) scale(1.04);
+        background: linear-gradient(135deg, #10b981, #3b82f6);
+        color: #ffffff;
+        box-shadow: 0 14px 28px rgba(16, 185, 129, 0.25);
+    }
+
+    .bloom-pad.missed {
+        background: linear-gradient(135deg, #ef4444, #f97316);
+        color: #ffffff;
+        animation: bloomShake 0.32s linear;
+    }
+
+    @keyframes bloomShake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+
+    .bloom-message,
+    .constellation-message {
+        min-height: 28px;
+        color: var(--theme-text-sub);
+        font-weight: 600;
+    }
+
+    /* 9. Focus Constellation */
+    .constellation-shell {
+        width: 100%;
+        max-width: 720px;
+        display: grid;
+        gap: 1rem;
+    }
+
+    .constellation-board {
+        position: relative;
+        width: 100%;
+        min-height: 390px;
+        aspect-ratio: 16 / 10;
+        border: 1px solid rgba(59, 130, 246, 0.32);
+        border-radius: 8px;
+        overflow: hidden;
+        background:
+            radial-gradient(circle at 20% 35%, rgba(14, 165, 233, 0.22), transparent 24%),
+            radial-gradient(circle at 78% 65%, rgba(16, 185, 129, 0.18), transparent 30%),
+            linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.92));
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+    }
+
+    .constellation-board::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(circle, rgba(255,255,255,0.55) 1px, transparent 1px);
+        background-size: 34px 34px;
+        opacity: 0.24;
+        pointer-events: none;
+    }
+
+    .star-node {
+        position: absolute;
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        border: 1px solid rgba(191, 219, 254, 0.9);
+        background: radial-gradient(circle at 35% 30%, #ffffff, #60a5fa 42%, #2563eb 100%);
+        color: #0f172a;
+        font-weight: 800;
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        box-shadow: 0 0 18px rgba(96, 165, 250, 0.65);
+        transform: translate(-50%, -50%);
+        transition: transform 0.16s ease, opacity 0.16s ease;
+        z-index: 2;
+    }
+
+    .star-node:hover {
+        transform: translate(-50%, -50%) scale(1.12);
+    }
+
+    .star-node.done {
+        opacity: 0.2;
+        pointer-events: none;
+    }
+
+    .star-node.wrong {
+        background: radial-gradient(circle at 35% 30%, #ffffff, #fb7185 42%, #dc2626 100%);
+        animation: bloomShake 0.32s linear;
+    }
+
+    .constellation-line {
+        position: absolute;
+        height: 2px;
+        background: linear-gradient(90deg, rgba(16,185,129,0.2), rgba(96,165,250,0.9));
+        transform-origin: left center;
+        z-index: 1;
+        pointer-events: none;
+    }
+
+    .constellation-timer {
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.28);
+        overflow: hidden;
+    }
+
+    .constellation-timer span {
+        display: block;
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(90deg, #10b981, #3b82f6);
+        transition: width 0.15s linear;
+    }
+
+    @media (max-width: 700px) {
+        .bloom-stats,
+        .constellation-stats {
+            grid-template-columns: 1fr;
+        }
+
+        .constellation-board {
+            min-height: 430px;
+            aspect-ratio: 3 / 4;
+        }
+    }
+
 </style>
 
 <div class="mf-app">
@@ -396,6 +756,27 @@
             <h3 class="mf-gold">Reflection Task</h3>
             <p>End your session by writing down one thing that made you happy today.</p>
             <button class="mf-btn" onclick="openGame('reflection')">Write Journal</button>
+        </div>
+        <!-- Card 7 -->
+        <div class="mf-card" style="box-shadow: 0 10px 40px rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.32);">
+            <i class="fas fa-water mf-icon" style="color: #2563eb;"></i>
+            <h3 style="color: #2563eb;">Zen Flow Garden</h3>
+            <p>Guide the lotus, collect calm petals, avoid stress sparks, and keep your flow alive.</p>
+            <button class="mf-btn" style="border-color: #2563eb; color: #2563eb;" onmouseover="this.style.background='#2563eb'; this.style.color='#fff';" onmouseout="this.style.background='transparent'; this.style.color='#2563eb';" onclick="openGame('zen')">Start Flow</button>
+        </div>
+        <!-- Card 8 -->
+        <div class="mf-card" style="box-shadow: 0 10px 40px rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.32);">
+            <i class="fas fa-seedling mf-icon" style="color: #059669;"></i>
+            <h3 style="color: #059669;">Pattern Bloom</h3>
+            <p>Watch the glowing flower pattern, repeat it, and grow your memory streak.</p>
+            <button class="mf-btn" style="border-color: #059669; color: #059669;" onmouseover="this.style.background='#059669'; this.style.color='#fff';" onmouseout="this.style.background='transparent'; this.style.color='#059669';" onclick="openGame('bloom')">Play Pattern</button>
+        </div>
+        <!-- Card 9 -->
+        <div class="mf-card" style="box-shadow: 0 10px 40px rgba(14,165,233,0.12); border-color: rgba(14,165,233,0.32);">
+            <i class="fas fa-star-half-alt mf-icon" style="color: #0284c7;"></i>
+            <h3 style="color: #0284c7;">Focus Constellation</h3>
+            <p>Tap the numbered stars in order before time fades. A quick visual focus challenge.</p>
+            <button class="mf-btn" style="border-color: #0284c7; color: #0284c7;" onmouseover="this.style.background='#0284c7'; this.style.color='#fff';" onmouseout="this.style.background='transparent'; this.style.color='#0284c7';" onclick="openGame('constellation')">Connect Stars</button>
         </div>
     </div>
 </div>
@@ -462,6 +843,74 @@
             </div>
         </div>
 
+        <!-- 7. Advanced Canvas Game -->
+        <div class="game-view" id="view-zen">
+            <h2 class="mb-2" style="color: #2563eb;">Zen Flow Garden</h2>
+            <p class="text-muted mb-3">Collect green petals, pick blue focus drops for shield, and avoid red stress sparks.</p>
+            <div class="zen-shell">
+                <div class="zen-topbar" aria-label="Zen Flow Garden stats">
+                    <div class="zen-stat"><span>Score</span><strong id="zenScore">0</strong></div>
+                    <div class="zen-stat"><span>Flow</span><strong id="zenCombo">x1</strong></div>
+                    <div class="zen-stat"><span>Energy</span><strong id="zenEnergy">100</strong></div>
+                    <div class="zen-stat"><span>Best</span><strong id="zenBest">0</strong></div>
+                </div>
+                <div class="zen-board" id="zenBoard">
+                    <canvas id="zenCanvas" width="720" height="450" aria-label="Zen Flow Garden game canvas"></canvas>
+                    <div class="zen-overlay" id="zenOverlay">
+                        <div class="zen-overlay-inner">
+                            <h3 id="zenOverlayTitle">Ready to Flow?</h3>
+                            <p id="zenOverlayText">Move the lotus with mouse, touch, arrow keys, or WASD. A calm round takes 75 seconds.</p>
+                            <button class="zen-btn" type="button" onclick="startZenGame()">Start Game</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="zen-controls">
+                    <button class="zen-btn" type="button" onclick="startZenGame()">Restart</button>
+                    <button class="zen-btn secondary" type="button" onclick="toggleZenPause()" id="zenPauseBtn">Pause</button>
+                </div>
+                <p class="zen-help mb-0">Tip: stay near the center when the waves speed up. Blue drops protect your energy once.</p>
+            </div>
+        </div>
+
+        <!-- 8. Pattern Bloom -->
+        <div class="game-view" id="view-bloom">
+            <h2 class="mb-2" style="color: #059669;">Pattern Bloom</h2>
+            <p class="text-muted mb-3">Watch the pads glow, then repeat the same pattern.</p>
+            <div class="bloom-shell">
+                <div class="bloom-stats" aria-label="Pattern Bloom stats">
+                    <div class="bloom-stat"><span>Level</span><strong id="bloomLevel">1</strong></div>
+                    <div class="bloom-stat"><span>Lives</span><strong id="bloomLives">3</strong></div>
+                    <div class="bloom-stat"><span>Best</span><strong id="bloomBest">0</strong></div>
+                </div>
+                <div class="bloom-grid" id="bloomGrid"></div>
+                <p class="bloom-message" id="bloomMessage">Press Start and follow the bloom.</p>
+                <div class="zen-controls">
+                    <button class="zen-btn" type="button" onclick="startBloomGame()">Start</button>
+                    <button class="zen-btn secondary" type="button" onclick="playBloomSequence()">Replay Pattern</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 9. Focus Constellation -->
+        <div class="game-view" id="view-constellation">
+            <h2 class="mb-2" style="color: #0284c7;">Focus Constellation</h2>
+            <p class="text-muted mb-3">Tap the stars in number order before the timer runs out.</p>
+            <div class="constellation-shell">
+                <div class="constellation-stats" aria-label="Focus Constellation stats">
+                    <div class="constellation-stat"><span>Level</span><strong id="constellationLevel">1</strong></div>
+                    <div class="constellation-stat"><span>Score</span><strong id="constellationScore">0</strong></div>
+                    <div class="constellation-stat"><span>Best</span><strong id="constellationBest">0</strong></div>
+                </div>
+                <div class="constellation-timer"><span id="constellationTimer"></span></div>
+                <div class="constellation-board" id="constellationBoard"></div>
+                <p class="constellation-message" id="constellationMessage">Press Start to map the stars.</p>
+                <div class="zen-controls">
+                    <button class="zen-btn" type="button" onclick="startConstellationGame()">Start</button>
+                    <button class="zen-btn secondary" type="button" onclick="restartConstellationLevel()">Restart Level</button>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -469,6 +918,7 @@
     /* MODAL LOGIC */
     let activeGameCtx = null;
     function openGame(gameId) {
+        cleanupActiveGame();
         document.querySelectorAll('.game-view').forEach(el => el.classList.remove('active'));
         document.getElementById('view-' + gameId).classList.add('active');
         document.getElementById('mfModal').classList.add('active');
@@ -481,14 +931,25 @@
         if(gameId === 'breathe') resetBreathe();
         if(gameId === 'quiz') initQuiz();
         if(gameId === 'reflection') loadReflections();
+        if(gameId === 'zen') initZenGame();
+        if(gameId === 'bloom') initBloomGame();
+        if(gameId === 'constellation') initConstellationGame();
 
         fetch('/mindfresh/log', { method: 'POST' }).catch(e=>{});
     }
 
-    function closeModal() {
-        document.getElementById('mfModal').classList.remove('active');
+    function cleanupActiveGame() {
         if(activeGameCtx === 'breathe' && breatheInterval) { clearInterval(breatheInterval); isBreathing = false; }
         if(reactionTimeout) clearTimeout(reactionTimeout);
+        if(activeGameCtx === 'zen') stopZenGame();
+        if(activeGameCtx === 'bloom') clearBloomTimers();
+        if(activeGameCtx === 'constellation') stopConstellationGame();
+    }
+
+    function closeModal() {
+        document.getElementById('mfModal').classList.remove('active');
+        cleanupActiveGame();
+        activeGameCtx = null;
     }
 
     /* 🧠 1. MEMORY MATCH */
@@ -684,6 +1145,803 @@
         let past = JSON.parse(localStorage.getItem('mf_reflections') || '[]');
         let html = past.map(p => `<div class="ref-item"><strong>${p.date}</strong><br>${p.text}</div>`).join('');
         document.getElementById('refList').innerHTML = html || "<p class='text-muted'>No reflections yet.</p>";
+    }
+
+    /* 7. ADVANCED ZEN FLOW GARDEN */
+    const zenState = {
+        canvas: null,
+        ctx: null,
+        width: 720,
+        height: 450,
+        player: { x: 360, y: 225, r: 18, vx: 0, vy: 0 },
+        items: [],
+        particles: [],
+        keys: {},
+        pointer: null,
+        running: false,
+        paused: false,
+        bound: false,
+        last: 0,
+        spawnTimer: 0,
+        score: 0,
+        combo: 1,
+        energy: 100,
+        best: 0,
+        shield: 0,
+        elapsed: 0,
+        duration: 75,
+        animationId: null
+    };
+
+    function initZenGame() {
+        zenState.canvas = document.getElementById('zenCanvas');
+        zenState.ctx = zenState.canvas.getContext('2d');
+        zenState.best = Number(localStorage.getItem('mf_zen_best') || 0);
+        document.getElementById('zenBest').innerText = zenState.best;
+        bindZenControls();
+        resizeZenCanvas();
+        resetZenRound();
+        showZenOverlay('Ready to Flow?', 'Move the lotus with mouse, touch, arrow keys, or WASD. A calm round takes 75 seconds.');
+        drawZenScene();
+    }
+
+    function bindZenControls() {
+        if (zenState.bound) return;
+        zenState.bound = true;
+        window.addEventListener('resize', resizeZenCanvas);
+        window.addEventListener('keydown', (event) => {
+            if (activeGameCtx !== 'zen') return;
+            const key = event.key.toLowerCase();
+            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', ' '].includes(key)) {
+                event.preventDefault();
+            }
+            if (key === ' ') {
+                toggleZenPause();
+                return;
+            }
+            zenState.keys[key] = true;
+        });
+        window.addEventListener('keyup', (event) => {
+            zenState.keys[event.key.toLowerCase()] = false;
+        });
+
+        const board = document.getElementById('zenBoard');
+        board.addEventListener('pointerdown', setZenPointer);
+        board.addEventListener('pointermove', setZenPointer);
+        board.addEventListener('pointerup', clearZenPointer);
+        board.addEventListener('pointercancel', clearZenPointer);
+        board.addEventListener('pointerleave', clearZenPointer);
+    }
+
+    function resizeZenCanvas() {
+        if (!zenState.canvas) return;
+        const board = document.getElementById('zenBoard');
+        const rect = board.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        zenState.width = rect.width;
+        zenState.height = rect.height;
+        zenState.canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+        zenState.canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+        zenState.canvas.style.width = rect.width + 'px';
+        zenState.canvas.style.height = rect.height + 'px';
+        zenState.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        zenState.player.x = Math.min(Math.max(zenState.player.x, zenState.player.r), zenState.width - zenState.player.r);
+        zenState.player.y = Math.min(Math.max(zenState.player.y, zenState.player.r), zenState.height - zenState.player.r);
+        if (!zenState.running) drawZenScene();
+    }
+
+    function setZenPointer(event) {
+        if (!zenState.canvas || !zenState.running || zenState.paused) return;
+        const rect = zenState.canvas.getBoundingClientRect();
+        zenState.pointer = {
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top
+        };
+    }
+
+    function clearZenPointer() {
+        zenState.pointer = null;
+    }
+
+    function resetZenRound() {
+        zenState.player = { x: zenState.width / 2, y: zenState.height / 2, r: 18, vx: 0, vy: 0 };
+        zenState.items = [];
+        zenState.particles = [];
+        zenState.score = 0;
+        zenState.combo = 1;
+        zenState.energy = 100;
+        zenState.shield = 0;
+        zenState.elapsed = 0;
+        zenState.spawnTimer = 0;
+        zenState.paused = false;
+        updateZenHud();
+    }
+
+    function startZenGame() {
+        if (!zenState.canvas) initZenGame();
+        if (zenState.animationId) cancelAnimationFrame(zenState.animationId);
+        resetZenRound();
+        zenState.running = true;
+        zenState.last = performance.now();
+        document.getElementById('zenPauseBtn').innerText = 'Pause';
+        hideZenOverlay();
+        zenState.animationId = requestAnimationFrame(zenLoop);
+    }
+
+    function stopZenGame() {
+        zenState.running = false;
+        zenState.paused = false;
+        zenState.pointer = null;
+        if (zenState.animationId) {
+            cancelAnimationFrame(zenState.animationId);
+            zenState.animationId = null;
+        }
+    }
+
+    function toggleZenPause() {
+        if (!zenState.running) {
+            startZenGame();
+            return;
+        }
+        zenState.paused = !zenState.paused;
+        document.getElementById('zenPauseBtn').innerText = zenState.paused ? 'Resume' : 'Pause';
+        zenState.last = performance.now();
+    }
+
+    function zenLoop(time) {
+        if (!zenState.running) return;
+        const dt = Math.min((time - zenState.last) / 1000, 0.033);
+        zenState.last = time;
+
+        if (!zenState.paused) {
+            updateZenGame(dt);
+        }
+        drawZenScene();
+        zenState.animationId = requestAnimationFrame(zenLoop);
+    }
+
+    function updateZenGame(dt) {
+        zenState.elapsed += dt;
+        zenState.spawnTimer -= dt;
+        zenState.energy = Math.max(0, zenState.energy - dt * 1.35);
+
+        const wave = 1 + zenState.elapsed / 55;
+        if (zenState.spawnTimer <= 0) {
+            spawnZenItem(wave);
+            zenState.spawnTimer = Math.max(0.38, 0.9 - wave * 0.08);
+        }
+
+        updateZenPlayer(dt);
+        updateZenItems(dt);
+        updateZenParticles(dt);
+        updateZenHud();
+
+        if (zenState.energy <= 0) {
+            finishZenGame('Flow Broken', 'Stress sparks drained your energy. Take one breath and try again.');
+        } else if (zenState.elapsed >= zenState.duration) {
+            finishZenGame('Flow Complete', 'You completed the calm round with a focused mind.');
+        }
+    }
+
+    function updateZenPlayer(dt) {
+        const p = zenState.player;
+        let ax = 0;
+        let ay = 0;
+        const speed = 430;
+        if (zenState.keys.arrowleft || zenState.keys.a) ax -= 1;
+        if (zenState.keys.arrowright || zenState.keys.d) ax += 1;
+        if (zenState.keys.arrowup || zenState.keys.w) ay -= 1;
+        if (zenState.keys.arrowdown || zenState.keys.s) ay += 1;
+
+        if (zenState.pointer) {
+            const dx = zenState.pointer.x - p.x;
+            const dy = zenState.pointer.y - p.y;
+            const dist = Math.hypot(dx, dy) || 1;
+            if (dist > 4) {
+                ax += dx / dist;
+                ay += dy / dist;
+            }
+        }
+
+        const len = Math.hypot(ax, ay) || 1;
+        p.vx += (ax / len) * speed * dt;
+        p.vy += (ay / len) * speed * dt;
+        p.vx *= 0.88;
+        p.vy *= 0.88;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+
+        p.x = Math.min(Math.max(p.x, p.r), zenState.width - p.r);
+        p.y = Math.min(Math.max(p.y, p.r), zenState.height - p.r);
+    }
+
+    function spawnZenItem(wave) {
+        const side = Math.floor(Math.random() * 4);
+        const margin = 24;
+        const item = {
+            x: side === 1 ? zenState.width + margin : side === 3 ? -margin : Math.random() * zenState.width,
+            y: side === 2 ? zenState.height + margin : side === 0 ? -margin : Math.random() * zenState.height,
+            r: 10 + Math.random() * 7,
+            type: Math.random() < 0.68 ? 'petal' : Math.random() < 0.78 ? 'focus' : 'spark',
+            spin: Math.random() * Math.PI,
+            life: 9,
+            vx: 0,
+            vy: 0
+        };
+
+        const targetX = zenState.width * (0.25 + Math.random() * 0.5);
+        const targetY = zenState.height * (0.2 + Math.random() * 0.6);
+        const dx = targetX - item.x;
+        const dy = targetY - item.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const speed = item.type === 'spark' ? 90 + wave * 22 : 55 + wave * 12;
+        item.vx = dx / dist * speed;
+        item.vy = dy / dist * speed;
+        zenState.items.push(item);
+    }
+
+    function updateZenItems(dt) {
+        const p = zenState.player;
+        for (let i = zenState.items.length - 1; i >= 0; i--) {
+            const item = zenState.items[i];
+            item.x += item.vx * dt;
+            item.y += item.vy * dt;
+            item.spin += dt * 4;
+            item.life -= dt;
+
+            const hit = Math.hypot(item.x - p.x, item.y - p.y) < item.r + p.r;
+            if (hit) {
+                collectZenItem(item);
+                zenState.items.splice(i, 1);
+            } else if (item.life <= 0 || item.x < -60 || item.x > zenState.width + 60 || item.y < -60 || item.y > zenState.height + 60) {
+                zenState.items.splice(i, 1);
+            }
+        }
+    }
+
+    function collectZenItem(item) {
+        if (item.type === 'spark') {
+            if (zenState.shield > 0) {
+                zenState.shield--;
+                burstZenParticles(item.x, item.y, '#60a5fa', 16);
+                return;
+            }
+            zenState.energy = Math.max(0, zenState.energy - 18);
+            zenState.combo = 1;
+            burstZenParticles(item.x, item.y, '#ef4444', 20);
+            return;
+        }
+
+        if (item.type === 'focus') {
+            zenState.shield = Math.min(3, zenState.shield + 1);
+            zenState.energy = Math.min(100, zenState.energy + 10);
+            zenState.score += 40 * zenState.combo;
+            burstZenParticles(item.x, item.y, '#3b82f6', 18);
+            return;
+        }
+
+        zenState.score += 25 * zenState.combo;
+        zenState.combo = Math.min(8, zenState.combo + 1);
+        zenState.energy = Math.min(100, zenState.energy + 5);
+        burstZenParticles(item.x, item.y, '#10b981', 14);
+    }
+
+    function burstZenParticles(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 40 + Math.random() * 130;
+            zenState.particles.push({
+                x,
+                y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 0.45 + Math.random() * 0.5,
+                maxLife: 0.95,
+                color
+            });
+        }
+    }
+
+    function updateZenParticles(dt) {
+        for (let i = zenState.particles.length - 1; i >= 0; i--) {
+            const particle = zenState.particles[i];
+            particle.x += particle.vx * dt;
+            particle.y += particle.vy * dt;
+            particle.vx *= 0.96;
+            particle.vy *= 0.96;
+            particle.life -= dt;
+            if (particle.life <= 0) zenState.particles.splice(i, 1);
+        }
+    }
+
+    function updateZenHud() {
+        document.getElementById('zenScore').innerText = zenState.score;
+        document.getElementById('zenCombo').innerText = 'x' + zenState.combo + (zenState.shield ? ' S' + zenState.shield : '');
+        document.getElementById('zenEnergy').innerText = Math.round(zenState.energy);
+        document.getElementById('zenBest').innerText = zenState.best;
+    }
+
+    function finishZenGame(title, text) {
+        zenState.running = false;
+        if (zenState.score > zenState.best) {
+            zenState.best = zenState.score;
+            localStorage.setItem('mf_zen_best', String(zenState.best));
+            text += ' New best score saved.';
+        }
+        updateZenHud();
+        showZenOverlay(title, `${text} Final score: ${zenState.score}.`);
+    }
+
+    function showZenOverlay(title, text) {
+        document.getElementById('zenOverlayTitle').innerText = title;
+        document.getElementById('zenOverlayText').innerText = text;
+        document.getElementById('zenOverlay').classList.remove('d-none');
+    }
+
+    function hideZenOverlay() {
+        document.getElementById('zenOverlay').classList.add('d-none');
+    }
+
+    function drawZenScene() {
+        const ctx = zenState.ctx;
+        if (!ctx) return;
+        ctx.clearRect(0, 0, zenState.width, zenState.height);
+        drawZenBackground(ctx);
+        zenState.items.forEach(item => drawZenItem(ctx, item));
+        zenState.particles.forEach(particle => drawZenParticle(ctx, particle));
+        drawZenPlayer(ctx, zenState.player);
+        drawZenTimer(ctx);
+        if (zenState.paused) drawZenPause(ctx);
+    }
+
+    function drawZenBackground(ctx) {
+        const w = zenState.width;
+        const h = zenState.height;
+        ctx.save();
+        ctx.globalAlpha = 0.42;
+        for (let x = 24; x < w; x += 52) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.quadraticCurveTo(x + 24, h * 0.5, x - 16, h);
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 0.24;
+        for (let r = 60; r < Math.max(w, h); r += 80) {
+            ctx.beginPath();
+            ctx.arc(w * 0.5, h * 0.52, r, 0, Math.PI * 2);
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    function drawZenPlayer(ctx, p) {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(Math.atan2(p.vy, p.vx) * 0.12);
+
+        if (zenState.shield > 0) {
+            ctx.beginPath();
+            ctx.arc(0, 0, p.r + 10 + Math.sin(zenState.elapsed * 6) * 2, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.8)';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        }
+
+        for (let i = 0; i < 6; i++) {
+            ctx.save();
+            ctx.rotate((Math.PI * 2 / 6) * i);
+            ctx.beginPath();
+            ctx.ellipse(0, -12, 8, 20, 0, 0, Math.PI * 2);
+            ctx.fillStyle = i % 2 ? '#6ee7b7' : '#10b981';
+            ctx.shadowColor = '#10b981';
+            ctx.shadowBlur = 12;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        ctx.beginPath();
+        ctx.arc(0, 0, 9, 0, Math.PI * 2);
+        ctx.fillStyle = '#fef3c7';
+        ctx.shadowBlur = 0;
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function drawZenItem(ctx, item) {
+        ctx.save();
+        ctx.translate(item.x, item.y);
+        ctx.rotate(item.spin);
+
+        if (item.type === 'spark') {
+            ctx.fillStyle = '#ef4444';
+            ctx.shadowColor = '#ef4444';
+            ctx.shadowBlur = 14;
+            ctx.beginPath();
+            for (let i = 0; i < 8; i++) {
+                const r = i % 2 === 0 ? item.r + 5 : item.r * 0.45;
+                const a = (Math.PI * 2 / 8) * i;
+                ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+            }
+            ctx.closePath();
+            ctx.fill();
+        } else if (item.type === 'focus') {
+            ctx.fillStyle = '#3b82f6';
+            ctx.shadowColor = '#3b82f6';
+            ctx.shadowBlur = 16;
+            ctx.beginPath();
+            ctx.arc(0, 0, item.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#bfdbfe';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+        } else {
+            ctx.fillStyle = '#10b981';
+            ctx.shadowColor = '#10b981';
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, item.r * 0.75, item.r * 1.35, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#bbf7d0';
+            ctx.beginPath();
+            ctx.ellipse(0, -2, item.r * 0.25, item.r * 0.8, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+
+    function drawZenParticle(ctx, particle) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, particle.life / particle.maxLife);
+        ctx.fillStyle = particle.color;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function drawZenTimer(ctx) {
+        const progress = zenState.running ? Math.min(1, zenState.elapsed / zenState.duration) : 0;
+        const width = zenState.width - 32;
+        ctx.save();
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.14)';
+        ctx.fillRect(16, 16, width, 8);
+        ctx.fillStyle = '#10b981';
+        ctx.fillRect(16, 16, width * progress, 8);
+        ctx.restore();
+    }
+
+    function drawZenPause(ctx) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.42)';
+        ctx.fillRect(0, 0, zenState.width, zenState.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '700 28px Poppins, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Paused', zenState.width / 2, zenState.height / 2);
+        ctx.font = '500 15px Poppins, sans-serif';
+        ctx.fillText('Press Resume or Space to continue', zenState.width / 2, zenState.height / 2 + 32);
+        ctx.restore();
+    }
+
+    /* 8. PATTERN BLOOM */
+    const bloomIcons = ['fa-leaf', 'fa-sun', 'fa-moon', 'fa-spa', 'fa-seedling', 'fa-star', 'fa-water', 'fa-feather-alt', 'fa-heart'];
+    const bloomState = {
+        sequence: [],
+        inputIndex: 0,
+        level: 1,
+        lives: 3,
+        best: 0,
+        accepting: false,
+        timers: []
+    };
+
+    function initBloomGame() {
+        bloomState.best = Number(localStorage.getItem('mf_bloom_best') || 0);
+        renderBloomGrid();
+        resetBloomGame();
+    }
+
+    function renderBloomGrid() {
+        const grid = document.getElementById('bloomGrid');
+        if (grid.children.length) return;
+        bloomIcons.forEach((icon, index) => {
+            const pad = document.createElement('button');
+            pad.type = 'button';
+            pad.className = 'bloom-pad';
+            pad.dataset.index = index;
+            pad.innerHTML = `<i class="fas ${icon}"></i>`;
+            pad.addEventListener('click', () => handleBloomPad(index));
+            grid.appendChild(pad);
+        });
+    }
+
+    function resetBloomGame() {
+        clearBloomTimers();
+        bloomState.sequence = [];
+        bloomState.inputIndex = 0;
+        bloomState.level = 1;
+        bloomState.lives = 3;
+        bloomState.accepting = false;
+        updateBloomHud();
+        document.getElementById('bloomMessage').innerText = 'Press Start and follow the bloom.';
+        document.querySelectorAll('.bloom-pad').forEach(pad => pad.classList.remove('active', 'missed'));
+    }
+
+    function startBloomGame() {
+        resetBloomGame();
+        addBloomStep();
+        playBloomSequence();
+    }
+
+    function addBloomStep() {
+        bloomState.sequence.push(Math.floor(Math.random() * bloomIcons.length));
+    }
+
+    function playBloomSequence() {
+        if (!bloomState.sequence.length || bloomState.accepting) return;
+        clearBloomTimers();
+        bloomState.accepting = false;
+        bloomState.inputIndex = 0;
+        document.getElementById('bloomMessage').innerText = 'Watch carefully...';
+
+        bloomState.sequence.forEach((padIndex, order) => {
+            const timer = setTimeout(() => flashBloomPad(padIndex), 520 * order + 300);
+            bloomState.timers.push(timer);
+        });
+
+        const readyTimer = setTimeout(() => {
+            bloomState.accepting = true;
+            document.getElementById('bloomMessage').innerText = 'Your turn. Repeat the pattern.';
+        }, 520 * bloomState.sequence.length + 420);
+        bloomState.timers.push(readyTimer);
+    }
+
+    function flashBloomPad(index) {
+        const pad = document.querySelector(`.bloom-pad[data-index="${index}"]`);
+        if (!pad) return;
+        pad.classList.add('active');
+        const timer = setTimeout(() => pad.classList.remove('active'), 280);
+        bloomState.timers.push(timer);
+    }
+
+    function handleBloomPad(index) {
+        if (!bloomState.accepting) return;
+        flashBloomPad(index);
+        const expected = bloomState.sequence[bloomState.inputIndex];
+        if (index !== expected) {
+            bloomWrong(index);
+            return;
+        }
+
+        bloomState.inputIndex++;
+        if (bloomState.inputIndex >= bloomState.sequence.length) {
+            bloomState.accepting = false;
+            bloomState.level++;
+            if (bloomState.level - 1 > bloomState.best) {
+                bloomState.best = bloomState.level - 1;
+                localStorage.setItem('mf_bloom_best', String(bloomState.best));
+            }
+            updateBloomHud();
+            document.getElementById('bloomMessage').innerText = 'Nice memory. Next bloom is growing...';
+            const timer = setTimeout(() => {
+                addBloomStep();
+                playBloomSequence();
+            }, 850);
+            bloomState.timers.push(timer);
+        }
+    }
+
+    function bloomWrong(index) {
+        bloomState.lives--;
+        bloomState.accepting = false;
+        const pad = document.querySelector(`.bloom-pad[data-index="${index}"]`);
+        if (pad) {
+            pad.classList.add('missed');
+            const timer = setTimeout(() => pad.classList.remove('missed'), 420);
+            bloomState.timers.push(timer);
+        }
+        updateBloomHud();
+
+        if (bloomState.lives <= 0) {
+            document.getElementById('bloomMessage').innerText = `Round over. You reached level ${bloomState.level}.`;
+            return;
+        }
+
+        document.getElementById('bloomMessage').innerText = 'Small miss. Watch the pattern again.';
+        const replayTimer = setTimeout(playBloomSequence, 900);
+        bloomState.timers.push(replayTimer);
+    }
+
+    function clearBloomTimers() {
+        bloomState.timers.forEach(timer => clearTimeout(timer));
+        bloomState.timers = [];
+        bloomState.accepting = false;
+    }
+
+    function updateBloomHud() {
+        document.getElementById('bloomLevel').innerText = bloomState.level;
+        document.getElementById('bloomLives').innerText = bloomState.lives;
+        document.getElementById('bloomBest').innerText = bloomState.best;
+    }
+
+    /* 9. FOCUS CONSTELLATION */
+    const constellationState = {
+        level: 1,
+        score: 0,
+        best: 0,
+        next: 1,
+        total: 5,
+        timeLeft: 0,
+        maxTime: 0,
+        timer: null,
+        lastPoint: null
+    };
+
+    function initConstellationGame() {
+        constellationState.best = Number(localStorage.getItem('mf_constellation_best') || 0);
+        constellationState.level = 1;
+        constellationState.score = 0;
+        constellationState.next = 1;
+        updateConstellationHud();
+        document.getElementById('constellationBoard').innerHTML = '';
+        document.getElementById('constellationMessage').innerText = 'Press Start to map the stars.';
+        document.getElementById('constellationTimer').style.width = '100%';
+    }
+
+    function startConstellationGame() {
+        stopConstellationGame();
+        constellationState.level = 1;
+        constellationState.score = 0;
+        buildConstellationLevel();
+    }
+
+    function restartConstellationLevel() {
+        if (!constellationState.total) {
+            startConstellationGame();
+            return;
+        }
+        buildConstellationLevel();
+    }
+
+    function buildConstellationLevel() {
+        stopConstellationGame();
+        const board = document.getElementById('constellationBoard');
+        const rect = board.getBoundingClientRect();
+        const width = Math.max(rect.width, 320);
+        const height = Math.max(rect.height, 320);
+        constellationState.total = Math.min(11, 4 + constellationState.level);
+        constellationState.next = 1;
+        constellationState.lastPoint = null;
+        constellationState.maxTime = Math.max(9, 17 - constellationState.level * 0.85);
+        constellationState.timeLeft = constellationState.maxTime;
+        board.innerHTML = '';
+
+        const points = makeConstellationPoints(constellationState.total, width, height);
+        points.forEach((point, index) => {
+            const star = document.createElement('button');
+            star.type = 'button';
+            star.className = 'star-node';
+            star.dataset.number = index + 1;
+            star.style.left = point.x + '%';
+            star.style.top = point.y + '%';
+            star.textContent = index + 1;
+            star.addEventListener('click', () => handleConstellationClick(star, point));
+            board.appendChild(star);
+        });
+
+        document.getElementById('constellationMessage').innerText = `Find star 1 to ${constellationState.total}.`;
+        updateConstellationHud();
+        tickConstellationTimer();
+        constellationState.timer = setInterval(tickConstellationTimer, 120);
+    }
+
+    function makeConstellationPoints(total, width, height) {
+        const points = [];
+        for (let i = 0; i < total; i++) {
+            let point;
+            let attempts = 0;
+            do {
+                point = {
+                    x: 10 + Math.random() * 80,
+                    y: 12 + Math.random() * 76
+                };
+                attempts++;
+            } while (attempts < 80 && points.some(other => {
+                const dx = (point.x - other.x) * width / 100;
+                const dy = (point.y - other.y) * height / 100;
+                return Math.hypot(dx, dy) < 58;
+            }));
+            points.push(point);
+        }
+        return points;
+    }
+
+    function handleConstellationClick(star, point) {
+        const value = Number(star.dataset.number);
+        if (value !== constellationState.next) {
+            star.classList.add('wrong');
+            constellationState.timeLeft = Math.max(0, constellationState.timeLeft - 1.3);
+            document.getElementById('constellationMessage').innerText = `Stay steady. Next star is ${constellationState.next}.`;
+            setTimeout(() => star.classList.remove('wrong'), 320);
+            return;
+        }
+
+        star.classList.add('done');
+        drawConstellationLine(point);
+        constellationState.score += Math.round(20 + constellationState.timeLeft * 2 + constellationState.level * 6);
+        constellationState.next++;
+        updateConstellationHud();
+
+        if (constellationState.next > constellationState.total) {
+            stopConstellationGame();
+            constellationState.level++;
+            if (constellationState.score > constellationState.best) {
+                constellationState.best = constellationState.score;
+                localStorage.setItem('mf_constellation_best', String(constellationState.best));
+            }
+            updateConstellationHud();
+            document.getElementById('constellationMessage').innerText = 'Constellation complete. Loading the next map...';
+            setTimeout(buildConstellationLevel, 900);
+        } else {
+            document.getElementById('constellationMessage').innerText = `Good. Find star ${constellationState.next}.`;
+        }
+    }
+
+    function drawConstellationLine(point) {
+        const board = document.getElementById('constellationBoard');
+        if (!constellationState.lastPoint) {
+            constellationState.lastPoint = point;
+            return;
+        }
+
+        const dx = point.x - constellationState.lastPoint.x;
+        const dy = point.y - constellationState.lastPoint.y;
+        const length = Math.hypot(dx, dy);
+        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        const line = document.createElement('div');
+        line.className = 'constellation-line';
+        line.style.left = constellationState.lastPoint.x + '%';
+        line.style.top = constellationState.lastPoint.y + '%';
+        line.style.width = length + '%';
+        line.style.transform = `rotate(${angle}deg)`;
+        board.appendChild(line);
+        constellationState.lastPoint = point;
+    }
+
+    function tickConstellationTimer() {
+        constellationState.timeLeft = Math.max(0, constellationState.timeLeft - 0.12);
+        const pct = constellationState.maxTime ? (constellationState.timeLeft / constellationState.maxTime) * 100 : 100;
+        document.getElementById('constellationTimer').style.width = pct + '%';
+        if (constellationState.timeLeft <= 0) {
+            finishConstellationGame();
+        }
+    }
+
+    function finishConstellationGame() {
+        stopConstellationGame();
+        if (constellationState.score > constellationState.best) {
+            constellationState.best = constellationState.score;
+            localStorage.setItem('mf_constellation_best', String(constellationState.best));
+        }
+        updateConstellationHud();
+        document.getElementById('constellationMessage').innerText = `Time faded. Final score: ${constellationState.score}.`;
+    }
+
+    function stopConstellationGame() {
+        if (constellationState.timer) {
+            clearInterval(constellationState.timer);
+            constellationState.timer = null;
+        }
+    }
+
+    function updateConstellationHud() {
+        document.getElementById('constellationLevel').innerText = constellationState.level;
+        document.getElementById('constellationScore').innerText = constellationState.score;
+        document.getElementById('constellationBest').innerText = constellationState.best;
     }
 
 </script>

@@ -1,0 +1,1265 @@
+{% extends 'base.html' %}
+
+{% block title %}Internships - Skill Saathi{% endblock %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+
+<style>
+    .intern-browse { font-family: 'Inter', sans-serif; }
+    .browse-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: clamp(2rem, 4vw, 3.5rem);
+        font-weight: 900;
+        background: linear-gradient(135deg, #10b981, #3b82f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.03em;
+        margin-bottom: 0.5rem;
+    }
+    
+    .filter-panel {
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: 20px;
+        padding: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+    }
+    body.dark-mode .filter-panel {
+        background: rgba(30, 41, 59, 0.5);
+        border-color: rgba(255,255,255,0.05);
+    }
+
+    .internship-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: 20px;
+        padding: 1.5rem;
+        height: 100%;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        display: flex;
+        flex-direction: column;
+    }
+    body.dark-mode .internship-card { background: rgba(30, 41, 59, 0.5); border-color: rgba(255,255,255,0.05); }
+    .internship-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); }
+
+    .experience-section {
+        border-top: 1px solid rgba(0,0,0,0.08);
+        padding-top: 1rem;
+        margin-top: 1rem;
+    }
+    .experience-card {
+        background: rgba(249, 250, 251, 0.9);
+        border-radius: 18px;
+        border: 1px solid rgba(0,0,0,0.06);
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    body.dark-mode .experience-card {
+        background: rgba(15, 23, 42, 0.6);
+        border-color: rgba(255,255,255,0.08);
+    }
+    .experience-card summary {
+        cursor: pointer;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    .experience-card p {
+        margin-bottom: 0.75rem;
+        white-space: pre-wrap;
+    }
+    .student-badge {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+        font-size: 0.75rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+    }
+    .toggle-exp-btn {
+        min-width: 180px;
+    }
+    
+    .card-title-premium {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 700;
+        font-size: 1.25rem;
+        color: var(--bs-body-color);
+        margin-bottom: 0.2rem;
+    }
+
+    .verified-badge {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+        font-size: 0.75rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .source-badge {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+        font-size: 0.75rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+
+    .form-control-premium, .form-select-premium {
+        background: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(0,0,0,0.1);
+        border-radius: 12px;
+        padding: 0.6rem 1rem;
+        transition: all 0.3s;
+    }
+    .form-control-premium:focus, .form-select-premium:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        background: #fff;
+    }
+    body.dark-mode .form-control-premium, body.dark-mode .form-select-premium {
+        background: rgba(15, 23, 42, 0.6);
+        border-color: rgba(255,255,255,0.1);
+        color: #fff;
+    }
+    body.dark-mode .form-control-premium:focus, body.dark-mode .form-select-premium:focus {
+        background: rgba(15, 23, 42, 0.9);
+    }
+    
+    .apply-btn {
+        background: linear-gradient(135deg, #10b981, #3b82f6);
+        color: white;
+        border-radius: 50px;
+        font-weight: 600;
+        border: none;
+        padding: 0.6rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+    .apply-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        color: white;
+    }
+    .tab-nav {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+    .tab-button {
+        background: rgba(255,255,255,0.86);
+        border: 1px solid rgba(59,130,246,0.18);
+        color: #1f2937;
+        border-radius: 999px;
+        padding: 0.75rem 1.2rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    .tab-button.active,
+    .tab-button:hover {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+        transform: translateY(-1px);
+    }
+    .tab-section {
+        display: none;
+    }
+    .tab-section.active {
+        display: block;
+    }
+    .guide-card {
+        background: rgba(255,255,255,0.95);
+        border-radius: 22px;
+        border: 1px solid rgba(0,0,0,0.06);
+        padding: 2rem;
+        box-shadow: 0 10px 30px rgba(15,23,42,0.03);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    .guide-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px rgba(15,23,42,0.08);
+    }
+    body.dark-mode .guide-card {
+        background: rgba(30, 41, 59, 0.6);
+        border-color: rgba(255,255,255,0.05);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        color: #e2e8f0;
+    }
+    .guide-card h4 {
+        margin-bottom: 1.5rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        font-family: 'Outfit', sans-serif;
+    }
+    
+    /* Timeline styles */
+    .timeline-container {
+        position: relative;
+        padding-left: 20px;
+    }
+    .timeline-container::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: rgba(59,130,246,0.2);
+        border-radius: 2px;
+    }
+    .apply-step {
+        position: relative;
+        padding-left: 30px;
+        margin-bottom: 1.8rem;
+    }
+    .apply-step:last-child {
+        margin-bottom: 0;
+    }
+    .apply-step::before {
+        content: '';
+        position: absolute;
+        left: -25px;
+        top: 4px;
+        width: 12px;
+        height: 12px;
+        background: #3b82f6;
+        border-radius: 50%;
+        border: 2px solid white;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+    }
+    body.dark-mode .apply-step::before {
+        border-color: #1e293b;
+    }
+    .apply-step-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 0.4rem;
+    }
+    .step-icon {
+        width: 32px;
+        height: 32px;
+        background: rgba(59,130,246,0.1);
+        color: #3b82f6;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        font-size: 0.9rem;
+    }
+
+    /* List styling */
+    .pro-list {
+        list-style: none;
+        padding-left: 0;
+        margin: 0;
+    }
+    .pro-list li {
+        position: relative;
+        padding-left: 32px;
+        margin-bottom: 1rem;
+        line-height: 1.6;
+    }
+    .pro-list li i {
+        position: absolute;
+        left: 0;
+        top: 4px;
+        font-size: 1.1rem;
+    }
+    body.dark-mode .text-muted {
+        color: #94a3b8 !important;
+    }
+
+    /* Templates styles */
+    .template-header {
+        background: #1e293b;
+        color: #94a3b8;
+        padding: 0.75rem 1rem;
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.85rem;
+    }
+    .template-body {
+        background: #0f172a;
+        color: #f8fafc;
+        border-bottom-left-radius: 16px;
+        border-bottom-right-radius: 16px;
+        padding: 1.5rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        white-space: pre-wrap;
+        word-break: break-word;
+        line-height: 1.6;
+        margin: 0;
+        font-size: 0.9rem;
+    }
+    .copy-template-btn {
+        background: rgba(255,255,255,0.1);
+        border: none;
+        color: #f8fafc;
+        padding: 0.3rem 0.8rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .copy-template-btn:hover {
+        background: rgba(255,255,255,0.2);
+    }
+
+    .card-outline {
+        border: 1px solid rgba(59,130,246,0.12);
+    }
+    
+    /* Company Tags */
+    .company-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.6rem 1rem;
+        background: rgba(243, 244, 246, 0.8);
+        border: 1px solid rgba(0,0,0,0.05);
+        border-radius: 12px;
+        color: #1f2937;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        margin-bottom: 0.5rem;
+        width: 100%;
+        justify-content: space-between;
+    }
+    .company-tag:hover {
+        background: #fff;
+        border-color: #3b82f6;
+        box-shadow: 0 4px 12px rgba(59,130,246,0.15);
+        color: #2563eb;
+        transform: translateY(-2px);
+    }
+    .company-tag i.fa-external-link-alt {
+        opacity: 0.5;
+        transition: opacity 0.2s;
+    }
+    .company-tag:hover i.fa-external-link-alt {
+        opacity: 1;
+    }
+    body.dark-mode .company-tag {
+        background: rgba(30, 41, 59, 0.8);
+        border-color: rgba(255,255,255,0.1);
+        color: #e2e8f0;
+    }
+    body.dark-mode .company-tag:hover {
+        background: rgba(30, 41, 59, 1);
+        border-color: #3b82f6;
+        color: #60a5fa;
+    }
+
+    .maharashtra-company-section {
+        color: #111827;
+    }
+    .maharashtra-company-section .card {
+        background: rgba(255, 255, 255, 0.96) !important;
+        color: #111827 !important;
+        border-color: rgba(15, 23, 42, 0.12) !important;
+    }
+    .maharashtra-company-section .card-header {
+        background: linear-gradient(135deg, #047857, #2563eb) !important;
+        color: #ffffff !important;
+        border-bottom: 0 !important;
+    }
+    .maharashtra-company-section a,
+    .maharashtra-company-section a.text-dark {
+        color: #111827 !important;
+    }
+    .maharashtra-company-section a:hover,
+    .maharashtra-company-section a.text-dark:hover {
+        color: #2563eb !important;
+    }
+    .maharashtra-company-section .alert-success {
+        background: #dcfce7 !important;
+        color: #14532d !important;
+        border-color: #10b981 !important;
+    }
+    .maharashtra-company-section .alert-success .alert-heading,
+    .maharashtra-company-section .alert-success strong {
+        color: #14532d !important;
+    }
+    body.dark-mode .maharashtra-company-section {
+        color: #e2e8f0;
+    }
+    body.dark-mode .maharashtra-company-section .card {
+        background: rgba(15, 23, 42, 0.92) !important;
+        color: #e2e8f0 !important;
+        border-color: rgba(148, 163, 184, 0.22) !important;
+    }
+    body.dark-mode .maharashtra-company-section a,
+    body.dark-mode .maharashtra-company-section a.text-dark {
+        color: #e2e8f0 !important;
+    }
+    body.dark-mode .maharashtra-company-section a:hover,
+    body.dark-mode .maharashtra-company-section a.text-dark:hover {
+        color: #93c5fd !important;
+    }
+    body.dark-mode .maharashtra-company-section .alert-success {
+        background: rgba(20, 83, 45, 0.72) !important;
+        color: #dcfce7 !important;
+        border-color: #22c55e !important;
+    }
+    body.dark-mode .maharashtra-company-section .alert-success .alert-heading,
+    body.dark-mode .maharashtra-company-section .alert-success strong {
+        color: #dcfce7 !important;
+    }
+</style>
+
+<div class="container my-5 intern-browse">
+    <div class="text-center mb-4" data-tilt data-tilt-scale="1.02" data-tilt-max="5">
+        <h1 class="browse-title">Find Your Internship</h1>
+        <p class="text-muted">Discover top opportunities and learn from student-shared internship stories in one place.</p>
+        <p class="text-muted mb-0">Showing {{ internship_count }} internship records with {{ experience_count }} student experience{{ 's' if experience_count != 1 else '' }}.</p>
+    </div>
+
+    <div class="tab-nav d-flex justify-content-between align-items-center">
+        <div>
+            <button type="button" class="tab-button active" data-tab="tabListings">Listings</button>
+            <button type="button" class="tab-button" data-tab="tabApplyGuide">Apply Guide</button>
+        </div>
+        <a href="/internships/community" class="btn apply-btn" style="font-size: 0.95rem;">
+            <i class="fas fa-comments me-2"></i>Community
+        </a>
+    </div>
+
+    <div id="tabListings" class="tab-section active">
+        <!-- Filter Panel -->
+        <div class="filter-panel mb-5">
+            <form id="filterForm" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control form-control-premium" id="filterTitle" placeholder="Search Title..." value="{{ search_query }}">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control form-control-premium" id="filterDomain" placeholder="Company...">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control form-control-premium" id="filterField" placeholder="Field (e.g., AI, Development)...">
+                </div>
+                
+                <div class="col-md-3">
+                    <select class="form-select form-select-premium" id="filterCity">
+                        <option value="all">📍 All Cities</option>
+                        <option value="pune">Pune</option>
+                        <option value="mumbai">Mumbai</option>
+                        <option value="nashik">Nashik</option>
+                        <option value="remote">Remote</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select form-select-premium" id="filterMode">
+                        <option value="all">🖥️ All Modes</option>
+                        <option value="online">Online / Remote</option>
+                        <option value="offline">Offline</option>
+                        <option value="hybrid">Hybrid</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select form-select-premium" id="filterStipend">
+                        <option value="all">💰 All Stipends</option>
+                        <option value="paid">Paid Only</option>
+                        <option value="unpaid">Unpaid Only</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn w-100 apply-btn"><i class="fas fa-search me-2"></i>Apply Filters</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="loadingIndicator" class="text-center my-5 d-none">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Fetching internships...</p>
+        </div>
+
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <h5 class="m-0" style="font-weight: 600;" id="resultCount">Loading...</h5>
+        </div>
+        
+        <div class="row g-4" id="internshipsGrid">
+            <!-- Cards populated by JS -->
+        </div>
+    </div>
+
+    <div id="tabApplyGuide" class="tab-section">
+        <!-- How to Apply Steps -->
+        <div class="row gy-4">
+            <div class="col-lg-6">
+                <div class="guide-card card-outline">
+                    <h4><i class="fas fa-clipboard-list me-2"></i>How to Apply</h4>
+                    <div class="timeline-container">
+                        <div class="apply-step">
+                            <div class="apply-step-header">
+                                <div class="step-icon"><i class="fas fa-search"></i></div>
+                                <strong>Search & Research</strong>
+                            </div>
+                            <p class="text-muted mb-0 small">Find internships that match your field and interests. Research company culture and requirements.</p>
+                        </div>
+                        <div class="apply-step">
+                            <div class="apply-step-header">
+                                <div class="step-icon"><i class="fas fa-file-alt"></i></div>
+                                <strong>Prepare Documents</strong>
+                            </div>
+                            <p class="text-muted mb-0 small">Update resume, cover letter, and portfolio. Tailor each application to the specific role.</p>
+                        </div>
+                        <div class="apply-step">
+                            <div class="apply-step-header">
+                                <div class="step-icon"><i class="fas fa-envelope"></i></div>
+                                <strong>Apply Smartly</strong>
+                            </div>
+                            <p class="text-muted mb-0 small">Use professional templates and proofread everything. Apply early and follow instructions.</p>
+                        </div>
+                        <div class="apply-step">
+                            <div class="apply-step-header">
+                                <div class="step-icon"><i class="fas fa-comments"></i></div>
+                                <strong>Follow Up</strong>
+                            </div>
+                            <p class="text-muted mb-0 small">Send polite follow-ups after 1-2 weeks. Connect on LinkedIn with hiring managers.</p>
+                        </div>
+                        <div class="apply-step">
+                            <div class="apply-step-header">
+                                <div class="step-icon"><i class="fas fa-user-graduate"></i></div>
+                                <strong>Prepare & Interview</strong>
+                            </div>
+                            <p class="text-muted mb-0 small">Practice common questions, prepare questions for them, and showcase your enthusiasm.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="guide-card card-outline">
+                    <h4><i class="fas fa-lightbulb me-2"></i>Resume Tips</h4>
+                    <ul class="pro-list text-muted">
+                        <li><i class="fas fa-check-circle text-success"></i> <strong>Length:</strong> Keep to 1 page</li>
+                        <li><i class="fas fa-check-circle text-success"></i> <strong>Content:</strong> Include education, experience, skills, projects</li>
+                        <li><i class="fas fa-check-circle text-success"></i> <strong>Format:</strong> Clean, professional, easy to read</li>
+                        <li><i class="fas fa-check-circle text-success"></i> <strong>Keywords:</strong> Use industry-specific terms</li>
+                        <li><i class="fas fa-check-circle text-success"></i> <strong>Quantify:</strong> Show impact with numbers</li>
+                        <li><i class="fas fa-check-circle text-success"></i> <strong>Proofread:</strong> No spelling errors</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Additional Help Sections -->
+        <div class="row gy-4 mt-4">
+            <div class="col-lg-6">
+                <div class="guide-card card-outline">
+                    <h4><i class="fas fa-exclamation-triangle me-2"></i>Common Mistakes to Avoid</h4>
+                    <ul class="pro-list text-muted">
+                        <li><i class="fas fa-times-circle text-danger"></i> <strong>Generic applications:</strong> Don't send the same resume everywhere</li>
+                        <li><i class="fas fa-times-circle text-danger"></i> <strong>Poor research:</strong> Know about the company and role</li>
+                        <li><i class="fas fa-times-circle text-danger"></i> <strong>Late applications:</strong> Apply as soon as positions open</li>
+                        <li><i class="fas fa-times-circle text-danger"></i> <strong>Weak follow-ups:</strong> Be professional, not pushy</li>
+                        <li><i class="fas fa-times-circle text-danger"></i> <strong>Missing documents:</strong> Ensure all requirements are met</li>
+                        <li><i class="fas fa-times-circle text-danger"></i> <strong>Negative attitude:</strong> Stay positive and enthusiastic</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="guide-card card-outline">
+                    <h4><i class="fas fa-users me-2"></i>Networking Tips</h4>
+                    <ul class="pro-list text-muted">
+                        <li><i class="fas fa-handshake text-primary"></i> <strong>LinkedIn:</strong> Connect with professionals in your field</li>
+                        <li><i class="fas fa-handshake text-primary"></i> <strong>Alumni network:</strong> Reach out to college seniors</li>
+                        <li><i class="fas fa-handshake text-primary"></i> <strong>Industry events:</strong> Attend webinars and virtual meetups</li>
+                        <li><i class="fas fa-handshake text-primary"></i> <strong>Informational interviews:</strong> Learn about different roles</li>
+                        <li><i class="fas fa-handshake text-primary"></i> <strong>Professional groups:</strong> Join relevant online communities</li>
+                        <li><i class="fas fa-handshake text-primary"></i> <strong>Referrals:</strong> Ask for introductions when appropriate</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Interview & Research -->
+        <div class="row gy-4 mt-4">
+            <div class="col-lg-6">
+                <div class="guide-card card-outline">
+                    <h4><i class="fas fa-search-plus me-2"></i>Research Company Tips</h4>
+                    <ul class="pro-list text-muted">
+                        <li><i class="fas fa-star text-warning"></i> <strong>Website:</strong> Read about mission, values, recent news</li>
+                        <li><i class="fas fa-star text-warning"></i> <strong>Social media:</strong> Follow company updates and culture</li>
+                        <li><i class="fas fa-star text-warning"></i> <strong>Glassdoor:</strong> Check reviews and interview experiences</li>
+                        <li><i class="fas fa-star text-warning"></i> <strong>News:</strong> Stay updated on industry trends</li>
+                        <li><i class="fas fa-star text-warning"></i> <strong>Products/Services:</strong> Understand what they offer</li>
+                        <li><i class="fas fa-star text-warning"></i> <strong>Competitors:</strong> Know the industry landscape</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="guide-card card-outline">
+                    <h4><i class="fas fa-question-circle me-2"></i>Interview Preparation</h4>
+                    <ul class="pro-list text-muted">
+                        <li><i class="fas fa-comment-dots text-info"></i> <strong>Practice questions:</strong> "Tell me about yourself," "Why this company?"</li>
+                        <li><i class="fas fa-comment-dots text-info"></i> <strong>Prepare examples:</strong> STAR method for behavioral questions</li>
+                        <li><i class="fas fa-comment-dots text-info"></i> <strong>Know your resume:</strong> Be ready to discuss any item</li>
+                        <li><i class="fas fa-comment-dots text-info"></i> <strong>Research salary:</strong> Know market rates for your field</li>
+                        <li><i class="fas fa-comment-dots text-info"></i> <strong>Ask questions:</strong> Show interest in the role and company</li>
+                        <li><i class="fas fa-comment-dots text-info"></i> <strong>Follow up:</strong> Send thank-you email within 24 hours</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Templates Section -->
+        <div class="row gy-4 mt-4">
+            <div class="col-lg-6">
+                <div class="guide-card card-outline position-relative">
+                    <h4><i class="fas fa-envelope-open-text me-2"></i>Email Template</h4>
+                    <div class="template-header">
+                        <span><i class="fas fa-terminal me-2"></i>email_template.txt</span>
+                        <button type="button" class="copy-template-btn" data-copy-target="#emailTemplate"><i class="fas fa-copy me-1"></i> Copy</button>
+                    </div>
+                    <pre id="emailTemplate" class="template-body">Subject: Application for [Position] Internship - [Your Name]
+
+Dear Hiring Manager,
+
+I am writing to express my interest in the [Position] internship at [Company Name]. As a [your current status, e.g., "final year student"] at [College Name], I am eager to apply my [relevant skills/field] knowledge in a practical setting.
+
+I have [briefly mention relevant experience, projects, or coursework]. I am particularly drawn to [Company Name] because [specific reason related to company/research].
+
+I would welcome the opportunity to discuss how my background and enthusiasm can contribute to your team. Thank you for considering my application.
+
+Best regards,
+[Your Name]
+[College Name]
+[Email]
+[Phone]
+[LinkedIn/Portfolio - optional]</pre>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="guide-card card-outline position-relative">
+                    <h4><i class="fas fa-pencil-alt me-2"></i>Cover Letter Template</h4>
+                    <div class="template-header">
+                        <span><i class="fas fa-terminal me-2"></i>cover_letter.txt</span>
+                        <button type="button" class="copy-template-btn" data-copy-target="#coverLetterTemplate"><i class="fas fa-copy me-1"></i> Copy</button>
+                    </div>
+                    <pre id="coverLetterTemplate" class="template-body">Dear Hiring Manager,
+
+I am excited to apply for the [Position] internship at [Company Name]. As a [your field/major] student at [College Name], I am eager to gain hands-on experience in [industry/field].
+
+My coursework in [relevant subjects] and projects such as [mention 1-2 relevant projects or experiences] have prepared me to contribute effectively to your team. I am particularly impressed by [Company Name]'s [specific company achievement or value].
+
+I am enthusiastic about the opportunity to learn from your experienced professionals while bringing fresh perspectives and strong [relevant skills] to the role.
+
+Thank you for considering my application. I look forward to the possibility of contributing to [Company Name].
+
+Best regards,
+[Your Name]</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Online Presence & Final Tips -->
+        <div class="row gy-4 mt-4">
+            <div class="col-lg-6">
+                <div class="guide-card card-outline">
+                    <h4><i class="fas fa-globe me-2"></i>Online Presence Tips</h4>
+                    <ul class="pro-list text-muted">
+                        <li><i class="fas fa-laptop text-info"></i> <strong>LinkedIn:</strong> Professional profile with photo and summary</li>
+                        <li><i class="fas fa-laptop text-info"></i> <strong>Portfolio:</strong> Showcase projects and achievements</li>
+                        <li><i class="fas fa-laptop text-info"></i> <strong>GitHub:</strong> For technical fields, show code contributions</li>
+                        <li><i class="fas fa-laptop text-info"></i> <strong>Personal website:</strong> Professional online presence</li>
+                        <li><i class="fas fa-laptop text-info"></i> <strong>Social media:</strong> Keep it professional and positive</li>
+                        <li><i class="fas fa-laptop text-info"></i> <strong>Recommendations:</strong> Get endorsements from professors/peers</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="guide-card card-outline">
+                    <h4><i class="fas fa-rocket me-2"></i>Success Strategies</h4>
+                    <ul class="pro-list text-muted">
+                        <li><i class="fas fa-bolt text-warning"></i> <strong>Apply early:</strong> Don't wait for deadlines</li>
+                        <li><i class="fas fa-bolt text-warning"></i> <strong>Quality over quantity:</strong> Better applications than many generic ones</li>
+                        <li><i class="fas fa-bolt text-warning"></i> <strong>Track applications:</strong> Keep record of where and when you applied</li>
+                        <li><i class="fas fa-bolt text-warning"></i> <strong>Learn from rejections:</strong> Ask for feedback when possible</li>
+                        <li><i class="fas fa-bolt text-warning"></i> <strong>Stay persistent:</strong> Most internships require multiple applications</li>
+                        <li><i class="fas fa-bolt text-warning"></i> <strong>Build relationships:</strong> Networking often leads to opportunities</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reputed Companies Section -->
+        <div class="row gy-4 mt-4">
+            <div class="col-12">
+                <div class="guide-card card-outline">
+                    <h4><i class="fas fa-building me-2"></i>🌐 Reputed Companies – Internship Apply Links (All Fields)</h4>
+                    
+                    <div class="row">
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <h5 class="text-primary mb-3"><i class="fas fa-laptop-code me-2"></i>💻 Technology & IT</h5>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><a href="https://careers.google.com/students/" target="_blank" class="text-decoration-none"><strong>Google</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://careers.microsoft.com/students" target="_blank" class="text-decoration-none"><strong>Microsoft</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://www.amazon.jobs/en/teams/internships-for-students" target="_blank" class="text-decoration-none"><strong>Amazon</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://www.adobe.com/careers/university.html" target="_blank" class="text-decoration-none"><strong>Adobe</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://www.ibm.com/careers" target="_blank" class="text-decoration-none"><strong>IBM</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                            </ul>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <h5 class="text-success mb-3"><i class="fas fa-cogs me-2"></i>⚙️ Core Engineering</h5>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><a href="https://www.larsentoubro.com/careers/" target="_blank" class="text-decoration-none"><strong>Larsen & Toubro (L&T)</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://careers.tatamotors.com/" target="_blank" class="text-decoration-none"><strong>Tata Motors</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://careers.mahindra.com/" target="_blank" class="text-decoration-none"><strong>Mahindra & Mahindra</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://jobs.siemens.com/" target="_blank" class="text-decoration-none"><strong>Siemens</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://www.boschcareers.com/" target="_blank" class="text-decoration-none"><strong>Bosch</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                            </ul>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <h5 class="text-info mb-3"><i class="fas fa-chart-line me-2"></i>🏦 Finance & Consulting</h5>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><a href="https://www2.deloitte.com/global/en/careers/students.html" target="_blank" class="text-decoration-none"><strong>Deloitte</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://www.ey.com/en_in/careers" target="_blank" class="text-decoration-none"><strong>EY</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://www.pwc.in/careers.html" target="_blank" class="text-decoration-none"><strong>PwC</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://home.kpmg/in/en/home/careers.html" target="_blank" class="text-decoration-none"><strong>KPMG</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://www.goldmansachs.com/careers/students/" target="_blank" class="text-decoration-none"><strong>Goldman Sachs</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                            </ul>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <h5 class="text-warning mb-3"><i class="fas fa-pills me-2"></i>🧪 Pharma & Healthcare</h5>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><a href="https://www.sunpharma.com/careers" target="_blank" class="text-decoration-none"><strong>Sun Pharma</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://www.drreddys.com/careers/" target="_blank" class="text-decoration-none"><strong>Dr. Reddy's Laboratories</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://www.cipla.com/careers" target="_blank" class="text-decoration-none"><strong>Cipla</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://careers.apollohospitals.com/" target="_blank" class="text-decoration-none"><strong>Apollo Hospitals</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                            </ul>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <h5 class="text-danger mb-3"><i class="fas fa-bullhorn me-2"></i>📢 Marketing & Business</h5>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><a href="https://careers.unilever.com/" target="_blank" class="text-decoration-none"><strong>Unilever</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://www.pgcareers.com/" target="_blank" class="text-decoration-none"><strong>Procter & Gamble (P&G)</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://www.zomato.com/careers" target="_blank" class="text-decoration-none"><strong>Zomato</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://careers.swiggy.com/" target="_blank" class="text-decoration-none"><strong>Swiggy</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                            </ul>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <h5 class="text-secondary mb-3"><i class="fas fa-search me-2"></i>🚀 Internship Platforms</h5>
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><a href="https://internshala.com/internships/" target="_blank" class="text-decoration-none"><strong>Internshala</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://www.linkedin.com/jobs/internships/" target="_blank" class="text-decoration-none"><strong>LinkedIn</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://www.naukri.com/internship-jobs" target="_blank" class="text-decoration-none"><strong>Naukri.com</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                                <li class="mb-2"><a href="https://wellfound.com/jobs" target="_blank" class="text-decoration-none"><strong>AngelList (Wellfound)</strong> <i class="fas fa-external-link-alt ms-1 small"></i></a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info mt-4 mb-0">
+                        <h6 class="alert-heading mb-2"><i class="fas fa-lightbulb me-2"></i>🎯 Key Note</h6>
+                        <ul class="mb-0 small">
+                            <li>Always apply through official career pages</li>
+                            <li>Avoid unknown or suspicious links</li>
+                            <li>Prefer companies with verified websites</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Maharashtra Companies Special Section -->
+        <div class="row gy-4 mt-4">
+            <div class="col-12">
+                <div class="guide-card card-outline position-relative maharashtra-company-section" style="border: 2px solid #10b981; background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(59, 130, 246, 0.05));">
+                    <div class="text-center mb-4">
+                        <button class="btn btn-success btn-lg px-4 py-3" style="border-radius: 50px; font-weight: 700; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);">
+                            <i class="fas fa-map-marker-alt me-2"></i>🌐 Reputed Companies – Nashik, Pune & Mumbai (All Fields)
+                        </button>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100" style="border: 1px solid rgba(16, 185, 129, 0.2); background: rgba(255,255,255,0.9);">
+                                <div class="card-header" style="background: linear-gradient(135deg, #10b981, #3b82f6); color: white; font-weight: 600;">
+                                    <i class="fas fa-city me-2"></i>📍 Pune (IT, Product, Engineering, Startups)
+                                </div>
+                                <div class="card-body p-3">
+                                    <ul class="list-unstyled small mb-0">
+                                        <li class="mb-2"><a href="https://www.persistent.com/careers/" target="_blank" class="text-decoration-none text-dark"><strong>Persistent Systems</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.kpit.com/careers/" target="_blank" class="text-decoration-none text-dark"><strong>KPIT Technologies</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.zensar.com/careers" target="_blank" class="text-decoration-none text-dark"><strong>Zensar Technologies</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.cybage.com/careers" target="_blank" class="text-decoration-none text-dark"><strong>Cybage</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.veritas.com/company/careers" target="_blank" class="text-decoration-none text-dark"><strong>Veritas Technologies</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://careers.pubmatic.com/" target="_blank" class="text-decoration-none text-dark"><strong>PubMatic</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.mindtickle.com/company/careers/" target="_blank" class="text-decoration-none text-dark"><strong>MindTickle</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.icertis.com/company/careers/" target="_blank" class="text-decoration-none text-dark"><strong>Icertis</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100" style="border: 1px solid rgba(59, 130, 246, 0.2); background: rgba(255,255,255,0.9);">
+                                <div class="card-header" style="background: linear-gradient(135deg, #3b82f6, #10b981); color: white; font-weight: 600;">
+                                    <i class="fas fa-building me-2"></i>📍 Mumbai (Finance, Media, Corporate HQs)
+                                </div>
+                                <div class="card-body p-3">
+                                    <ul class="list-unstyled small mb-0">
+                                        <li class="mb-2"><a href="https://www.morganstanley.com/careers" target="_blank" class="text-decoration-none text-dark"><strong>Morgan Stanley</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://careers.jpmorgan.com/" target="_blank" class="text-decoration-none text-dark"><strong>JPMorgan Chase</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.nomura.com/careers/" target="_blank" class="text-decoration-none text-dark"><strong>Nomura</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.crisil.com/en/home/careers.html" target="_blank" class="text-decoration-none text-dark"><strong>CRISIL</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.tatacapital.com/careers.html" target="_blank" class="text-decoration-none text-dark"><strong>Tata Capital</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://careers.adityabirla.com/" target="_blank" class="text-decoration-none text-dark"><strong>Aditya Birla Group</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.nykaa.com/careers" target="_blank" class="text-decoration-none text-dark"><strong>Nykaa</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://in.bookmyshow.com/careers" target="_blank" class="text-decoration-none text-dark"><strong>BookMyShow</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100" style="border: 1px solid rgba(245, 158, 11, 0.2); background: rgba(255,255,255,0.9);">
+                                <div class="card-header" style="background: linear-gradient(135deg, #f59e0b, #10b981); color: white; font-weight: 600;">
+                                    <i class="fas fa-industry me-2"></i>📍 Nashik (Manufacturing, Engineering, Local Industry)
+                                </div>
+                                <div class="card-body p-3">
+                                    <ul class="list-unstyled small mb-0">
+                                        <li class="mb-2"><a href="https://www.mssindia.com/careers/" target="_blank" class="text-decoration-none text-dark"><strong>Mahindra Sanyo Special Steel</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.kirloskaroilengines.com/careers/" target="_blank" class="text-decoration-none text-dark"><strong>Kirloskar Oil Engines</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.ceat.com/careers" target="_blank" class="text-decoration-none text-dark"><strong>CEAT</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://hal-india.co.in/careers" target="_blank" class="text-decoration-none text-dark"><strong>Hindustan Aeronautics Limited (HAL)</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.cgglobal.com/careers" target="_blank" class="text-decoration-none text-dark"><strong>Crompton Greaves</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.bosch.in/careers/" target="_blank" class="text-decoration-none text-dark"><strong>Bosch India</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100" style="border: 1px solid rgba(239, 68, 68, 0.2); background: rgba(255,255,255,0.9);">
+                                <div class="card-header" style="background: linear-gradient(135deg, #ef4444, #3b82f6); color: white; font-weight: 600;">
+                                    <i class="fas fa-cogs me-2"></i>🏭 Manufacturing & Industrial (Strong in Maharashtra)
+                                </div>
+                                <div class="card-body p-3">
+                                    <ul class="list-unstyled small mb-0">
+                                        <li class="mb-2"><a href="https://www.bajajauto.com/careers" target="_blank" class="text-decoration-none text-dark"><strong>Bajaj Auto</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.thermaxglobal.com/careers/" target="_blank" class="text-decoration-none text-dark"><strong>Thermax</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.forbesmarshall.com/careers" target="_blank" class="text-decoration-none text-dark"><strong>Forbes Marshall</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.finolexind.com/careers/" target="_blank" class="text-decoration-none text-dark"><strong>Finolex Industries</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100" style="border: 1px solid rgba(139, 92, 246, 0.2); background: rgba(255,255,255,0.9);">
+                                <div class="card-header" style="background: linear-gradient(135deg, #8b5cf6, #10b981); color: white; font-weight: 600;">
+                                    <i class="fas fa-chart-bar me-2"></i>📊 Analytics, Data & Product-Based Companies
+                                </div>
+                                <div class="card-body p-3">
+                                    <ul class="list-unstyled small mb-0">
+                                        <li class="mb-2"><a href="https://fractal.ai/careers/" target="_blank" class="text-decoration-none text-dark"><strong>Fractal Analytics</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.mu-sigma.com/careers/" target="_blank" class="text-decoration-none text-dark"><strong>Mu Sigma</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.quantiphi.com/careers" target="_blank" class="text-decoration-none text-dark"><strong>Quantiphi</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://www.tredence.com/careers" target="_blank" class="text-decoration-none text-dark"><strong>Tredence</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100" style="border: 1px solid rgba(236, 72, 153, 0.2); background: rgba(255,255,255,0.9);">
+                                <div class="card-header" style="background: linear-gradient(135deg, #ec4899, #3b82f6); color: white; font-weight: 600;">
+                                    <i class="fas fa-rocket me-2"></i>🚀 Fast-Growing Indian Startups (Good for Internships)
+                                </div>
+                                <div class="card-body p-3">
+                                    <ul class="list-unstyled small mb-0">
+                                        <li class="mb-2"><a href="https://razorpay.com/jobs/" target="_blank" class="text-decoration-none text-dark"><strong>Razorpay</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://careers.cred.club/" target="_blank" class="text-decoration-none text-dark"><strong>CRED</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://careers.meesho.com/" target="_blank" class="text-decoration-none text-dark"><strong>Meesho</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                        <li class="mb-2"><a href="https://upstox.com/careers/" target="_blank" class="text-decoration-none text-dark"><strong>Upstox</strong> <i class="fas fa-external-link-alt ms-1 small text-muted"></i></a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-success mt-4 mb-0" style="border: 2px solid #10b981;">
+                        <h6 class="alert-heading mb-2"><i class="fas fa-star me-2"></i>🎯 Why This List is Valuable</h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <ul class="mb-0 small">
+                                    <li><strong>Covers local + global companies</strong></li>
+                                    <li><strong>Includes IT, core, finance, analytics, startups</strong></li>
+                                </ul>
+                            </div>
+                            <div class="col-md-4">
+                                <ul class="mb-0 small">
+                                    <li><strong>Focused on Nashik, Pune, Mumbai ecosystem</strong></li>
+                                    <li><strong>All links are official and trusted</strong></li>
+                                </ul>
+                            </div>
+                            <div class="col-md-4">
+                                <ul class="mb-0 small">
+                                    <li><strong>Perfect for Maharashtra students</strong></li>
+                                    <li><strong>Great internship opportunities nearby</strong></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<template id="internshipCardTemplate">
+    <div class="col-lg-4 col-md-6">
+        <div class="internship-card" data-tilt data-tilt-scale="1.01" data-tilt-max="2" data-tilt-glare="true" data-tilt-max-glare="0.2">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="source-badge">SourceName</span>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="student-badge d-none">Student Added</span>
+                    <span class="verified-badge d-none"><i class="fas fa-check-circle"></i> Verified</span>
+                </div>
+            </div>
+            <h5 class="card-title-premium">Job Title</h5>
+            <div class="text-muted small mb-3 fw-bold"><i class="far fa-building me-1"></i> <span class="company-name">Company</span></div>
+            
+            <div class="d-flex align-items-center gap-2 mb-2 small text-muted">
+                <i class="fas fa-map-marker-alt" style="color: #ef4444; width: 16px;"></i> <span class="city-text">City</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 mb-2 small text-muted">
+                <i class="fas fa-laptop-house" style="color: #8b5cf6; width: 16px;"></i> <span class="mode-text">Mode</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 mb-2 small text-muted">
+                <i class="fas fa-briefcase" style="color: #f59e0b; width: 16px;"></i> <span class="field-text">Field</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 mb-2 small text-muted">
+                <i class="fas fa-money-bill-wave" style="color: #10b981; width: 16px;"></i> <span class="stipend-text">Stipend</span>
+            </div>
+            <div class="d-flex align-items-center gap-2 mb-3 small text-muted">
+                <i class="fas fa-clock" style="color: #3b82f6; width: 16px;"></i> <span class="duration-text">Duration</span>
+            </div>
+
+            <div class="pt-3 mb-3">
+                <button type="button" class="btn btn-sm btn-outline-primary toggle-exp-btn d-none">View Student Experiences</button>
+                <div class="experience-section mt-3 d-none"></div>
+            </div>
+            
+            <div class="mt-auto pt-3 border-top">
+                <p class="small text-muted mb-3" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;"><strong class="text-body text-opacity-75">Skills:</strong> <span class="skills-text">Skills</span></p>
+                <a href="#" target="_blank" class="btn w-100 apply-btn apply-link">
+                    Apply Now <i class="fas fa-external-link-alt ms-2"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const grid = document.getElementById('internshipsGrid');
+    const template = document.getElementById('internshipCardTemplate');
+    const filterForm = document.getElementById('filterForm');
+    const loadingObj = document.getElementById('loadingIndicator');
+    const countObj = document.getElementById('resultCount');
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabSections = document.querySelectorAll('.tab-section');
+
+    function setActiveTab(tabId) {
+        tabSections.forEach(section => {
+            section.classList.toggle('active', section.id === tabId);
+        });
+        tabButtons.forEach(button => {
+            button.classList.toggle('active', button.dataset.tab === tabId);
+        });
+    }
+
+    function initTabNav() {
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                setActiveTab(button.dataset.tab);
+            });
+        });
+    }
+
+    function initCopyButtons() {
+        document.querySelectorAll('.copy-template-btn').forEach(button => {
+            button.addEventListener('click', async () => {
+                const targetId = button.dataset.copyTarget;
+                const target = document.querySelector(targetId);
+                if (!target) return;
+
+                const old = button.innerHTML;
+                button.disabled = true;
+                try {
+                    await copyTextToClipboard(target.textContent.trim());
+                    button.innerHTML = '<i class="fas fa-check me-1"></i> Copied!';
+                    setTimeout(() => {
+                        button.innerHTML = old;
+                        button.disabled = false;
+                    }, 1500);
+                } catch (err) {
+                    console.error('Copy failed:', err);
+                    button.textContent = 'Copy failed';
+                    setTimeout(() => {
+                        button.innerHTML = old;
+                        button.disabled = false;
+                    }, 1500);
+                }
+            });
+        });
+    }
+
+    function copyTextToClipboard(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text);
+        }
+
+        return new Promise((resolve, reject) => {
+            const textarea = document.createElement('textarea');
+            const activeElement = document.activeElement;
+            textarea.value = text;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.top = '0';
+            textarea.style.left = '-9999px';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+
+            try {
+                const copied = document.execCommand('copy');
+                copied ? resolve() : reject(new Error('Copy command was blocked'));
+            } catch (err) {
+                reject(err);
+            } finally {
+                document.body.removeChild(textarea);
+                if (activeElement && typeof activeElement.focus === 'function') {
+                    activeElement.focus();
+                }
+            }
+        });
+    }
+
+    function escapeHTML(text) {
+        return String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function makeLookupKey(company, role, city, mode) {
+        return `${String(company || '').trim().toLowerCase()}|${String(role || '').trim().toLowerCase()}|${String(city || '').trim().toLowerCase()}|${String(mode || '').trim().toLowerCase()}`;
+    }
+
+    function normalizeApplyLink(linkValue) {
+        const raw = String(linkValue || '').trim();
+        if (!raw) return '';
+        if (/^(javascript|data|vbscript):/i.test(raw)) return '';
+        if (/^mailto:/i.test(raw)) return raw;
+        if (/^https?:\/\//i.test(raw)) return raw;
+        if (/^[^\s]+\.[^\s]+/.test(raw)) return `https://${raw}`;
+        return '';
+    }
+
+    function buildExperienceCard(exp) {
+        return `
+            <div class="experience-card">
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <div>
+                        <strong>${escapeHTML(exp.role || 'Role')}</strong> at <span>${escapeHTML(exp.internship_company || 'Company')}</span>
+                    </div>
+                    <span class="badge bg-success">${escapeHTML(exp.college)}</span>
+                </div>
+                <div class="text-muted small mb-2">
+                    ${escapeHTML(exp.city || 'City not specified')} · ${escapeHTML(exp.mode || 'Mode not specified')}
+                </div>
+                ${exp.name ? `<div class="text-muted small mb-3">Shared by ${escapeHTML(exp.name)}</div>` : ''}
+                <details class="experience-detail mb-3"><summary>How they got it</summary><p>${escapeHTML(exp.how_got)}</p></details>
+                <details class="experience-detail mb-3"><summary>Tips</summary><p>${escapeHTML(exp.tips)}</p></details>
+                ${exp.interview_questions ? `<details class="experience-detail mb-0"><summary>Interview Questions</summary><p>${escapeHTML(exp.interview_questions)}</p></details>` : ''}
+            </div>
+        `;
+    }
+
+    function fetchInternships() {
+        grid.innerHTML = '';
+        loadingObj.classList.remove('d-none');
+        countObj.textContent = 'Searching...';
+
+        const params = new URLSearchParams({
+            title: document.getElementById('filterTitle').value,
+            domain: document.getElementById('filterDomain').value,
+            field: document.getElementById('filterField').value,
+            city: document.getElementById('filterCity').value,
+            mode: document.getElementById('filterMode').value,
+            stipend: document.getElementById('filterStipend').value,
+        });
+
+        const expParams = new URLSearchParams({
+            company: document.getElementById('filterDomain').value,
+            city: document.getElementById('filterCity').value,
+            mode: document.getElementById('filterMode').value,
+        });
+
+        Promise.all([
+            fetch(`/api/internships?${params.toString()}`),
+            fetch(`/get-experiences?${expParams.toString()}`)
+        ])
+        .then(async ([internRes, expRes]) => {
+            const internData = await internRes.json();
+            const expData = await expRes.json();
+            if (!internRes.ok || internData.error) {
+                throw new Error(internData.error || internRes.statusText || 'Unable to load internships');
+            }
+            if (!expRes.ok || expData.error) {
+                throw new Error(expData.error || expRes.statusText || 'Unable to load student experiences');
+            }
+            return {
+                internships: internData.data || [],
+                experiences: expData.data || []
+            };
+        })
+        .then(({ internships, experiences }) => {
+            loadingObj.classList.add('d-none');
+            countObj.textContent = `Found ${internships.length} internships`;
+
+            if (!internships.length) {
+                grid.innerHTML = '<div class="col-12 text-center text-muted py-5"><i class="fas fa-frown fs-1 mb-3 text-secondary opacity-50"></i><br>No internships matched your criteria.</div>';
+                return;
+            }
+
+            const experiencesMap = {};
+            experiences.forEach(exp => {
+                const key = makeLookupKey(exp.internship_company, exp.role, exp.city, exp.mode);
+                experiencesMap[key] = experiencesMap[key] || [];
+                experiencesMap[key].push(exp);
+            });
+
+            internships.forEach(item => {
+                const clone = template.content.cloneNode(true);
+                clone.querySelector('.card-title-premium').textContent = item['Title'] || 'N/A';
+                clone.querySelector('.company-name').textContent = item['Company Name'] || 'N/A';
+                clone.querySelector('.city-text').textContent = item['City'] || 'N/A';
+                clone.querySelector('.mode-text').textContent = item['Mode'] || 'N/A';
+                clone.querySelector('.field-text').textContent = item['Field'] || 'N/A';
+
+                let stip = item['Stipend'] || 'Unpaid';
+                if (stip === '0' || stip === '') stip = 'Unpaid';
+                clone.querySelector('.stipend-text').textContent = stip;
+
+                clone.querySelector('.duration-text').textContent = item['Duration'] || 'N/A';
+                clone.querySelector('.skills-text').textContent = item['Skills Required'] || 'Not Specified';
+                clone.querySelector('.source-badge').textContent = item['Source'] || 'Web';
+                if (item['student_added']) {
+                    clone.querySelector('.student-badge').classList.remove('d-none');
+                }
+
+                const isVerified = (String(item['Verified'] || '').toLowerCase() === 'yes');
+                if (isVerified) {
+                    clone.querySelector('.verified-badge').classList.remove('d-none');
+                }
+
+                const expBtn = clone.querySelector('.toggle-exp-btn');
+                const expPanel = clone.querySelector('.experience-section');
+                const experienceKey = makeLookupKey(item['Company Name'], item['Title'], item['City'], item['Mode']);
+                const relatedExperiences = experiencesMap[experienceKey] || [];
+                if (relatedExperiences.length > 0) {
+                    expBtn.classList.remove('d-none');
+                    expBtn.textContent = `View Student Experiences (${relatedExperiences.length})`;
+                    expBtn.addEventListener('click', () => {
+                        const isHidden = expPanel.classList.toggle('d-none');
+                        expBtn.textContent = isHidden ? `View Student Experiences (${relatedExperiences.length})` : `Hide Student Experiences (${relatedExperiences.length})`;
+                        if (!expPanel.innerHTML) {
+                            expPanel.innerHTML = relatedExperiences.map(buildExperienceCard).join('');
+                        }
+                    });
+                } else {
+                    expBtn.classList.add('d-none');
+                    expPanel.innerHTML = '<p class="text-muted small mb-0">No student experiences shared yet for this internship.</p>';
+                }
+
+                const aTag = clone.querySelector('.apply-link');
+                const normalizedApplyLink = normalizeApplyLink(item['Apply Link']);
+                if (normalizedApplyLink) {
+                    aTag.href = normalizedApplyLink;
+                    aTag.target = '_blank';
+                    aTag.rel = 'noopener noreferrer';
+                } else if (item['How to Apply']) {
+                    let how = item['How to Apply'];
+                    if (how.includes('@')) {
+                        const email = how.match(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi);
+                        if (email) {
+                            aTag.href = `mailto:${email[0]}`;
+                        } else {
+                            aTag.classList.add('disabled', 'opacity-50');
+                            aTag.textContent = 'Link Not Available';
+                        }
+                    } else {
+                        aTag.href = '#';
+                        aTag.onclick = (e) => { e.preventDefault(); alert("How to apply: " + how); };
+                    }
+                } else {
+                    aTag.classList.add('disabled', 'opacity-50');
+                    aTag.textContent = 'Link Not Available';
+                }
+
+                grid.appendChild(clone);
+            });
+
+            if (typeof VanillaTilt !== 'undefined') {
+                VanillaTilt.init(document.querySelectorAll(".internship-card[data-tilt]"));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            loadingObj.classList.add('d-none');
+            countObj.textContent = 'Error loading internships';
+            grid.innerHTML = `<div class="col-12 text-center text-danger py-5">There was an error loading internships.<br>${err.message}</div>`;
+        });
+    }
+
+
+    initTabNav();
+    initCopyButtons();
+
+    filterForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetchInternships();
+    });
+
+    // Initial fetch
+    fetchInternships();
+
+    // Auto-trigger search if search_query is present
+    {% if search_query %}
+    setTimeout(() => {
+        filterForm.dispatchEvent(new Event('submit'));
+    }, 500);
+    {% endif %}
+});
+</script>
+
+{% endblock %}

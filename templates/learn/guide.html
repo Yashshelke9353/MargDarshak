@@ -3,34 +3,159 @@
 {% block title %}{{ guide.title }} - Learning Guide{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-  <div class="row mb-4">
-    <div class="col-12">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="{{ url_for('learn_home') }}">Learning Guides</a></li>
-          <li class="breadcrumb-item active">{{ guide.title }}</li>
-        </ol>
-      </nav>
-      <h2>{{ guide.title }}</h2>
-      <p class="text-muted">A friendly guide for beginners - Hindi + English mixed</p>
-    </div>
-  </div>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
 
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-body">
-          {{ guide.content | safe }}
+<style>
+    .guide-page { font-family: 'Inter', sans-serif; }
+    .guide-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: clamp(2.5rem, 5vw, 4rem);
+        font-weight: 900;
+        background: linear-gradient(135deg, #6366f1, #ec4899);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.03em;
+        margin-bottom: 1rem;
+    }
+
+    .guide-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+    }
+    body.dark-mode .guide-card {
+        background: rgba(30, 41, 59, 0.5);
+        border-color: rgba(255,255,255,0.05);
+    }
+
+    .guide-content h3 {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 700;
+        color: var(--bs-body-color);
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        font-size: 1.5rem;
+    }
+
+    .guide-content h4 {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 600;
+        color: var(--bs-body-color);
+        margin-top: 1.5rem;
+        margin-bottom: 0.75rem;
+        font-size: 1.25rem;
+    }
+
+    .guide-content p {
+        line-height: 1.7;
+        margin-bottom: 1rem;
+        color: var(--bs-body-color);
+    }
+
+    .guide-content ul {
+        padding-left: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .guide-content li {
+        margin-bottom: 0.5rem;
+        line-height: 1.6;
+    }
+
+    .company-section {
+        background: rgba(249, 250, 251, 0.9);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border: 1px solid rgba(0,0,0,0.08);
+        color: #1f2937;
+    }
+    body.dark-mode .company-section {
+        background: rgba(15, 23, 42, 0.7);
+        border-color: rgba(255,255,255,0.12);
+        color: #f1f5f9;
+    }
+
+    .company-section p, .company-section li {
+        color: inherit;
+    }
+
+    .company-section strong {
+        color: #4f46e5;
+        font-weight: 700;
+    }
+    body.dark-mode .company-section strong {
+        color: #a78bfa;
+    }
+
+    .back-btn {
+        border-radius: 50px;
+        font-weight: 600;
+        padding: 0.75rem 2rem;
+        border: 2px solid #6366f1;
+        color: #6366f1;
+        transition: all 0.3s ease;
+        font-family: 'Outfit', sans-serif;
+    }
+    .back-btn:hover {
+        background: #6366f1;
+        color: white;
+        box-shadow: 0 5px 15px rgba(99, 102, 241, 0.3);
+    }
+
+    .breadcrumb {
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: 12px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 2rem;
+    }
+    body.dark-mode .breadcrumb {
+        background: rgba(30, 41, 59, 0.5);
+        border-color: rgba(255,255,255,0.05);
+    }
+</style>
+
+<div class="container my-5 guide-page">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('learn_home') }}">Learning Guides</a></li>
+                    <li class="breadcrumb-item active">{{ guide.title }}</li>
+                </ol>
+            </nav>
         </div>
-      </div>
     </div>
-  </div>
 
-  <div class="row mt-4">
-    <div class="col-12 text-center">
-      <a href="{{ url_for('learn_home') }}" class="btn btn-outline-secondary">← Back to All Guides</a>
+    <div class="text-center mb-5" data-tilt data-tilt-scale="1.02" data-tilt-max="5">
+        <h1 class="guide-title">{{ guide.title }}</h1>
+        <p class="lead" style="color: #64748b; font-weight: 500; font-size: 1.25rem;">Professional roadmap for internship applications and career planning</p>
     </div>
-  </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="guide-card">
+                <div class="guide-content">
+                    {{ guide.content | safe }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col-12 text-center">
+            <a href="{{ url_for('learn_home') }}" class="btn back-btn">
+                <i class="fas fa-arrow-left me-2"></i> Back to All Guides
+            </a>
+        </div>
+    </div>
 </div>
 {% endblock %}

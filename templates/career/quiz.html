@@ -28,6 +28,74 @@
         position: relative;
         overflow: hidden;
     }
+
+    .quiz-feature-btn {
+        display: inline-block;
+        text-decoration: none;
+        perspective: 1200px;
+    }
+
+    .quiz-btn-inner {
+        display: inline-flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-width: 230px;
+        padding: 0.9rem 1.35rem;
+        border-radius: 16px;
+        background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+        color: #ffffff;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 800;
+        font-size: 1.05rem;
+        letter-spacing: 0.01em;
+        box-shadow: 0 10px 22px rgba(99, 102, 241, 0.28);
+        transform-style: preserve-3d;
+        transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .quiz-btn-inner img {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        transform: translateZ(16px);
+        transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        background: #ffffff;
+        object-fit: cover;
+    }
+
+    .quiz-btn-inner span,
+    .quiz-btn-inner i {
+        transform: translateZ(8px);
+        color: #ffffff !important;
+        text-shadow: 0 1px 2px rgba(15, 23, 42, 0.45);
+    }
+
+    body:not(.dark-mode) .quiz-btn-inner {
+        background: linear-gradient(135deg, #4338ca, #7c3aed);
+        box-shadow: 0 12px 24px rgba(79, 70, 229, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+    }
+
+    .quiz-feature-btn:hover .quiz-btn-inner {
+        transform: translateY(-2px);
+        background: linear-gradient(135deg, #8b5cf6, #ec4899);
+        box-shadow: 0 16px 32px rgba(236, 72, 153, 0.35);
+        color: #ffffff;
+    }
+
+    body:not(.dark-mode) .quiz-feature-btn:hover .quiz-btn-inner {
+        background: linear-gradient(135deg, #5b21b6, #be185d);
+    }
+
+    .quiz-feature-btn:hover .quiz-btn-inner img {
+        transform: translateZ(22px) rotate(-8deg) scale(1.07);
+    }
+
+    .quiz-feature-btn:active .quiz-btn-inner {
+        transform: scale(0.97);
+    }
     body.dark-mode .glass-quiz {
         background: rgba(30, 41, 59, 0.5);
         border-color: rgba(255, 255, 255, 0.05);
@@ -43,6 +111,25 @@
             <div class="text-center mb-5" data-tilt data-tilt-scale="1.02" data-tilt-max="5">
                 <h1 class="mb-3" style="font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 900; background: linear-gradient(135deg, #6366f1, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.03em;">🎯 Career Discovery</h1>
                 <p class="lead" style="color: #64748b; font-weight: 500; font-size: 1.25rem;">Answer precisely to calculate your perfect algorithmic match.</p>
+                
+                <!-- Direct Browse and Resume Review Buttons -->
+                <div class="text-center mb-4 d-flex flex-column flex-sm-row justify-content-center gap-3">
+                    <a href="/career/browse" class="quiz-feature-btn" data-tilt data-tilt-max="12" data-tilt-scale="1.03">
+                        <div class="quiz-btn-inner">
+                            <img src="/static/icon-192.png" alt="Logo">
+                            <span>Browse Careers</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </a>
+                    <a href="/career/resume-review" class="quiz-feature-btn" data-tilt data-tilt-max="12" data-tilt-scale="1.03">
+                        <div class="quiz-btn-inner">
+                            <img src="/static/icon-192.png" alt="Logo">
+                            <span>Resume Review</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </a>
+                </div>
+                <p class="small text-center" style="color: #64748b;">Use the Career Compass quiz or get a focused resume review for your target role.</p>
                 
                 <div class="progress mt-4 mb-2" style="height: 10px; border-radius: 10px; background: rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.02);">
                     <div id="progressBar" class="progress-bar" role="progressbar" style="width: 33%"></div>

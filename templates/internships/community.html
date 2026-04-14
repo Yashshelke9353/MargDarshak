@@ -1,0 +1,463 @@
+{% extends 'base.html' %}
+
+{% block title %}Internship Community - Skill Saathi{% endblock %}
+
+{% block content %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    .community-page { font-family: 'Inter', sans-serif; }
+    .community-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: clamp(2rem, 4vw, 3.5rem);
+        font-weight: 900;
+        background: linear-gradient(135deg, #10b981, #3b82f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: -0.03em;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control-premium, .form-select-premium, .form-textarea-premium {
+        background: rgba(255, 255, 255, 0.88);
+        border: 1px solid rgba(0,0,0,0.1);
+        border-radius: 14px;
+        padding: 0.85rem 1rem;
+        transition: all 0.25s ease;
+    }
+    .form-control-premium:focus, .form-select-premium:focus, .form-textarea-premium:focus {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.16);
+        background: #fff;
+    }
+    body.dark-mode .form-control-premium, body.dark-mode .form-select-premium, body.dark-mode .form-textarea-premium {
+        background: rgba(15, 23, 42, 0.6);
+        border-color: rgba(255,255,255,0.1);
+        color: #fff;
+    }
+    body.dark-mode .form-control-premium:focus, body.dark-mode .form-select-premium:focus, body.dark-mode .form-textarea-premium:focus {
+        background: rgba(15, 23, 42, 0.9);
+    }
+
+    .glass-panel {
+        background: rgba(255,255,255,0.72);
+        backdrop-filter: blur(18px);
+        border: 1px solid rgba(255,255,255,0.55);
+        border-radius: 24px;
+        box-shadow: 0 25px 60px rgba(15, 23, 42, 0.08);
+    }
+    body.dark-mode .glass-panel {
+        background: rgba(15, 23, 42, 0.65);
+        border-color: rgba(255,255,255,0.08);
+    }
+
+    .apply-btn {
+        background: linear-gradient(135deg, #10b981, #3b82f6);
+        color: white;
+        border-radius: 50px;
+        font-weight: 600;
+        border: none;
+        padding: 0.6rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+    .apply-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        color: white;
+    }
+
+    .story-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: 20px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    body.dark-mode .story-card {
+        background: rgba(30, 41, 59, 0.5);
+        border-color: rgba(255,255,255,0.05);
+    }
+
+    .story-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 0.75rem;
+        gap: 0.5rem;
+    }
+    .story-company {
+        font-weight: 700;
+        color: #3b82f6;
+    }
+    .story-college {
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+        padding: 0.25rem 0.6rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+    }
+    .story-details {
+        display: flex;
+        gap: 1rem;
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin-bottom: 0.75rem;
+        flex-wrap: wrap;
+    }
+    .details-item {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .story-text {
+        margin-bottom: 0.75rem;
+        line-height: 1.6;
+        color: #374151;
+    }
+    body.dark-mode .story-text {
+        color: #d1d5db;
+    }
+    .story-text details {
+        cursor: pointer;
+    }
+    .story-text summary {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    .story-text p {
+        margin: 0.5rem 0;
+        white-space: pre-wrap;
+    }
+    .apply-link-btn {
+        display: inline-block;
+        background: #10b981;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 999px;
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    .apply-link-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+        color: white;
+    }
+    .apply-link-unavailable {
+        display: inline-block;
+        background: rgba(100, 116, 139, 0.15);
+        color: #475569;
+        padding: 0.45rem 0.85rem;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+    body.dark-mode .apply-link-unavailable {
+        color: #cbd5e1;
+        background: rgba(148, 163, 184, 0.2);
+    }
+    .story-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    .story-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+    .story-edit-btn {
+        border: 1px solid rgba(59, 130, 246, 0.4);
+        background: rgba(59, 130, 246, 0.12);
+        color: #1d4ed8;
+        padding: 0.42rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 700;
+    }
+    .story-edit-btn:hover {
+        background: rgba(59, 130, 246, 0.2);
+    }
+    body.dark-mode .story-edit-btn {
+        color: #bfdbfe;
+        border-color: rgba(147, 197, 253, 0.35);
+        background: rgba(30, 64, 175, 0.35);
+    }
+    .form-mode-banner {
+        display: none;
+        border-radius: 12px;
+        padding: 0.6rem 0.75rem;
+        font-size: 0.88rem;
+        margin-bottom: 0.85rem;
+        background: rgba(59, 130, 246, 0.12);
+        color: #1e3a8a;
+        border: 1px solid rgba(59, 130, 246, 0.25);
+    }
+    .form-mode-banner.show {
+        display: block;
+    }
+</style>
+
+<div class="container my-5 community-page">
+    <div class="text-center mb-5">
+        <h1 class="community-title">Internship Community</h1>
+        <p class="text-muted">Share your internship story and help other students discover opportunities. Your submission will appear in the community feed and main internship listings.</p>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-5 mb-5">
+            <div class="glass-panel p-4">
+                <h3 class="mb-4">Share Your Story</h3>
+                <form id="communityForm">
+                    <div id="formModeBanner" class="form-mode-banner"></div>
+                    <input type="hidden" id="communityStoryId" value="">
+                    <div class="mb-3">
+                        <label class="form-label">Name <span class="text-muted">(optional)</span></label>
+                        <input type="text" id="communityName" class="form-control form-control-premium" placeholder="Your name">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">College <span class="text-danger">*</span></label>
+                        <input type="text" id="communityCollege" class="form-control form-control-premium" placeholder="College name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Internship Company <span class="text-danger">*</span></label>
+                        <input type="text" id="communityCompany" class="form-control form-control-premium" placeholder="Company name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Role <span class="text-danger">*</span></label>
+                        <input type="text" id="communityRole" class="form-control form-control-premium" placeholder="Internship role" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">City</label>
+                        <input type="text" id="communityCity" class="form-control form-control-premium" placeholder="City or Remote">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Mode</label>
+                        <select id="communityMode" class="form-select form-select-premium">
+                            <option value="">Select mode</option>
+                            <option value="Online">Online</option>
+                            <option value="Offline">Offline</option>
+                            <option value="Hybrid">Hybrid</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">How you got the internship <span class="text-danger">*</span></label>
+                        <textarea id="communityHowGot" class="form-control form-textarea-premium" rows="3" placeholder="Describe your application or referral process" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tips <span class="text-danger">*</span></label>
+                        <textarea id="communityTips" class="form-control form-textarea-premium" rows="3" placeholder="Share your tips for future students" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Interview Questions <span class="text-muted">(optional)</span></label>
+                        <textarea id="communityInterviewQuestions" class="form-control form-textarea-premium" rows="2" placeholder="Any questions asked during the interview"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Apply Link <span class="text-muted">(optional)</span></label>
+                        <input type="url" id="communityApplyLink" class="form-control form-control-premium" placeholder="Link to apply (company career page, form, etc.)">
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn flex-grow-1 apply-btn" id="communitySubmitBtn">Share Story</button>
+                        <button type="button" class="btn btn-outline-secondary d-none" id="communityCancelEditBtn">Cancel</button>
+                    </div>
+                </form>
+                <div id="communityAlert" class="alert d-none mt-3" role="alert"></div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <h3 class="mb-4">Recent Stories</h3>
+            <div id="communityStories">
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-spinner fa-spin fs-3 mb-3"></i>
+                    <p>Loading community stories...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const communityForm = document.getElementById('communityForm');
+    const communityAlert = document.getElementById('communityAlert');
+    const communityStories = document.getElementById('communityStories');
+    const formModeBanner = document.getElementById('formModeBanner');
+    const communityStoryId = document.getElementById('communityStoryId');
+    const communitySubmitBtn = document.getElementById('communitySubmitBtn');
+    const communityCancelEditBtn = document.getElementById('communityCancelEditBtn');
+    let storiesCache = [];
+
+    function escapeHTML(text) {
+        return String(text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function normalizeApplyLink(linkValue) {
+        const raw = String(linkValue || '').trim();
+        if (!raw) return '';
+        if (/^(javascript|data|vbscript):/i.test(raw)) return '';
+        if (/^mailto:/i.test(raw)) return raw;
+        if (/^https?:\/\//i.test(raw)) return raw;
+        if (/^[^\s]+\.[^\s]+/.test(raw)) return `https://${raw}`;
+        return '';
+    }
+
+    function showAlert(type, message) {
+        communityAlert.className = `alert alert-${type} mt-3`;
+        communityAlert.textContent = message;
+        communityAlert.classList.remove('d-none');
+    }
+
+    function resetEditMode() {
+        communityStoryId.value = '';
+        formModeBanner.classList.remove('show');
+        formModeBanner.textContent = '';
+        communitySubmitBtn.textContent = 'Share Story';
+        communityCancelEditBtn.classList.add('d-none');
+    }
+
+    function setEditMode(story) {
+        communityStoryId.value = String(story.id);
+        formModeBanner.textContent = `Editing your story for ${story.internship_company} - ${story.role}`;
+        formModeBanner.classList.add('show');
+        communitySubmitBtn.textContent = 'Update Story';
+        communityCancelEditBtn.classList.remove('d-none');
+
+        document.getElementById('communityName').value = story.name || '';
+        document.getElementById('communityCollege').value = story.college || '';
+        document.getElementById('communityCompany').value = story.internship_company || '';
+        document.getElementById('communityRole').value = story.role || '';
+        document.getElementById('communityCity').value = story.city || '';
+        document.getElementById('communityMode').value = story.mode || '';
+        document.getElementById('communityHowGot').value = story.how_got || '';
+        document.getElementById('communityTips').value = story.tips || '';
+        document.getElementById('communityInterviewQuestions').value = story.interview_questions || '';
+        document.getElementById('communityApplyLink').value = story.apply_link || '';
+        communityForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function buildStoryCard(story) {
+        const normalizedApplyLink = normalizeApplyLink(story.apply_link);
+        const applyLinkHtml = normalizedApplyLink
+            ? `<a href="${escapeHTML(normalizedApplyLink)}" target="_blank" rel="noopener noreferrer" class="apply-link-btn"><i class="fas fa-link me-1"></i>Apply</a>`
+            : '<span class="apply-link-unavailable"><i class="fas fa-ban me-1"></i>Link Not Available</span>';
+        const editActionHtml = story.can_edit
+            ? `<button type="button" class="story-edit-btn js-edit-story" data-story-id="${story.id}"><i class="fas fa-pen me-1"></i>Edit</button>`
+            : '';
+        return `
+            <div class="story-card" data-story-id="${story.id}">
+                <div class="story-meta">
+                    <div>
+                        <div class="story-company">${escapeHTML(story.internship_company)} - ${escapeHTML(story.role)}</div>
+                        <div class="story-details">
+                            <span class="details-item"><i class="fas fa-map-marker-alt"></i>${escapeHTML(story.city || 'N/A')}</span>
+                            <span class="details-item"><i class="fas fa-laptop-house"></i>${escapeHTML(story.mode || 'N/A')}</span>
+                        </div>
+                    </div>
+                    <span class="story-college">${escapeHTML(story.college)}</span>
+                </div>
+                <div class="story-text">
+                    <details><summary>How they got it</summary><p>${escapeHTML(story.how_got)}</p></details>
+                    <details><summary>Tips</summary><p>${escapeHTML(story.tips)}</p></details>
+                    ${story.interview_questions ? `<details><summary>Interview Questions</summary><p>${escapeHTML(story.interview_questions)}</p></details>` : ''}
+                </div>
+                <div class="story-footer">
+                    <div class="story-actions">
+                        ${applyLinkHtml}
+                        ${editActionHtml}
+                    </div>
+                    <div>
+                        ${story.name ? `<div class="text-muted small">Shared by ${escapeHTML(story.name)}</div>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function loadStories() {
+        fetch('/get-experiences')
+            .then(res => res.json())
+            .then(data => {
+                if (!data.data || data.data.length === 0) {
+                    communityStories.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-inbox fs-3 mb-3"></i><p>No stories yet. Be the first to share!</p></div>';
+                    storiesCache = [];
+                    return;
+                }
+                storiesCache = data.data;
+                communityStories.innerHTML = storiesCache.map(buildStoryCard).join('');
+            })
+            .catch(err => {
+                communityStories.innerHTML = '<div class="alert alert-danger">Unable to load stories. Please try again.</div>';
+                console.error(err);
+            });
+    }
+
+    communityForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        communityAlert.classList.add('d-none');
+
+        const payload = {
+            name: document.getElementById('communityName').value,
+            college: document.getElementById('communityCollege').value,
+            internship_company: document.getElementById('communityCompany').value,
+            city: document.getElementById('communityCity').value,
+            mode: document.getElementById('communityMode').value,
+            role: document.getElementById('communityRole').value,
+            how_got: document.getElementById('communityHowGot').value,
+            tips: document.getElementById('communityTips').value,
+            interview_questions: document.getElementById('communityInterviewQuestions').value,
+            apply_link: document.getElementById('communityApplyLink').value
+        };
+
+        try {
+            const editingId = communityStoryId.value.trim();
+            const endpoint = editingId ? `/update-experience/${editingId}` : '/add-experience';
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.error || 'Unable to submit your experience.');
+            }
+            showAlert('success', result.message || 'Your story has been shared successfully!');
+            communityForm.reset();
+            resetEditMode();
+            loadStories();
+        } catch (error) {
+            showAlert('danger', error.message);
+        }
+    });
+
+    communityStories.addEventListener('click', function(event) {
+        const editBtn = event.target.closest('.js-edit-story');
+        if (!editBtn) return;
+        const storyId = Number(editBtn.dataset.storyId);
+        const story = storiesCache.find(item => Number(item.id) === storyId);
+        if (!story || !story.can_edit) {
+            showAlert('danger', 'You can edit only your own story.');
+            return;
+        }
+        setEditMode(story);
+    });
+
+    communityCancelEditBtn.addEventListener('click', function() {
+        communityForm.reset();
+        resetEditMode();
+    });
+
+    // Load stories on page load
+    resetEditMode();
+    loadStories();
+});
+</script>
+
+{% endblock %}
