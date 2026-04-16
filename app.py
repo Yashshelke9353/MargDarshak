@@ -19,13 +19,13 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib import colors
 from io import BytesIO
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 #change
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 GEMINI_OPENAI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/'
-DEFAULT_GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3-flash-preview')
+DEFAULT_GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
 DEFAULT_OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
 
 app = Flask(__name__)
@@ -626,12 +626,27 @@ def log_activity(activity_type, module, description, metadata=None):
         print(f"Activity logging error: {e}")
 
 
-def get_ai_provider():
-    if os.environ.get('GEMINI_API_KEY'):
-        return 'gemini'
-    if os.environ.get('OPENAI_API_KEY'):
-        return 'openai'
-    return 'gemini'
+def _is_ai_provider_configured(provider):
+    if provider == 'gemini':
+        return bool(os.environ.get('GEMINI_API_KEY'))
+    if provider == 'openai':
+        return bool(os.environ.get('OPENAI_API_KEY'))
+    return False
+
+
+def get_configured_ai_providers():
+    return [provider for provider in ('gemini', 'openai') if _is_ai_provider_configured(provider)]
+
+
+def get_ai_provider(preferred=None):
+    if preferred in ('gemini', 'openai') and _is_ai_provider_configured(preferred):
+        return preferred
+
+    configured = get_configured_ai_providers()
+    if configured:
+        return configured[0]
+
+    return preferred if preferred in ('gemini', 'openai') else 'gemini'
 
 
 def get_ai_provider_label(provider=None):
@@ -646,17 +661,22 @@ def get_ai_model(provider=None):
     return DEFAULT_GEMINI_MODEL
 
 
-def get_openai_client():
+def get_openai_client(provider=None):
     from openai import OpenAI
+    provider = provider if provider in ('gemini', 'openai') else get_ai_provider()
     gemini_api_key = os.environ.get('GEMINI_API_KEY')
-    if gemini_api_key:
+    if provider == 'gemini':
+        if not gemini_api_key:
+            raise ValueError('GEMINI_API_KEY is not configured.')
         return OpenAI(
             api_key=gemini_api_key,
             base_url=GEMINI_OPENAI_BASE_URL
         )
 
     openai_api_key = os.environ.get('OPENAI_API_KEY')
-    if openai_api_key:
+    if provider == 'openai':
+        if not openai_api_key:
+            raise ValueError('OPENAI_API_KEY is not configured.')
         return OpenAI(api_key=openai_api_key)
 
     raise ValueError('No AI API key is configured. Set GEMINI_API_KEY (preferred) or OPENAI_API_KEY.')
@@ -666,9 +686,12 @@ def describe_openai_resume_error(error):
     status_code = getattr(error, 'status_code', None)
     error_code = None
     response_body = getattr(error, 'body', None)
+    error_message = str(error or '').lower()
     if isinstance(response_body, dict):
         error_code = response_body.get('error', {}).get('code')
 
+    if isinstance(error, json.JSONDecodeError) or 'incomplete json' in error_message or 'malformed json' in error_message:
+        return 'Real-time AI analysis is temporarily unavailable because the AI provider returned an incomplete structured response.'
     if error_code == 'insufficient_quota' or status_code == 429:
         return 'Real-time AI analysis is temporarily unavailable because the API quota or billing limit has been reached.'
     if status_code == 401:
@@ -680,6 +703,65 @@ def describe_openai_resume_error(error):
     if error_code:
         return f'Real-time AI analysis failed ({error_code}).'
     return 'Real-time AI analysis failed. Verify API key, billing, and network, then try again.'
+
+
+def _parse_structured_ai_json(raw, provider_label, context_label):
+    raw = (raw or '').strip()
+    if not raw:
+        raise ValueError(f'{provider_label} returned an empty response for {context_label}.')
+
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as parse_error:
+        print(f'{provider_label} {context_label} JSON decode error: {parse_error}')
+        print(f'{provider_label} raw response sample: {raw[:500]}...')
+
+        start = raw.find('{')
+        end = raw.rfind('}')
+        if start != -1 and end != -1 and end > start:
+            try:
+                return json.loads(raw[start:end + 1])
+            except json.JSONDecodeError:
+                pass
+
+        if raw.count('{') > raw.count('}') or not raw.rstrip().endswith('}'):
+            raise ValueError(f'{provider_label} returned incomplete JSON for {context_label}.') from parse_error
+        raise ValueError(f'{provider_label} returned malformed JSON for {context_label}.') from parse_error
+
+
+def _create_structured_ai_completion(client, provider, messages, *, temperature, max_tokens, context_label):
+    provider_label = get_ai_provider_label(provider)
+    request_plan = [(temperature, max_tokens)]
+
+    retry_temperature = min(temperature, 0.2) if provider == 'gemini' else min(temperature, 0.3)
+    retry_max_tokens = max(max_tokens, 5000 if provider == 'gemini' else 4000)
+    if request_plan[0] != (retry_temperature, retry_max_tokens):
+        request_plan.append((retry_temperature, retry_max_tokens))
+
+    last_error = None
+    for attempt_number, (attempt_temperature, attempt_max_tokens) in enumerate(request_plan, start=1):
+        try:
+            response = client.chat.completions.create(
+                model=get_ai_model(provider=provider),
+                messages=messages,
+                temperature=attempt_temperature,
+                max_tokens=attempt_max_tokens,
+                response_format={'type': 'json_object'}
+            )
+            raw = (response.choices[0].message.content or '').strip()
+            print(
+                f'{provider_label} {context_label} response received: '
+                f'{len(raw)} characters on attempt {attempt_number}'
+            )
+            return _parse_structured_ai_json(raw, provider_label, context_label)
+        except Exception as completion_error:
+            last_error = completion_error
+            print(
+                f'{provider_label} {context_label} attempt {attempt_number} failed: '
+                f'{type(completion_error).__name__}: {completion_error}'
+            )
+
+    raise last_error
 
 def extract_text_from_pdf(pdf_file):
     """Extract text from PDF file"""
@@ -1193,63 +1275,52 @@ def analyze_resume_fallback(resume_text, target_role):
     return _normalize_analysis_payload(analysis, resume_text, target_role)
 
 def analyze_resume_with_openai(resume_text, target_role, allow_fallback=True):
-    provider_label = get_ai_provider_label()
-    try:
-        client = get_openai_client()
-    except ValueError as ve:
+    prompt = build_resume_analysis_prompt(resume_text, target_role)
+    providers = get_configured_ai_providers()
+    if not providers:
         if allow_fallback:
-            print(f'{provider_label} API key not configured: {ve}')
-            print('Using fallback analysis...')
+            print('No AI API key configured. Using fallback analysis...')
             return analyze_resume_fallback(resume_text, target_role)
         raise ValueError('No AI API key is configured. Set GEMINI_API_KEY (preferred) or OPENAI_API_KEY.')
 
-    prompt = build_resume_analysis_prompt(resume_text, target_role)
-    try:
-        print(f'Calling {provider_label} API for resume analysis (target role: {target_role})')
-        result = client.chat.completions.create(
-            model=get_ai_model(),
-            messages=prompt,
-            temperature=0.9,
-            max_tokens=2200,
-            response_format={'type': 'json_object'}
-        )
-        raw = result.choices[0].message.content.strip()
-        print(f'{provider_label} response received: {len(raw)} characters')
-
+    last_error = None
+    for provider in providers:
+        provider_label = get_ai_provider_label(provider)
         try:
-            analysis = json.loads(raw)
-            print('Successfully parsed AI analysis JSON')
-        except json.JSONDecodeError as je:
-            print(f'JSON decode error: {je}')
-            print(f'Raw response: {raw[:500]}...')
-            start = raw.find('{')
-            end = raw.rfind('}')
-            if start != -1 and end != -1:
-                analysis = json.loads(raw[start:end+1])
-                print('Extracted JSON block from response')
-            else:
-                raise ValueError(f"Could not parse {provider_label} response as JSON: {raw[:200]}...")
+            client = get_openai_client(provider=provider)
+            print(f'Calling {provider_label} API for resume analysis (target role: {target_role})')
+            analysis = _create_structured_ai_completion(
+                client,
+                provider,
+                prompt,
+                temperature=0.35 if provider == 'gemini' else 0.55,
+                max_tokens=5000 if provider == 'gemini' else 3200,
+                context_label='resume analysis'
+            )
 
-        if not analysis.get('skills_analysis') or not isinstance(analysis.get('skills_analysis'), dict):
-            raise ValueError('AI response did not contain valid skills_analysis.')
+            if not analysis.get('skills_analysis') or not isinstance(analysis.get('skills_analysis'), dict):
+                raise ValueError('AI response did not contain valid skills_analysis.')
 
-        analysis = _normalize_analysis_payload(analysis, resume_text, target_role)
-        skills = analysis.get('skills_analysis', {}).get('strong_skills', [])
-        analysis['ats_score'] = calculate_ats_score(resume_text, target_role, skills)
-        analysis['internship_matches'] = find_matching_internships(skills, target_role)
-        analysis['analysis_mode'] = 'ai'
-        analysis['analysis_generated_at'] = datetime.utcnow().isoformat() + 'Z'
-        return analysis
-    except Exception as e:
-        print(f'{provider_label} resume analysis error: {e}')
-        print(f'Error type: {type(e).__name__}')
-        print(f'Traceback: {traceback.format_exc()}')
-        if allow_fallback:
-            print('Falling back to basic analysis...')
-            analysis = analyze_resume_fallback(resume_text, target_role)
-            analysis['analysis_notice'] = describe_openai_resume_error(e)
+            analysis = _normalize_analysis_payload(analysis, resume_text, target_role)
+            skills = analysis.get('skills_analysis', {}).get('strong_skills', [])
+            analysis['ats_score'] = calculate_ats_score(resume_text, target_role, skills)
+            analysis['internship_matches'] = find_matching_internships(skills, target_role)
+            analysis['analysis_mode'] = 'ai'
+            analysis['analysis_provider'] = provider
+            analysis['analysis_generated_at'] = datetime.utcnow().isoformat() + 'Z'
             return analysis
-        raise ValueError(describe_openai_resume_error(e))
+        except Exception as e:
+            last_error = e
+            print(f'{provider_label} resume analysis error: {e}')
+            print(f'Error type: {type(e).__name__}')
+            print(f'Traceback: {traceback.format_exc()}')
+
+    if allow_fallback:
+        print('Falling back to basic analysis...')
+        analysis = analyze_resume_fallback(resume_text, target_role)
+        analysis['analysis_notice'] = describe_openai_resume_error(last_error)
+        return analysis
+    raise ValueError(describe_openai_resume_error(last_error))
 
 
 def generate_pdf_report(analysis, target_role):
@@ -1779,6 +1850,149 @@ def career_detail(career_id):
         return f"<h2>Error: {e}</h2><a href='/career/browse'>Back to Browse</a>", 500
 
 # ==================== GYAN KOSH MODULE ====================
+GYAN_MEDIA_LIBRARY = [
+    {
+        'id': 'spiritual-songs',
+        'title': 'Spiritual Songs',
+        'description': 'Listen to devotional chants and mantras that support peace, courage, and concentration.',
+        'items': [
+            {
+                'title': 'Hanuman Chalisa',
+                'info': 'Increases confidence, removes fear, and builds a strong mindset.',
+                'embed_url': 'https://www.youtube.com/embed/AETFvQonfV8',
+                'watch_url': 'https://www.youtube.com/watch?v=AETFvQonfV8',
+            },
+            {
+                'title': 'Hanuman Ashtak',
+                'info': 'Helps overcome problems and reduces stress.',
+                'embed_url': 'https://www.youtube.com/embed/5g24iHE4umk',
+                'watch_url': 'https://www.youtube.com/watch?v=5g24iHE4umk',
+            },
+            {
+                'title': 'Bajrang Baan',
+                'info': 'A powerful prayer for protection and mental strength.',
+                'embed_url': 'https://www.youtube.com/embed/dXl2NdlmeIE',
+                'watch_url': 'https://www.youtube.com/watch?v=dXl2NdlmeIE',
+            },
+            {
+                'title': 'Shiv Tandav Stotram',
+                'info': 'Boosts energy, focus, and a warrior mindset.',
+                'embed_url': 'https://www.youtube.com/embed/hMBKmQEPNzI',
+                'watch_url': 'https://www.youtube.com/watch?v=hMBKmQEPNzI',
+            },
+            {
+                'title': 'Om Namah Shivaya Chant',
+                'info': 'Calms the mind and improves concentration.',
+                'embed_url': 'https://www.youtube.com/embed/ccBcAWE_lIY',
+                'watch_url': 'https://www.youtube.com/watch?v=ccBcAWE_lIY',
+            },
+            {
+                'title': 'Mahamrityunjaya Mantra',
+                'info': 'A healing mantra for peace and inner strength.',
+                'embed_url': 'https://www.youtube.com/embed/adyjwFgXRNY',
+                'watch_url': 'https://www.youtube.com/watch?v=adyjwFgXRNY',
+            },
+            {
+                'title': 'Rudrashtakam',
+                'info': 'A devotional hymn for Lord Shiva that builds discipline and devotion.',
+                'embed_url': 'https://www.youtube.com/embed/m3m1dXmTrJU',
+                'watch_url': 'https://www.youtube.com/watch?v=m3m1dXmTrJU',
+            },
+            {
+                'title': 'Ram Siya Ram',
+                'info': 'Brings peace, emotional balance, and focus.',
+                'embed_url': 'https://www.youtube.com/embed/Tl4bQBfOtbg',
+                'watch_url': 'https://www.youtube.com/watch?v=Tl4bQBfOtbg',
+            },
+            {
+                'title': 'Hare Krishna Maha Mantra',
+                'info': 'Improves positivity and reduces anxiety.',
+                'embed_url': 'https://www.youtube.com/embed/Zdcth9NndEA',
+                'watch_url': 'https://www.youtube.com/watch?v=Zdcth9NndEA',
+            },
+            {
+                'title': 'Krishna Flute Meditation',
+                'info': 'Supports deep relaxation and study or coding focus.',
+                'embed_url': 'https://www.youtube.com/embed/5jca-sWgemI',
+                'watch_url': 'https://www.youtube.com/watch?v=5jca-sWgemI',
+            },
+        ],
+    },
+    {
+        'id': 'informative-podcasts',
+        'title': 'Informative Podcasts',
+        'description': 'Explore podcasts and learning channels for mindset, communication, and education awareness.',
+        'items': [
+            {
+                'title': 'Education System Deep Podcast (India Focus)',
+                'info': 'Explores the reality of the Indian education system and encourages a mindset shift.',
+                'embed_url': 'https://www.youtube.com/embed/fa_ZXlqwmSM',
+                'watch_url': 'https://www.youtube.com/watch?v=fa_ZXlqwmSM',
+            },
+            {
+                'title': 'Cambridge Grow Podcast',
+                'info': 'Shares real-life stories, growth mindset lessons, and learning from failures.',
+                'embed_url': 'https://www.youtube.com/embed/hpMbnwQPCqI',
+                'watch_url': 'https://www.youtube.com/watch?v=hpMbnwQPCqI',
+            },
+            {
+                'title': 'CrashCourse',
+                'info': 'Makes science, history, and economics easy to understand.',
+                'embed_url': 'https://www.youtube.com/embed?listType=user_uploads&list=crashcourse',
+                'watch_url': 'https://www.youtube.com/@crashcourse',
+            },
+            {
+                'title': "Luke's English Podcast",
+                'info': 'Helps improve English speaking and communication skills.',
+                'embed_url': 'https://www.youtube.com/embed?listType=user_uploads&list=LukesEnglishPodcast',
+                'watch_url': 'https://www.youtube.com/@LukesEnglishPodcast',
+            },
+        ],
+    },
+]
+
+
+def _extract_youtube_video_id(url):
+    try:
+        parsed = urlparse(url or '')
+    except Exception:
+        return None
+
+    host = (parsed.netloc or '').lower()
+    if 'youtu.be' in host:
+        return parsed.path.strip('/') or None
+    if 'youtube.com' in host:
+        query_video = parse_qs(parsed.query).get('v', [None])[0]
+        if query_video:
+            return query_video
+        path_parts = [part for part in parsed.path.split('/') if part]
+        if len(path_parts) >= 2 and path_parts[0] == 'embed':
+            return path_parts[1]
+    return None
+
+
+def _enrich_gyan_media_library(sections):
+    enriched_sections = []
+    for section in sections:
+        section_copy = dict(section)
+        enriched_items = []
+        for item in section.get('items', []):
+            item_copy = dict(item)
+            video_id = item_copy.get('video_id') or _extract_youtube_video_id(item_copy.get('watch_url')) or _extract_youtube_video_id(item_copy.get('embed_url'))
+            item_copy['video_id'] = video_id
+            item_copy['thumbnail_url'] = (
+                f'https://img.youtube.com/vi/{video_id}/hqdefault.jpg' if video_id else None
+            )
+            item_copy['can_embed_inline'] = bool(video_id and '/embed/' in str(item_copy.get('embed_url', '')))
+            enriched_items.append(item_copy)
+        section_copy['items'] = enriched_items
+        enriched_sections.append(section_copy)
+    return enriched_sections
+
+
+GYAN_MEDIA_LIBRARY = _enrich_gyan_media_library(GYAN_MEDIA_LIBRARY)
+
+
 @app.route('/gyan')
 @login_required
 def gyan_home():
@@ -1806,7 +2020,11 @@ def gyan_home():
             log_activity('daily_wisdom', 'gyan', 'Read daily spiritual wisdom', 
                         f"Chapter {shloka['chapter']}, Verse {shloka['verse_number']}")
             
-            return render_template('gyan/daily.html', shloka=dict(shloka))
+            return render_template(
+                'gyan/daily.html',
+                shloka=dict(shloka),
+                media_library=GYAN_MEDIA_LIBRARY
+            )
         else:
             return "No shlokas found", 500
             
@@ -1988,13 +2206,81 @@ def _fallback_aptitude_questions(topic, user_id, mode='daily', question_count=10
     return normalized[:question_count]
 
 
-def _normalize_aptitude_questions(payload, requested_topic='Random', question_count=10):
+def _extract_aptitude_question_items(payload):
+    if isinstance(payload, list):
+        return payload
     if not isinstance(payload, dict):
-        raise ValueError('AI response was not a JSON object.')
+        raise ValueError('AI response was not a JSON object or question list.')
 
-    raw_questions = payload.get('questions')
-    if not isinstance(raw_questions, list):
-        raise ValueError('AI response did not include a valid questions list.')
+    for key in ('questions', 'quiz', 'items', 'data', 'results'):
+        candidate = payload.get(key)
+        if isinstance(candidate, list):
+            return candidate
+
+    raise ValueError('AI response did not include a valid questions list.')
+
+
+def _normalize_aptitude_options(options):
+    if isinstance(options, dict):
+        ordered = []
+        for key in ('A', 'B', 'C', 'D', 'a', 'b', 'c', 'd', '1', '2', '3', '4'):
+            value = options.get(key)
+            if str(value or '').strip():
+                ordered.append(value)
+        if not ordered:
+            ordered = list(options.values())
+        options = ordered
+    elif isinstance(options, str):
+        options = re.split(r'\n+|[|;]', options)
+
+    if not isinstance(options, list):
+        return []
+
+    cleaned = [re.sub(r'\s+', ' ', str(opt or '').strip()) for opt in options if str(opt or '').strip()]
+    return cleaned[:4]
+
+
+def _coerce_aptitude_answer_index(item, cleaned_options):
+    answer_index = _safe_int(item.get('answer_index'), -1)
+    if 0 <= answer_index < len(cleaned_options):
+        return answer_index
+
+    answer_value = str(item.get('answer') or item.get('correct_answer') or item.get('correct_option') or '').strip()
+    if answer_value:
+        upper_answer = answer_value.upper()
+        if upper_answer in ('A', 'B', 'C', 'D'):
+            letter_index = ord(upper_answer) - ord('A')
+            if letter_index < len(cleaned_options):
+                return letter_index
+
+        normalized_answer = re.sub(r'^\s*[A-D][\).\:-]?\s*', '', answer_value, flags=re.IGNORECASE)
+        normalized_answer = re.sub(r'\s+', ' ', normalized_answer).strip()
+        if normalized_answer in cleaned_options:
+            return cleaned_options.index(normalized_answer)
+
+    return 0
+
+
+def _merge_aptitude_question_sets(primary_questions, fallback_questions, question_count):
+    merged = []
+    seen = set()
+
+    for question in list(primary_questions) + list(fallback_questions):
+        if not isinstance(question, dict):
+            continue
+        question_text = re.sub(r'\s+', ' ', str(question.get('question') or '').strip()).lower()
+        if not question_text or question_text in seen:
+            continue
+        seen.add(question_text)
+        merged.append(question)
+        if len(merged) >= question_count:
+            break
+
+    return merged[:question_count]
+
+
+def _normalize_aptitude_questions(payload, requested_topic='Random', question_count=10):
+    raw_questions = _extract_aptitude_question_items(payload)
 
     normalized = []
     seen_questions = set()
@@ -2006,18 +2292,17 @@ def _normalize_aptitude_questions(payload, requested_topic='Random', question_co
             continue
         seen_questions.add(question_text.lower())
 
-        options = item.get('options')
-        if not isinstance(options, list):
-            continue
-        cleaned_options = [re.sub(r'\s+', ' ', str(opt or '').strip()) for opt in options if str(opt or '').strip()]
+        options = (
+            item.get('options')
+            or item.get('choices')
+            or item.get('answers')
+            or item.get('options_list')
+        )
+        cleaned_options = _normalize_aptitude_options(options)
         if len(cleaned_options) < 4:
             continue
-        cleaned_options = cleaned_options[:4]
 
-        answer_index = _safe_int(item.get('answer_index'), -1)
-        if answer_index < 0 or answer_index >= len(cleaned_options):
-            correct_option = re.sub(r'\s+', ' ', str(item.get('correct_option') or '').strip())
-            answer_index = cleaned_options.index(correct_option) if correct_option in cleaned_options else 0
+        answer_index = _coerce_aptitude_answer_index(item, cleaned_options)
 
         topic = re.sub(r'\s+', ' ', str(item.get('topic') or requested_topic).strip()) or requested_topic
         difficulty = str(item.get('difficulty') or 'Medium').strip().title()
@@ -2034,13 +2319,10 @@ def _normalize_aptitude_questions(payload, requested_topic='Random', question_co
             'difficulty': difficulty
         })
 
-    if len(normalized) < question_count:
-        raise ValueError(f'AI returned only {len(normalized)} valid questions.')
-
     return normalized[:question_count]
 
 
-def _generate_aptitude_questions_with_openai(topic, user_id, mode='daily', question_count=10):
+def _generate_aptitude_questions_with_openai(topic, user_id, mode='daily', question_count=10, provider=None):
     selected_topic = topic if topic in APTITUDE_QUESTION_BANK else 'Random'
     date_key = datetime.now().strftime('%Y-%m-%d')
     nonce = random.randint(1000, 999999)
@@ -2092,17 +2374,53 @@ def _generate_aptitude_questions_with_openai(topic, user_id, mode='daily', quest
         }
     ]
 
-    client = get_openai_client()
-    response = client.chat.completions.create(
-        model=get_ai_model(),
-        messages=prompt,
-        temperature=0.85 if mode == 'random' else 0.7,
-        max_tokens=2800,
-        response_format={'type': 'json_object'}
+    provider = provider or get_ai_provider()
+    client = get_openai_client(provider=provider)
+    payload = _create_structured_ai_completion(
+        client,
+        provider,
+        prompt,
+        temperature=0.2 if provider == 'gemini' else (0.35 if mode == 'random' else 0.25),
+        max_tokens=5000 if provider == 'gemini' else 3600,
+        context_label='aptitude quiz generation'
     )
-    raw = (response.choices[0].message.content or '').strip()
-    payload = json.loads(raw)
-    return _normalize_aptitude_questions(payload, requested_topic=selected_topic, question_count=question_count)
+    normalized = _normalize_aptitude_questions(payload, requested_topic=selected_topic, question_count=question_count)
+    if len(normalized) >= question_count:
+        return normalized[:question_count]
+
+    fallback_questions = _fallback_aptitude_questions(
+        topic=selected_topic,
+        user_id=user_id,
+        mode=mode,
+        question_count=question_count
+    )
+    merged = _merge_aptitude_question_sets(normalized, fallback_questions, question_count)
+    if len(merged) < question_count:
+        raise ValueError(f'AI returned only {len(normalized)} valid questions and fallback merge produced only {len(merged)}.')
+    return merged
+
+
+def _generate_aptitude_questions(topic, user_id, mode='daily', question_count=10):
+    providers = get_configured_ai_providers()
+    if not providers:
+        raise ValueError('No AI API key is configured. Set GEMINI_API_KEY or OPENAI_API_KEY.')
+
+    last_error = None
+    for provider in providers:
+        try:
+            questions = _generate_aptitude_questions_with_openai(
+                topic=topic,
+                user_id=user_id,
+                mode=mode,
+                question_count=question_count,
+                provider=provider
+            )
+            return questions, provider
+        except Exception as provider_error:
+            print(f"Aptitude quiz {provider} generation failed: {provider_error}")
+            last_error = provider_error
+
+    raise last_error or ValueError('Unable to generate aptitude quiz with configured AI providers.')
 
 
 GD_GROUP_SIZE = 5
@@ -2698,14 +3016,14 @@ def generate_aptitude_quiz():
         source = get_ai_provider()
         notice = ''
         try:
-            questions = _generate_aptitude_questions_with_openai(
+            questions, source = _generate_aptitude_questions(
                 topic=topic,
                 user_id=user_id,
                 mode=mode,
                 question_count=10
             )
         except Exception as generation_error:
-            print(f"Aptitude quiz AI generation failed: {generation_error}")
+            print(f"Aptitude quiz AI generation failed for all configured providers: {generation_error}")
             questions = _fallback_aptitude_questions(topic=topic, user_id=user_id, mode=mode, question_count=10)
             source = 'fallback'
             notice = 'AI quiz is temporarily unavailable, so a backup quiz is shown.'
