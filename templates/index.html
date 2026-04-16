@@ -80,6 +80,42 @@
         text-decoration: none;
     }
 
+    .home-notify-btn {
+        border: 0;
+        border-radius: 999px;
+        padding: 0.5rem 0.85rem;
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-family: var(--font-outfit);
+        font-weight: 700;
+        font-size: 0.82rem;
+        box-shadow: 0 8px 20px rgba(37, 99, 235, 0.22);
+        text-decoration: none;
+    }
+
+    .home-notify-btn:hover {
+        color: #fff;
+        transform: translateY(-1px);
+        box-shadow: 0 12px 24px rgba(37, 99, 235, 0.3);
+    }
+
+    .home-notify-badge {
+        min-width: 18px;
+        height: 18px;
+        border-radius: 999px;
+        background: #ef4444;
+        color: #fff;
+        font-size: 0.7rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 5px;
+    }
+
     /* =========================================
        HERO SECTION w/ 3D LOGO
        ========================================= */
@@ -575,6 +611,11 @@
         </a>
         <div class="d-flex gap-3 align-items-center">
             {% if g.current_user %}
+            <button type="button" class="home-notify-btn" id="homeNotifyBtn" title="Notifications" aria-expanded="false" aria-controls="notifyPopup">
+                <i class="fas fa-bell"></i>
+                <span>Notifications</span>
+                <span class="home-notify-badge d-none" id="homeNotifyBadge">0</span>
+            </button>
             <a href="/progress" class="text-decoration-none d-none d-md-block"
                 style="color: var(--color-muted); font-weight: 600;">My Progress</a>
             <span class="badge rounded-pill"
@@ -824,7 +865,7 @@
 
         <div class="text-center mb-5 d-block d-lg-none">
             <h2 class="section-title" style="font-size: 2rem;">Platform Features</h2>
-            <p style="color: var(--color-muted);">Scroll to explore all 11 modules</p>
+            <p style="color: var(--color-muted);">Scroll to explore all modules</p>
         </div>
 
         <div class="row">
@@ -841,6 +882,9 @@
                     </a>
                     <a href="#f-skill" class="menu-link">
                         <div class="active-dot"></div>Skill Saathi
+                    </a>
+                    <a href="#f-gd" class="menu-link">
+                        <div class="active-dot"></div>Student GD Connect
                     </a>
                     <!-- 4th Position as requested -->
                     <a href="#f-mentor" class="menu-link" style="color: #ec4899; font-weight: 700;">
@@ -932,6 +976,26 @@
                             <div class="feat-btn-inner">
                                 <img src="/static/icon-192.png" alt="Logo">
                                 <span>Browse Resources</span>
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 4. Student GD Connect -->
+                <div id="f-gd" class="flowing-feature">
+                    <div>
+                        <div class="feat-icon-3d" style="background:#2563eb;" data-tilt data-tilt-scale="1.1"><i
+                                class="fas fa-users"></i></div>
+                        <h2 class="feat-title">Student GD Connect</h2>
+                        <h3 class="feat-headline">Practice real placement group discussions.</h3>
+                        <p class="feat-desc">Auto-join a group of 5 students, get a timed GD topic, discuss in a live room,
+                            and receive structured peer + AI evaluation for confidence, communication, and logical thinking.</p>
+                        <a href="{% if g.current_user %}/gd{% else %}{{ url_for('login') }}{% endif %}"
+                            class="feature-access-btn" data-tilt data-tilt-max="15" data-tilt-scale="1.05">
+                            <div class="feat-btn-inner">
+                                <img src="/static/icon-192.png" alt="Logo">
+                                <span>Start GD Practice</span>
                                 <i class="fas fa-arrow-right"></i>
                             </div>
                         </a>

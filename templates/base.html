@@ -415,6 +415,7 @@
             <li><a href="/career"><i class="fas fa-briefcase text-info"></i><span>Career Compass</span></a></li>
             <li><a href="/gyan"><i class="fas fa-om text-warning"></i><span>Gyan Kosh</span></a></li>
             <li><a href="/skill"><i class="fas fa-graduation-cap text-success"></i><span>Skill Saathi</span></a></li>
+            <li><a href="/gd"><i class="fas fa-users text-primary"></i><span>Student GD Connect</span></a></li>
             <li><a href="/mentor-connect"><i class="fas fa-user-astronaut text-danger"></i><span>Mentor Connect ✨</span></a></li>
             <li><a href="/internships"><i class="fas fa-id-badge text-warning"></i><span>Internships</span></a></li>
             <li><a href="/student-community"><i class="fas fa-users text-success"></i><span>Student Community</span></a></li>
@@ -944,7 +945,8 @@
             const notifyList = document.getElementById('notifyList');
             const notifyCountText = document.getElementById('notifyCountText');
             const notifyBadge = document.getElementById('notifyBadge');
-            if (!notifyList || !notifyCountText || !notifyBadge) return;
+            const homeNotifyBadge = document.getElementById('homeNotifyBadge');
+            if (!notifyList || !notifyCountText) return;
 
             const list = items && items.length ? items : [{
                 id: 'no-updates',
@@ -966,12 +968,24 @@
 
             const unseen = unseenNotifications(list);
             notifyCountText.textContent = `${unseen.length} new`;
-            if (unseen.length > 0) {
-                notifyBadge.classList.remove('is-hidden');
-                notifyBadge.textContent = String(unseen.length);
-            } else {
-                notifyBadge.classList.add('is-hidden');
-                notifyBadge.textContent = '0';
+            const unseenCountText = String(unseen.length);
+            if (notifyBadge) {
+                if (unseen.length > 0) {
+                    notifyBadge.classList.remove('is-hidden');
+                    notifyBadge.textContent = unseenCountText;
+                } else {
+                    notifyBadge.classList.add('is-hidden');
+                    notifyBadge.textContent = '0';
+                }
+            }
+            if (homeNotifyBadge) {
+                if (unseen.length > 0) {
+                    homeNotifyBadge.classList.remove('d-none');
+                    homeNotifyBadge.textContent = unseenCountText;
+                } else {
+                    homeNotifyBadge.classList.add('d-none');
+                    homeNotifyBadge.textContent = '0';
+                }
             }
         }
 
@@ -996,28 +1010,33 @@
 
         function initNotifications() {
             const notifyBtn = document.getElementById('notifyBtn');
+            const homeNotifyBtn = document.getElementById('homeNotifyBtn');
+            const notifyButtons = [notifyBtn, homeNotifyBtn].filter(Boolean);
             const notifyPopup = document.getElementById('notifyPopup');
-            if (!notifyBtn || !notifyPopup) return;
+            if (!notifyPopup || notifyButtons.length === 0) return;
 
             readSeenNotificationIds();
             refreshNotifications(false);
             notificationState.poller = setInterval(() => refreshNotifications(true), 30000);
 
-            notifyBtn.addEventListener('click', (event) => {
-                event.stopPropagation();
-                const willOpen = !notifyPopup.classList.contains('show');
-                notifyPopup.classList.toggle('show');
-                notifyBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
-                if (willOpen) {
-                    markNotificationsSeen(notificationState.items);
-                    renderNotifications(notificationState.items);
-                }
+            notifyButtons.forEach((button) => {
+                button.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    const willOpen = !notifyPopup.classList.contains('show');
+                    notifyPopup.classList.toggle('show');
+                    notifyButtons.forEach((btn) => btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false'));
+                    if (willOpen) {
+                        markNotificationsSeen(notificationState.items);
+                        renderNotifications(notificationState.items);
+                    }
+                });
             });
 
             document.addEventListener('click', (event) => {
-                if (!notifyPopup.contains(event.target) && !notifyBtn.contains(event.target)) {
+                const clickedNotifyButton = notifyButtons.some((button) => button.contains(event.target));
+                if (!notifyPopup.contains(event.target) && !clickedNotifyButton) {
                     notifyPopup.classList.remove('show');
-                    notifyBtn.setAttribute('aria-expanded', 'false');
+                    notifyButtons.forEach((btn) => btn.setAttribute('aria-expanded', 'false'));
                 }
             });
 

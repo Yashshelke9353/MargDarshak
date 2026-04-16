@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}GD Connection Request - {{ session.room_id }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4 p-md-5">
+            <h3 class="mb-2"><i class="fas fa-link text-primary me-2"></i>GD Connection Request</h3>
+            <p class="text-muted mb-3">
+                Host: <strong>{{ host_name }}</strong> | Room: <strong>{{ session.room_id }}</strong>
+            </p>
+            <p class="mb-2"><strong>Topic:</strong> {{ session.topic }}</p>
+            <p class="text-muted mb-4"><span id="joinedCount">{{ joined_count }}</span>/{{ max_participants }} students joined</p>
+
+            {% set status_class = 'alert-secondary' %}
+            {% set status_text = 'Use the form below to send join request.' %}
+            {% if request_status == 'pending' %}
+                {% set status_class = 'alert-info' %}
+                {% set status_text = 'Your request is pending. You will get update in notifications and GD page.' %}
+            {% elif request_status == 'approved' %}
+                {% set status_class = 'alert-success' %}
+                {% set status_text = 'Your request is approved. You can join now.' %}
+            {% elif request_status == 'rejected' %}
+                {% set status_class = 'alert-danger' %}
+                {% set status_text = 'Your join request was rejected by host.' %}
+            {% endif %}
+            <div class="alert {{ status_class }}" id="requestStatusBox">{{ status_text }}</div>
+
+            {% if request_status == 'approved' %}
+                <a href="/gd/room/{{ session.room_id }}" class="btn btn-success mb-3">Join GD Room</a>
+            {% endif %}
+
+            {% if request_status not in ['pending', 'approved', 'rejected'] %}
+            <form method="post">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Your Field (optional)</label>
+                        <input type="text" class="form-control" name="field" placeholder="e.g. Computer Science">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Target Role (optional)</label>
+                        <input type="text" class="form-control" name="target_role" placeholder="e.g. Data Analyst">
+                    </div>
+                </div>
+                <button class="btn btn-primary mt-3" type="submit">
+                    <i class="fas fa-paper-plane me-1"></i>Send Join Request
+                </button>
+            </form>
+            {% endif %}
+
+            <a href="/gd" class="btn btn-outline-secondary mt-3">Back to GD Home</a>
+        </div>
+    </div>
+</div>
+<script>
+const ROOM_ID = {{ session.room_id|tojson }};
+let currentStatus = {{ request_status|tojson }};
+
+async function pollConnectStatus() {
+    try {
+        const resp = await fetch(`/gd/connect-status/${encodeURIComponent(ROOM_ID)}`);
+        const data = await resp.json();
+        if (!data.success) return;
+        if (typeof data.joined_count === 'number') {
+            const joined = document.getElementById('joinedCount');
+            if (joined) joined.textContent = data.joined_count;
+        }
+        if (!data.status || data.status === currentStatus) return;
+        currentStatus = data.status;
+
+        const box = document.getElementById('requestStatusBox');
+        if (currentStatus === 'approved' && data.room_url) {
+            if (box) {
+                box.className = 'alert alert-success';
+                box.textContent = 'Your request is approved. Redirecting to GD room...';
+            }
+            window.location.href = data.room_url;
+            return;
+        }
+        if (box && currentStatus === 'rejected') {
+            box.className = 'alert alert-danger';
+            box.textContent = 'Your join request was rejected by host.';
+        } else if (box && currentStatus === 'pending') {
+            box.className = 'alert alert-info';
+            box.textContent = 'Your request is pending. Waiting for host approval.';
+        } else if (box && currentStatus === 'closed') {
+            box.className = 'alert alert-warning';
+            box.textContent = 'This GD session is closed.';
+        }
+    } catch (err) {
+        console.error('Connection status polling failed:', err);
+    }
+}
+
+setInterval(pollConnectStatus, 3000);
+pollConnectStatus();
+</script>
+{% endblock %}

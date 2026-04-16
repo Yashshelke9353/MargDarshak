@@ -5,13 +5,13 @@ import re
 import traceback
 import ast
 import operator
+import random
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, g, send_from_directory, jsonify, has_request_context
 from werkzeug.security import generate_password_hash, check_password_hash
 import pandas as pd
 from dotenv import load_dotenv
 from functools import wraps
-from openai import OpenAI
 import PyPDF2
 import spacy
 from reportlab.lib.pagesizes import letter
@@ -23,6 +23,10 @@ from urllib.parse import urlparse
 #change
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, '.env'))
+
+GEMINI_OPENAI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/'
+DEFAULT_GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-3-flash-preview')
+DEFAULT_OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_change_me')
@@ -202,6 +206,206 @@ def init_db():
         c.execute('ALTER TABLE user_activity ADD COLUMN user_id INTEGER')
     except Exception:
         pass
+
+    # --- Daily Aptitude Quiz Cache ---
+    c.execute('''CREATE TABLE IF NOT EXISTS daily_aptitude_quizzes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        quiz_date TEXT NOT NULL,
+        topic TEXT NOT NULL,
+        mode TEXT NOT NULL DEFAULT 'daily',
+        questions_json TEXT NOT NULL,
+        source TEXT NOT NULL DEFAULT 'gemini',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (user_id, quiz_date, topic, mode),
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_daily_quiz_lookup ON daily_aptitude_quizzes (user_id, quiz_date, topic, mode)')
+
+    # --- Student GD Connect Tables ---
+    c.execute('''CREATE TABLE IF NOT EXISTS gd_queue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        field TEXT,
+        target_role TEXT,
+        status TEXT NOT NULL DEFAULT 'waiting',
+        session_id INTEGER,
+        room_id TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        matched_at DATETIME,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_gd_queue_status ON gd_queue (status, created_at)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_gd_queue_user_status ON gd_queue (user_id, status)')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS gd_sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        topic TEXT NOT NULL,
+        room_id TEXT NOT NULL UNIQUE,
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        thinking_end_at DATETIME,
+        discussion_end_at DATETIME,
+        feedback_deadline_at DATETIME,
+        completed_at DATETIME
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_gd_sessions_room ON gd_sessions (room_id)')
+    # Add host-managed meeting columns if missing
+    gd_session_columns = [row[1] for row in c.execute('PRAGMA table_info(gd_sessions)').fetchall()]
+    if 'host_user_id' not in gd_session_columns:
+        c.execute('ALTER TABLE gd_sessions ADD COLUMN host_user_id INTEGER')
+    if 'max_participants' not in gd_session_columns:
+        c.execute('ALTER TABLE gd_sessions ADD COLUMN max_participants INTEGER DEFAULT 5')
+    if 'duration_minutes' not in gd_session_columns:
+        c.execute('ALTER TABLE gd_sessions ADD COLUMN duration_minutes INTEGER DEFAULT 10')
+    if 'started_at' not in gd_session_columns:
+        c.execute('ALTER TABLE gd_sessions ADD COLUMN started_at DATETIME')
+    if 'ended_at' not in gd_session_columns:
+        c.execute('ALTER TABLE gd_sessions ADD COLUMN ended_at DATETIME')
+    if 'timer_started_by' not in gd_session_columns:
+        c.execute('ALTER TABLE gd_sessions ADD COLUMN timer_started_by INTEGER')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS gd_participants (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        field TEXT,
+        target_role TEXT,
+        joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (session_id, user_id),
+        FOREIGN KEY (session_id) REFERENCES gd_sessions (id),
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_gd_participants_session ON gd_participants (session_id)')
+    gd_participant_columns = [row[1] for row in c.execute('PRAGMA table_info(gd_participants)').fetchall()]
+    if 'status' not in gd_participant_columns:
+        c.execute("ALTER TABLE gd_participants ADD COLUMN status TEXT DEFAULT 'accepted'")
+    if 'role' not in gd_participant_columns:
+        c.execute("ALTER TABLE gd_participants ADD COLUMN role TEXT DEFAULT 'participant'")
+
+    c.execute('''CREATE TABLE IF NOT EXISTS gd_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        message TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (session_id) REFERENCES gd_sessions (id),
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_gd_messages_session ON gd_messages (session_id, id)')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS gd_responses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        response TEXT,
+        experience TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (session_id, user_id),
+        FOREIGN KEY (session_id) REFERENCES gd_sessions (id),
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS gd_peer_feedback (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL,
+        from_user INTEGER NOT NULL,
+        to_user INTEGER NOT NULL,
+        pros TEXT,
+        cons TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (session_id, from_user, to_user),
+        FOREIGN KEY (session_id) REFERENCES gd_sessions (id),
+        FOREIGN KEY (from_user) REFERENCES users (id),
+        FOREIGN KEY (to_user) REFERENCES users (id)
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_gd_peer_feedback_target ON gd_peer_feedback (session_id, to_user)')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS gd_ai_evaluations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        evaluation_json TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (session_id, user_id),
+        FOREIGN KEY (session_id) REFERENCES gd_sessions (id),
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )''')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS gd_invites (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL,
+        from_user INTEGER NOT NULL,
+        to_user INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'accepted', 'rejected', 'cancelled')),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (session_id, to_user),
+        FOREIGN KEY (session_id) REFERENCES gd_sessions (id),
+        FOREIGN KEY (from_user) REFERENCES users (id),
+        FOREIGN KEY (to_user) REFERENCES users (id)
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_gd_invites_user_status ON gd_invites (to_user, status, created_at)')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS gd_join_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL,
+        requester_user_id INTEGER NOT NULL,
+        requester_name TEXT NOT NULL,
+        field TEXT,
+        target_role TEXT,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected', 'cancelled')),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (session_id, requester_user_id),
+        FOREIGN KEY (session_id) REFERENCES gd_sessions (id),
+        FOREIGN KEY (requester_user_id) REFERENCES users (id)
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_gd_join_requests_host ON gd_join_requests (session_id, status, created_at)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_gd_join_requests_user ON gd_join_requests (requester_user_id, status, created_at)')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS gd_stop_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL,
+        requested_by INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'approved', 'rejected', 'cancelled')),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        resolved_at DATETIME,
+        FOREIGN KEY (session_id) REFERENCES gd_sessions (id),
+        FOREIGN KEY (requested_by) REFERENCES users (id)
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_gd_stop_requests_session ON gd_stop_requests (session_id, status, created_at)')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS gd_stop_votes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        stop_request_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        vote TEXT NOT NULL CHECK(vote IN ('approve', 'reject')),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (stop_request_id, user_id),
+        FOREIGN KEY (stop_request_id) REFERENCES gd_stop_requests (id),
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_gd_stop_votes_request ON gd_stop_votes (stop_request_id, vote)')
+
+    c.execute('''CREATE TABLE IF NOT EXISTS gd_webrtc_signals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL,
+        from_user INTEGER NOT NULL,
+        to_user INTEGER,
+        signal_type TEXT NOT NULL,
+        signal_payload TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (session_id) REFERENCES gd_sessions (id),
+        FOREIGN KEY (from_user) REFERENCES users (id),
+        FOREIGN KEY (to_user) REFERENCES users (id)
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_gd_signals_poll ON gd_webrtc_signals (session_id, id)')
 
     # --- Users Table ---
     c.execute('''CREATE TABLE IF NOT EXISTS users (
@@ -422,15 +626,43 @@ def log_activity(activity_type, module, description, metadata=None):
         print(f"Activity logging error: {e}")
 
 
+def get_ai_provider():
+    if os.environ.get('GEMINI_API_KEY'):
+        return 'gemini'
+    if os.environ.get('OPENAI_API_KEY'):
+        return 'openai'
+    return 'gemini'
+
+
+def get_ai_provider_label(provider=None):
+    provider = provider or get_ai_provider()
+    return 'Gemini' if provider == 'gemini' else 'OpenAI'
+
+
+def get_ai_model(provider=None):
+    provider = provider or get_ai_provider()
+    if provider == 'openai':
+        return DEFAULT_OPENAI_MODEL
+    return DEFAULT_GEMINI_MODEL
+
+
 def get_openai_client():
     from openai import OpenAI
-    api_key = os.environ.get('OPENAI_API_KEY')
-    if not api_key:
-        raise ValueError('OPENAI_API_KEY is not configured')
-    return OpenAI(api_key=api_key)
+    gemini_api_key = os.environ.get('GEMINI_API_KEY')
+    if gemini_api_key:
+        return OpenAI(
+            api_key=gemini_api_key,
+            base_url=GEMINI_OPENAI_BASE_URL
+        )
+
+    openai_api_key = os.environ.get('OPENAI_API_KEY')
+    if openai_api_key:
+        return OpenAI(api_key=openai_api_key)
+
+    raise ValueError('No AI API key is configured. Set GEMINI_API_KEY (preferred) or OPENAI_API_KEY.')
 
 def describe_openai_resume_error(error):
-    """Convert OpenAI SDK errors into short user-safe messages."""
+    """Convert provider SDK errors into short user-safe messages."""
     status_code = getattr(error, 'status_code', None)
     error_code = None
     response_body = getattr(error, 'body', None)
@@ -695,6 +927,71 @@ def _build_dynamic_roadmap(target_role, strong_skills, missing_skills, resume_te
     }
 
 
+def _clamp_percentage(value):
+    try:
+        return max(0, min(100, int(round(float(value)))))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _build_readiness_insights(target_role, strong_skills, missing_skills, resume_text, ats_score):
+    role = target_role.strip() or 'target role'
+    resume_content = resume_text or ''
+    primary_gap = missing_skills[0] if missing_skills else 'role-specific depth'
+    secondary_gap = missing_skills[1] if len(missing_skills) > 1 else primary_gap
+    tertiary_gap = missing_skills[2] if len(missing_skills) > 2 else primary_gap
+    strength_hint = strong_skills[0] if strong_skills else 'your strongest existing skill'
+    missing_top = missing_skills[:3]
+
+    has_projects = bool(re.search(r'\b(project|internship|capstone|portfolio|freelance)\b', resume_content, re.IGNORECASE))
+    has_quantified_impact = bool(re.search(r'(\d+\s*%|\b(increased|improved|reduced|optimized|launched|scaled)\b)', resume_content, re.IGNORECASE))
+    has_dsa_signal = bool(re.search(r'\b(dsa|algorithm|data structures?|leetcode|competitive coding)\b', resume_content, re.IGNORECASE))
+    has_aptitude_signal = bool(re.search(r'\b(aptitude|reasoning|quantitative|logical)\b', resume_content, re.IGNORECASE))
+    has_comm_signal = bool(re.search(r'\b(communication|presentation|teamwork|leadership|stakeholder)\b', resume_content, re.IGNORECASE))
+
+    base_job_score = 48 + (len(strong_skills) * 6) - (len(missing_skills) * 5)
+    if has_projects:
+        base_job_score += 8
+    if has_quantified_impact:
+        base_job_score += 6
+    job_readiness_score = _clamp_percentage((base_job_score * 0.6) + (ats_score * 0.4))
+
+    placement_bonus = (8 if has_dsa_signal else 0) + (6 if has_aptitude_signal else 0) + (5 if has_comm_signal else 0)
+    placement_readiness_score = _clamp_percentage((job_readiness_score * 0.65) + (ats_score * 0.2) + placement_bonus - (2 if len(missing_skills) >= 4 else 0))
+
+    if missing_top:
+        missing_skills_brief = (
+            f"For {role}, top missing skills are {', '.join(missing_top)}. "
+            f"Start with {primary_gap} first, then close {secondary_gap} and {tertiary_gap} in sequence."
+        )
+    else:
+        missing_skills_brief = (
+            f"For {role}, major skill gaps are minimal. Focus on advanced projects, better measurable impact, and interview consistency."
+        )
+
+    job_ready_roadmap = _normalized_unique([
+        f"Week 1-2: Close '{primary_gap}' with one focused course and complete all exercises.",
+        f"Week 3-4: Build one {role}-aligned project using {strength_hint} + {primary_gap} with measurable output.",
+        f"Month 2: Update resume for {role} using quantified bullets and missing-skill keywords from job descriptions.",
+        f"Month 3: Apply to 20-30 targeted {role} roles and track interview conversion every week."
+    ], max_items=4)
+
+    placement_ready_roadmap = _normalized_unique([
+        f"Week 1-2: Practice aptitude + core fundamentals daily for 45-60 minutes, especially '{secondary_gap}'.",
+        f"Week 3-4: Solve 40-60 role-relevant coding/problem-solving questions and review weak patterns.",
+        f"Month 2: Do 6 mock interviews (technical + HR) and prepare concise stories for projects and achievements.",
+        f"Month 3: Prepare campus placement kit (resume, elevator pitch, project demos) and revise '{tertiary_gap}'."
+    ], max_items=4)
+
+    return {
+        'job_readiness_score': job_readiness_score,
+        'placement_readiness_score': placement_readiness_score,
+        'missing_skills_brief': missing_skills_brief,
+        'job_ready_roadmap': job_ready_roadmap,
+        'placement_ready_roadmap': placement_ready_roadmap,
+    }
+
+
 def _normalize_analysis_payload(analysis, resume_text, target_role):
     profile = analysis.get('profile', {}) if isinstance(analysis.get('profile'), dict) else {}
     profile.setdefault('name', 'Candidate')
@@ -721,6 +1018,12 @@ def _normalize_analysis_payload(analysis, resume_text, target_role):
     skills_analysis['skill_levels'] = skill_levels
     analysis['skills_analysis'] = skills_analysis
 
+    ats_score = analysis.get('ats_score')
+    if not isinstance(ats_score, (int, float)):
+        ats_score = calculate_ats_score(resume_text, target_role, strong_skills)
+    ats_score = _clamp_percentage(ats_score)
+    analysis['ats_score'] = ats_score
+
     analysis['resume_improvements'] = _normalized_unique(analysis.get('resume_improvements', []), max_items=5)
     analysis['skill_gap'] = _normalized_unique(analysis.get('skill_gap', []), max_items=4)
     analysis['internship_suggestions'] = _normalized_unique(analysis.get('internship_suggestions', []), max_items=4)
@@ -737,6 +1040,13 @@ def _normalize_analysis_payload(analysis, resume_text, target_role):
         normalized_roadmap[phase] = phase_steps
     analysis['roadmap'] = normalized_roadmap
 
+    readiness = _build_readiness_insights(target_role, strong_skills, missing_skills, resume_text, ats_score)
+    analysis['job_readiness_score'] = readiness['job_readiness_score']
+    analysis['placement_readiness_score'] = readiness['placement_readiness_score']
+    analysis['missing_skills_brief'] = readiness['missing_skills_brief']
+    analysis['job_ready_roadmap'] = readiness['job_ready_roadmap']
+    analysis['placement_ready_roadmap'] = readiness['placement_ready_roadmap']
+
     summary = re.sub(r'\s+', ' ', str(analysis.get('analysis_summary', '') or '')).strip()
     role_hint = (target_role or '').strip()
     summary_is_generic = len(summary) < 25 or summary.lower().startswith('ai-driven career analysis')
@@ -751,7 +1061,7 @@ def _normalize_analysis_payload(analysis, resume_text, target_role):
 
 
 def analyze_resume_fallback(resume_text, target_role):
-    """Fallback resume analysis when OpenAI is unavailable"""
+    """Fallback resume analysis when live AI is unavailable"""
     resume_lower = resume_text.lower()
     lines = [line.strip() for line in resume_text.splitlines() if line.strip()]
     name = lines[0] if lines else "Candidate"
@@ -883,27 +1193,28 @@ def analyze_resume_fallback(resume_text, target_role):
     return _normalize_analysis_payload(analysis, resume_text, target_role)
 
 def analyze_resume_with_openai(resume_text, target_role, allow_fallback=True):
+    provider_label = get_ai_provider_label()
     try:
         client = get_openai_client()
     except ValueError as ve:
         if allow_fallback:
-            print(f'OpenAI API key not configured: {ve}')
+            print(f'{provider_label} API key not configured: {ve}')
             print('Using fallback analysis...')
             return analyze_resume_fallback(resume_text, target_role)
-        raise ValueError('OPENAI_API_KEY is not configured. Real-time AI analysis requires a valid API key.')
+        raise ValueError('No AI API key is configured. Set GEMINI_API_KEY (preferred) or OPENAI_API_KEY.')
 
     prompt = build_resume_analysis_prompt(resume_text, target_role)
     try:
-        print(f'Calling OpenAI API for resume analysis (target role: {target_role})')
+        print(f'Calling {provider_label} API for resume analysis (target role: {target_role})')
         result = client.chat.completions.create(
-            model='gpt-4o-mini',
+            model=get_ai_model(),
             messages=prompt,
             temperature=0.9,
             max_tokens=2200,
             response_format={'type': 'json_object'}
         )
         raw = result.choices[0].message.content.strip()
-        print(f'OpenAI response received: {len(raw)} characters')
+        print(f'{provider_label} response received: {len(raw)} characters')
 
         try:
             analysis = json.loads(raw)
@@ -917,7 +1228,7 @@ def analyze_resume_with_openai(resume_text, target_role, allow_fallback=True):
                 analysis = json.loads(raw[start:end+1])
                 print('Extracted JSON block from response')
             else:
-                raise ValueError(f"Could not parse OpenAI response as JSON: {raw[:200]}...")
+                raise ValueError(f"Could not parse {provider_label} response as JSON: {raw[:200]}...")
 
         if not analysis.get('skills_analysis') or not isinstance(analysis.get('skills_analysis'), dict):
             raise ValueError('AI response did not contain valid skills_analysis.')
@@ -930,7 +1241,7 @@ def analyze_resume_with_openai(resume_text, target_role, allow_fallback=True):
         analysis['analysis_generated_at'] = datetime.utcnow().isoformat() + 'Z'
         return analysis
     except Exception as e:
-        print(f'OpenAI resume analysis error: {e}')
+        print(f'{provider_label} resume analysis error: {e}')
         print(f'Error type: {type(e).__name__}')
         print(f'Traceback: {traceback.format_exc()}')
         if allow_fallback:
@@ -1005,6 +1316,31 @@ def generate_pdf_report(analysis, target_role):
         for skill in missing_skills:
             story.append(Paragraph(f"â€¢ {skill}", content_style))
     
+    story.append(Spacer(1, 15))
+
+    # Job and Placement Readiness
+    story.append(Paragraph("Job & Placement Readiness", section_style))
+    job_readiness_score = analysis.get('job_readiness_score', 0)
+    placement_readiness_score = analysis.get('placement_readiness_score', 0)
+    story.append(Paragraph(f"Job Readiness: {job_readiness_score}%", content_style))
+    story.append(Paragraph(f"Placement Readiness: {placement_readiness_score}%", content_style))
+
+    missing_skills_brief = str(analysis.get('missing_skills_brief', '') or '').strip()
+    if missing_skills_brief:
+        story.append(Paragraph(f"Missing Skills Brief: {missing_skills_brief}", content_style))
+
+    job_ready_roadmap = analysis.get('job_ready_roadmap', [])
+    if job_ready_roadmap:
+        story.append(Paragraph("Job-Ready Roadmap:", ParagraphStyle('ReadinessSubsection', parent=styles['Heading3'])))
+        for step in job_ready_roadmap[:4]:
+            story.append(Paragraph(f"- {step}", content_style))
+
+    placement_ready_roadmap = analysis.get('placement_ready_roadmap', [])
+    if placement_ready_roadmap:
+        story.append(Paragraph("Placement-Ready Roadmap:", ParagraphStyle('ReadinessSubsection2', parent=styles['Heading3'])))
+        for step in placement_ready_roadmap[:4]:
+            story.append(Paragraph(f"- {step}", content_style))
+
     story.append(Spacer(1, 15))
     
     # ATS Score
@@ -1536,6 +1872,701 @@ def gyan_detail(shloka_id):
         print(f"Gyan detail error: {e}")
         return f"Error: {e}", 500
 
+APTITUDE_QUESTION_BANK = {
+    'Quantitative Aptitude': [
+        {'id': 'qa_1', 'topic': 'Quantitative Aptitude', 'question': 'A shopkeeper buys an item for 800 and sells it for 920. What is the profit percentage?', 'options': ['12%', '15%', '18%', '20%'], 'answer_index': 1, 'explanation': 'Profit = 920 - 800 = 120. Profit% = 120/800 x 100 = 15%.'},
+        {'id': 'qa_2', 'topic': 'Quantitative Aptitude', 'question': 'Find the average of 12, 15, 18, 21 and 24.', 'options': ['16', '17', '18', '19'], 'answer_index': 2, 'explanation': 'Sum is 90. Average is 90/5 = 18.'},
+        {'id': 'qa_3', 'topic': 'Quantitative Aptitude', 'question': 'Simple interest on 5000 at 8% per year for 2 years is:', 'options': ['600', '700', '800', '900'], 'answer_index': 2, 'explanation': 'SI = P x R x T / 100 = 5000 x 8 x 2 / 100 = 800.'},
+        {'id': 'qa_4', 'topic': 'Quantitative Aptitude', 'question': 'If the ratio of boys to girls is 3:5 and total students are 40, number of boys is:', 'options': ['12', '15', '18', '20'], 'answer_index': 1, 'explanation': 'Total parts = 8. One part = 5. Boys = 3 x 5 = 15.'},
+        {'id': 'qa_5', 'topic': 'Quantitative Aptitude', 'question': 'A car travels 150 km at 60 km/h. Time taken is:', 'options': ['2 hours', '2.5 hours', '3 hours', '3.5 hours'], 'answer_index': 1, 'explanation': 'Time = Distance/Speed = 150/60 = 2.5 hours.'},
+        {'id': 'qa_6', 'topic': 'Quantitative Aptitude', 'question': 'If x + 2x + 3x = 72, then x =', 'options': ['10', '11', '12', '13'], 'answer_index': 2, 'explanation': '6x = 72, so x = 12.'},
+        {'id': 'qa_7', 'topic': 'Quantitative Aptitude', 'question': 'After a 20% discount, an item costs 1200. Original price was:', 'options': ['1400', '1450', '1500', '1600'], 'answer_index': 2, 'explanation': '1200 is 80% of original. Original = 1200/0.8 = 1500.'},
+        {'id': 'qa_8', 'topic': 'Quantitative Aptitude', 'question': '25% of a number is 45. The number is:', 'options': ['160', '170', '180', '190'], 'answer_index': 2, 'explanation': 'Number = 45/0.25 = 180.'},
+        {'id': 'qa_9', 'topic': 'Quantitative Aptitude', 'question': 'If 30% of a 50 liter mixture is water, water quantity is:', 'options': ['10 L', '12 L', '15 L', '18 L'], 'answer_index': 2, 'explanation': '30% of 50 = 15 liters.'},
+        {'id': 'qa_10', 'topic': 'Quantitative Aptitude', 'question': 'Compound interest on 1000 at 10% for 2 years is:', 'options': ['190', '200', '210', '220'], 'answer_index': 2, 'explanation': 'Amount = 1000 x (1.1)^2 = 1210. CI = 1210 - 1000 = 210.'}
+    ],
+    'Logical Reasoning': [
+        {'id': 'lr_1', 'topic': 'Logical Reasoning', 'question': 'Find the next number in the series: 2, 6, 12, 20, 30, ?', 'options': ['36', '40', '42', '44'], 'answer_index': 2, 'explanation': 'Pattern is n(n+1): 1x2, 2x3, 3x4... next is 6x7 = 42.'},
+        {'id': 'lr_2', 'topic': 'Logical Reasoning', 'question': 'Choose the odd one out.', 'options': ['Circle', 'Triangle', 'Square', 'Apple'], 'answer_index': 3, 'explanation': 'Apple is not a geometric shape.'},
+        {'id': 'lr_3', 'topic': 'Logical Reasoning', 'question': 'All roses are flowers. Some flowers fade quickly. Which conclusion is definitely true?', 'options': ['All flowers are roses', 'Some roses may fade quickly', 'No rose fades quickly', 'Only roses fade quickly'], 'answer_index': 1, 'explanation': 'Since roses are flowers and some flowers fade, roses may be in that set.'},
+        {'id': 'lr_4', 'topic': 'Logical Reasoning', 'question': 'If CAT is coded as DBU, DOG is coded as:', 'options': ['EPH', 'EOG', 'EPI', 'FQI'], 'answer_index': 0, 'explanation': 'Each letter shifts by +1: D O G -> E P H.'},
+        {'id': 'lr_5', 'topic': 'Logical Reasoning', 'question': 'A person walks 5 km North, then 3 km East. How far is he from starting point?', 'options': ['8 km', '5.5 km', '6 km', '34 km'], 'answer_index': 1, 'explanation': 'Use Pythagoras: sqrt(5^2 + 3^2) = sqrt(34) about 5.83 km. Nearest is 5.5 km.'},
+        {'id': 'lr_6', 'topic': 'Logical Reasoning', 'question': 'A is brother of B. C is sister of B. D is father of C. How is D related to A?', 'options': ['Uncle', 'Father', 'Grandfather', 'Brother'], 'answer_index': 1, 'explanation': 'If D is father of C and C is sibling of A, D is father of A.'},
+        {'id': 'lr_7', 'topic': 'Logical Reasoning', 'question': 'If 1 January is Monday, what day is 1 February?', 'options': ['Tuesday', 'Wednesday', 'Thursday', 'Friday'], 'answer_index': 2, 'explanation': 'January has 31 days. 31 mod 7 = 3, so Monday + 3 = Thursday.'},
+        {'id': 'lr_8', 'topic': 'Logical Reasoning', 'question': 'A is left of B and C is right of B. Who is in the middle?', 'options': ['A', 'B', 'C', 'Cannot say'], 'answer_index': 1, 'explanation': 'Order is A, B, C. B is in the middle.'},
+        {'id': 'lr_9', 'topic': 'Logical Reasoning', 'question': 'At 3:30, the angle between hour and minute hands is:', 'options': ['60 degrees', '75 degrees', '90 degrees', '105 degrees'], 'answer_index': 1, 'explanation': 'Hour hand at 105 deg, minute hand at 180 deg, difference is 75 deg.'},
+        {'id': 'lr_10', 'topic': 'Logical Reasoning', 'question': 'Choose the analogous pair: 4 : 16 :: 6 : ?', 'options': ['24', '30', '36', '42'], 'answer_index': 2, 'explanation': '16 = 4 squared, so 6 squared = 36.'}
+    ],
+    'Verbal Ability': [
+        {'id': 'va_1', 'topic': 'Verbal Ability', 'question': 'Choose the synonym of "Diligent".', 'options': ['Lazy', 'Hardworking', 'Careless', 'Slow'], 'answer_index': 1, 'explanation': 'Diligent means hardworking and careful.'},
+        {'id': 'va_2', 'topic': 'Verbal Ability', 'question': 'Choose the antonym of "Abundant".', 'options': ['Plentiful', 'Scarce', 'Enough', 'Large'], 'answer_index': 1, 'explanation': 'Abundant means plenty; opposite is scarce.'},
+        {'id': 'va_3', 'topic': 'Verbal Ability', 'question': 'Fill in the blank: She ____ to school every day.', 'options': ['go', 'goes', 'gone', 'going'], 'answer_index': 1, 'explanation': 'For singular subject she, present tense verb is goes.'},
+        {'id': 'va_4', 'topic': 'Verbal Ability', 'question': 'Choose the correct sentence.', 'options': ['He do not like tea.', 'He does not likes tea.', 'He does not like tea.', 'He not like tea.'], 'answer_index': 2, 'explanation': 'Correct structure: does not + base verb.'},
+        {'id': 'va_5', 'topic': 'Verbal Ability', 'question': 'One word for "A person who loves books" is:', 'options': ['Bibliophile', 'Biologist', 'Philanthropist', 'Linguist'], 'answer_index': 0, 'explanation': 'Bibliophile means a book lover.'},
+        {'id': 'va_6', 'topic': 'Verbal Ability', 'question': 'Choose the correctly spelled word.', 'options': ['Accomodate', 'Acommodate', 'Accommodate', 'Acomodate'], 'answer_index': 2, 'explanation': 'Correct spelling is Accommodate.'},
+        {'id': 'va_7', 'topic': 'Verbal Ability', 'question': 'Idiom: "Hit the nail on the head" means:', 'options': ['To hurt someone', 'To say exactly right', 'To fix something', 'To make noise'], 'answer_index': 1, 'explanation': 'It means describing exactly what is causing a situation.'},
+        {'id': 'va_8', 'topic': 'Verbal Ability', 'question': 'Fill in the blank: He is good ____ mathematics.', 'options': ['in', 'at', 'on', 'with'], 'answer_index': 1, 'explanation': 'The usual phrase is good at mathematics.'},
+        {'id': 'va_9', 'topic': 'Verbal Ability', 'question': 'Choose the passive form: "They completed the project."', 'options': ['The project completed by them.', 'The project was completed by them.', 'The project is completed by them.', 'The project had completed by them.'], 'answer_index': 1, 'explanation': 'Simple past active converts to was/were + past participle.'},
+        {'id': 'va_10', 'topic': 'Verbal Ability', 'question': 'Pick the sentence with correct punctuation.', 'options': ['Lets eat, Grandma!', 'Let us eat Grandma!', 'Lets eat Grandma!', 'Let us eat, Grandma.'], 'answer_index': 3, 'explanation': 'Comma before Grandma and correct apostrophe-free phrase make it clear and correct.'}
+    ],
+    'Data Interpretation': [
+        {'id': 'di_1', 'topic': 'Data Interpretation', 'question': 'Sales in units are A=120, B=150, C=90. Which product has highest sales?', 'options': ['A', 'B', 'C', 'A and B'], 'answer_index': 1, 'explanation': '150 is the highest value, so B.'},
+        {'id': 'di_2', 'topic': 'Data Interpretation', 'question': 'Given values 45, 55, 60 and 40, total is:', 'options': ['180', '190', '200', '210'], 'answer_index': 2, 'explanation': '45 + 55 + 60 + 40 = 200.'},
+        {'id': 'di_3', 'topic': 'Data Interpretation', 'question': 'A value increases from 80 to 100. Percentage increase is:', 'options': ['20%', '25%', '30%', '40%'], 'answer_index': 1, 'explanation': 'Increase is 20. 20/80 x 100 = 25%.'},
+        {'id': 'di_4', 'topic': 'Data Interpretation', 'question': 'If a pie chart sector is 25% and total is 400, the sector value is:', 'options': ['80', '90', '100', '120'], 'answer_index': 2, 'explanation': '25% of 400 is 100.'},
+        {'id': 'di_5', 'topic': 'Data Interpretation', 'question': 'In a class, boys:girls = 3:2 and total is 50. Girls are:', 'options': ['18', '20', '22', '25'], 'answer_index': 1, 'explanation': 'Total parts 5, one part 10, girls 2 parts = 20.'},
+        {'id': 'di_6', 'topic': 'Data Interpretation', 'question': 'Average of 10, 20, 30, 40 and 50 is:', 'options': ['25', '30', '35', '40'], 'answer_index': 1, 'explanation': 'Sum is 150, average is 150/5 = 30.'},
+        {'id': 'di_7', 'topic': 'Data Interpretation', 'question': 'Revenue is 500 and cost is 420. Profit is:', 'options': ['60', '70', '80', '90'], 'answer_index': 2, 'explanation': 'Profit = Revenue - Cost = 80.'},
+        {'id': 'di_8', 'topic': 'Data Interpretation', 'question': 'Month 1 students enrolled: 120, Month 2: 150. Difference is:', 'options': ['20', '25', '30', '35'], 'answer_index': 2, 'explanation': '150 - 120 = 30.'},
+        {'id': 'di_9', 'topic': 'Data Interpretation', 'question': 'If 60 out of 75 students passed, pass percentage is:', 'options': ['75%', '80%', '85%', '90%'], 'answer_index': 1, 'explanation': '60/75 x 100 = 80%.'},
+        {'id': 'di_10', 'topic': 'Data Interpretation', 'question': 'Dataset: 12, 14, 16, 18, 20. Median is:', 'options': ['14', '15', '16', '17'], 'answer_index': 2, 'explanation': 'Middle value in ordered set is 16.'}
+    ]
+}
+
+
+def _safe_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _seeded_sample(items, count, seed_value):
+    if not items:
+        return []
+    rng = random.Random(seed_value)
+    if len(items) <= count:
+        return list(items)
+    return rng.sample(items, count)
+
+
+def _daily_quiz_questions_for_topic(user_id, topic, question_count=10):
+    selected_topic = topic if topic in APTITUDE_QUESTION_BANK else 'Random'
+    if selected_topic == 'Random':
+        pool = [q for topic_questions in APTITUDE_QUESTION_BANK.values() for q in topic_questions]
+    else:
+        pool = list(APTITUDE_QUESTION_BANK.get(selected_topic, []))
+
+    date_key = datetime.now().strftime('%Y-%m-%d')
+    seed_value = f"{date_key}:{user_id}:{selected_topic}"
+    return _seeded_sample(pool, question_count, seed_value)
+
+
+def _fallback_aptitude_questions(topic, user_id, mode='daily', question_count=10):
+    selected_topic = topic if topic in APTITUDE_QUESTION_BANK else 'Random'
+
+    if selected_topic == 'Random':
+        pool = [q for topic_questions in APTITUDE_QUESTION_BANK.values() for q in topic_questions]
+    else:
+        pool = list(APTITUDE_QUESTION_BANK.get(selected_topic, []))
+        if len(pool) < question_count:
+            filler = [
+                q for topic_name, topic_questions in APTITUDE_QUESTION_BANK.items()
+                if topic_name != selected_topic
+                for q in topic_questions
+            ]
+            pool.extend(filler)
+
+    if mode == 'daily':
+        date_key = datetime.now().strftime('%Y-%m-%d')
+        seed_value = f"{date_key}:{user_id}:{selected_topic}:fallback"
+        questions = _seeded_sample(pool, question_count, seed_value)
+    else:
+        questions = random.sample(pool, min(question_count, len(pool)))
+
+    normalized = []
+    for idx, q in enumerate(questions):
+        normalized.append({
+            'id': str(q.get('id') or f'q_{idx + 1}'),
+            'topic': str(q.get('topic') or selected_topic),
+            'question': str(q.get('question') or '').strip(),
+            'options': list(q.get('options') or [])[:4],
+            'answer_index': _safe_int(q.get('answer_index'), 0),
+            'explanation': str(q.get('explanation') or 'Review this concept once more.').strip(),
+            'difficulty': str(q.get('difficulty') or 'Medium').title()
+        })
+    return normalized[:question_count]
+
+
+def _normalize_aptitude_questions(payload, requested_topic='Random', question_count=10):
+    if not isinstance(payload, dict):
+        raise ValueError('AI response was not a JSON object.')
+
+    raw_questions = payload.get('questions')
+    if not isinstance(raw_questions, list):
+        raise ValueError('AI response did not include a valid questions list.')
+
+    normalized = []
+    seen_questions = set()
+    for idx, item in enumerate(raw_questions):
+        if not isinstance(item, dict):
+            continue
+        question_text = re.sub(r'\s+', ' ', str(item.get('question') or '').strip())
+        if not question_text or question_text.lower() in seen_questions:
+            continue
+        seen_questions.add(question_text.lower())
+
+        options = item.get('options')
+        if not isinstance(options, list):
+            continue
+        cleaned_options = [re.sub(r'\s+', ' ', str(opt or '').strip()) for opt in options if str(opt or '').strip()]
+        if len(cleaned_options) < 4:
+            continue
+        cleaned_options = cleaned_options[:4]
+
+        answer_index = _safe_int(item.get('answer_index'), -1)
+        if answer_index < 0 or answer_index >= len(cleaned_options):
+            correct_option = re.sub(r'\s+', ' ', str(item.get('correct_option') or '').strip())
+            answer_index = cleaned_options.index(correct_option) if correct_option in cleaned_options else 0
+
+        topic = re.sub(r'\s+', ' ', str(item.get('topic') or requested_topic).strip()) or requested_topic
+        difficulty = str(item.get('difficulty') or 'Medium').strip().title()
+        if difficulty not in ('Easy', 'Medium', 'Hard'):
+            difficulty = 'Medium'
+
+        normalized.append({
+            'id': str(item.get('id') or f'ai_q_{idx + 1}'),
+            'topic': topic,
+            'question': question_text,
+            'options': cleaned_options,
+            'answer_index': answer_index,
+            'explanation': re.sub(r'\s+', ' ', str(item.get('explanation') or 'Review this concept once more.').strip()),
+            'difficulty': difficulty
+        })
+
+    if len(normalized) < question_count:
+        raise ValueError(f'AI returned only {len(normalized)} valid questions.')
+
+    return normalized[:question_count]
+
+
+def _generate_aptitude_questions_with_openai(topic, user_id, mode='daily', question_count=10):
+    selected_topic = topic if topic in APTITUDE_QUESTION_BANK else 'Random'
+    date_key = datetime.now().strftime('%Y-%m-%d')
+    nonce = random.randint(1000, 999999)
+
+    topic_instruction = (
+        "Mix questions from Quantitative Aptitude, Logical Reasoning, Verbal Ability, and Data Interpretation."
+        if selected_topic == 'Random' else
+        f"Create all questions only for this topic: {selected_topic}."
+    )
+
+    uniqueness_hint = (
+        f"Generate a daily unique set for learner_id={user_id} on date={date_key}. Keep it stable for this date."
+        if mode == 'daily' else
+        f"Generate a fresh random set now using nonce={nonce}."
+    )
+
+    prompt = [
+        {
+            'role': 'system',
+            'content': (
+                'You are an aptitude quiz generator for students. '
+                'Return only strict JSON. No markdown.'
+            )
+        },
+        {
+            'role': 'user',
+            'content': (
+                f'Build exactly {question_count} multiple-choice aptitude questions.\n'
+                f'{topic_instruction}\n'
+                f'{uniqueness_hint}\n'
+                'Difficulty distribution: 3 Easy, 5 Medium, 2 Hard.\n'
+                'Each question must have exactly 4 options and a single correct answer.\n'
+                'Keep language simple and exam-oriented.\n'
+                'JSON format only:\n'
+                '{\n'
+                '  "questions": [\n'
+                '    {\n'
+                '      "id": "q1",\n'
+                '      "topic": "Quantitative Aptitude",\n'
+                '      "difficulty": "Easy|Medium|Hard",\n'
+                '      "question": "text",\n'
+                '      "options": ["A", "B", "C", "D"],\n'
+                '      "answer_index": 0,\n'
+                '      "explanation": "short explanation"\n'
+                '    }\n'
+                '  ]\n'
+                '}\n'
+            )
+        }
+    ]
+
+    client = get_openai_client()
+    response = client.chat.completions.create(
+        model=get_ai_model(),
+        messages=prompt,
+        temperature=0.85 if mode == 'random' else 0.7,
+        max_tokens=2800,
+        response_format={'type': 'json_object'}
+    )
+    raw = (response.choices[0].message.content or '').strip()
+    payload = json.loads(raw)
+    return _normalize_aptitude_questions(payload, requested_topic=selected_topic, question_count=question_count)
+
+
+GD_GROUP_SIZE = 5
+GD_DEFAULT_TOPICS = [
+    'AI is creating more jobs than it is replacing.',
+    'Start-up vs Corporate Job: what is better for freshers?',
+    'Online education is better than offline education.',
+    'Should companies prioritize skills over degrees in hiring?',
+    'Social media helps students grow professionally.',
+    'Remote work is better than office work for productivity.',
+    'Is coding compulsory for all engineering students?',
+    'Can AI tools improve interview preparation outcomes?',
+    'Should internships be mandatory before graduation?',
+    'Group discussions are a fair method for campus shortlisting.'
+]
+
+
+def _parse_db_datetime(value):
+    if not value:
+        return None
+    text = str(value).strip()
+    for fmt in ('%Y-%m-%d %H:%M:%S.%f', '%Y-%m-%d %H:%M:%S'):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _sanitize_text(value, max_len=1200):
+    text = re.sub(r'\s+', ' ', str(value or '').strip())
+    return text[:max_len]
+
+
+def _build_gd_room_id():
+    return f"GD-{datetime.now().strftime('%Y%m%d%H%M%S')}-{random.randint(100, 999)}"
+
+
+def _cleanup_stale_gd_queue(conn):
+    conn.execute(
+        """UPDATE gd_queue
+           SET status = 'expired'
+           WHERE status = 'waiting'
+             AND created_at < datetime('now', '-45 minutes')"""
+    )
+
+
+def _generate_gd_topic(field_hint='', role_hint=''):
+    field_hint = _sanitize_text(field_hint, max_len=80)
+    role_hint = _sanitize_text(role_hint, max_len=80)
+    try:
+        client = get_openai_client()
+        prompt = [
+            {
+                'role': 'system',
+                'content': 'You create concise placement-focused group discussion topics for students.'
+            },
+            {
+                'role': 'user',
+                'content': (
+                    f'Generate exactly one GD topic (max 16 words).\n'
+                    f'Field hint: {field_hint or "General"}\n'
+                    f'Target role hint: {role_hint or "General"}\n'
+                    'Topic must be debate-friendly and suitable for campus placement rounds.\n'
+                    'Return only the topic line, no numbering, no quotes.'
+                )
+            }
+        ]
+        result = client.chat.completions.create(
+            model=get_ai_model(),
+            messages=prompt,
+            temperature=0.9,
+            max_tokens=60
+        )
+        topic = _sanitize_text(result.choices[0].message.content or '', max_len=180)
+        if topic:
+            return topic
+    except Exception as e:
+        print(f"GD topic generation fallback: {e}")
+    return random.choice(GD_DEFAULT_TOPICS)
+
+
+def _sync_gd_session_status(conn, session_row):
+    if not session_row:
+        return None
+
+    row = dict(session_row)
+    status = row.get('status', 'active')
+    now = datetime.now()
+    # New host-managed flow: status transitions via started_at + duration_minutes
+    started_at = _parse_db_datetime(row.get('started_at'))
+    duration_minutes = max(1, _safe_int(row.get('duration_minutes'), 10))
+    if status == 'active' and started_at:
+        if now >= started_at + timedelta(minutes=duration_minutes):
+            status = 'feedback'
+            conn.execute(
+                "UPDATE gd_sessions SET status = 'feedback', ended_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (row['id'],)
+            )
+
+    # Legacy fallback flow support
+    discussion_end_at = _parse_db_datetime(row.get('discussion_end_at'))
+    feedback_deadline_at = _parse_db_datetime(row.get('feedback_deadline_at'))
+    if status == 'active' and discussion_end_at and now >= discussion_end_at:
+        status = 'feedback'
+        conn.execute("UPDATE gd_sessions SET status = 'feedback' WHERE id = ?", (row['id'],))
+    if status == 'feedback' and feedback_deadline_at and now >= feedback_deadline_at:
+        status = 'completed'
+        conn.execute("UPDATE gd_sessions SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ?", (row['id'],))
+
+    refreshed = conn.execute(
+        "SELECT * FROM gd_sessions WHERE id = ?",
+        (row['id'],)
+    ).fetchone()
+    return refreshed
+
+
+def _calculate_gd_phase(session_row):
+    if not session_row:
+        return 'unknown', 0
+    row = dict(session_row)
+    status = row.get('status')
+    now = datetime.now()
+    if status == 'planning':
+        return 'lobby', max(1, _safe_int(row.get('duration_minutes'), 10)) * 60
+    if status == 'active':
+        # New host-managed mode
+        started_at = _parse_db_datetime(row.get('started_at'))
+        duration_minutes = max(1, _safe_int(row.get('duration_minutes'), 10))
+        if started_at:
+            remaining = int((started_at + timedelta(minutes=duration_minutes) - now).total_seconds())
+            if remaining > 0:
+                return 'discussion', max(0, remaining)
+            return 'feedback', 0
+
+        # Legacy mode fallback
+        thinking_end = _parse_db_datetime(row.get('thinking_end_at'))
+        discussion_end = _parse_db_datetime(row.get('discussion_end_at'))
+        if thinking_end and now < thinking_end:
+            remaining = int((thinking_end - now).total_seconds())
+            return 'thinking', max(0, remaining)
+        if discussion_end and now < discussion_end:
+            remaining = int((discussion_end - now).total_seconds())
+            return 'discussion', max(0, remaining)
+        return 'feedback', 0
+    if status == 'feedback':
+        deadline = _parse_db_datetime(row.get('feedback_deadline_at'))
+        remaining = int((deadline - now).total_seconds()) if deadline else 0
+        return 'feedback', max(0, remaining)
+    if status == 'completed':
+        return 'completed', 0
+    return status, 0
+
+
+def _attempt_gd_matchmaking(conn):
+    _cleanup_stale_gd_queue(conn)
+    waiting_rows = conn.execute(
+        """SELECT * FROM gd_queue
+           WHERE status = 'waiting'
+           ORDER BY created_at ASC
+           LIMIT ?""",
+        (GD_GROUP_SIZE,)
+    ).fetchall()
+    if len(waiting_rows) < GD_GROUP_SIZE:
+        return None
+
+    room_id = _build_gd_room_id()
+    fields = [str(row['field'] or '').strip() for row in waiting_rows if str(row['field'] or '').strip()]
+    roles = [str(row['target_role'] or '').strip() for row in waiting_rows if str(row['target_role'] or '').strip()]
+    field_hint = max(set(fields), key=fields.count) if fields else ''
+    role_hint = max(set(roles), key=roles.count) if roles else ''
+    topic = _generate_gd_topic(field_hint, role_hint)
+
+    conn.execute(
+        """INSERT INTO gd_sessions (topic, room_id, status, thinking_end_at, discussion_end_at, feedback_deadline_at)
+           VALUES (?, ?, 'active', datetime('now', '+2 minutes'), datetime('now', '+10 minutes'), datetime('now', '+30 minutes'))""",
+        (topic, room_id)
+    )
+    session_id = conn.execute("SELECT last_insert_rowid() as id").fetchone()['id']
+
+    for row in waiting_rows:
+        conn.execute(
+            """INSERT OR IGNORE INTO gd_participants (session_id, user_id, name, field, target_role)
+               VALUES (?, ?, ?, ?, ?)""",
+            (session_id, row['user_id'], row['name'], row['field'], row['target_role'])
+        )
+        conn.execute(
+            """UPDATE gd_queue
+               SET status = 'matched', session_id = ?, room_id = ?, matched_at = CURRENT_TIMESTAMP
+               WHERE id = ?""",
+            (session_id, room_id, row['id'])
+        )
+
+    return {'session_id': session_id, 'room_id': room_id, 'topic': topic}
+
+
+def _update_gd_session_completion(conn, session_id):
+    participants_count = conn.execute(
+        "SELECT COUNT(*) as c FROM gd_participants WHERE session_id = ?",
+        (session_id,)
+    ).fetchone()['c']
+    responses_count = conn.execute(
+        "SELECT COUNT(*) as c FROM gd_responses WHERE session_id = ?",
+        (session_id,)
+    ).fetchone()['c']
+    feedback_count = conn.execute(
+        "SELECT COUNT(*) as c FROM gd_peer_feedback WHERE session_id = ?",
+        (session_id,)
+    ).fetchone()['c']
+
+    expected_feedback = participants_count * max(0, participants_count - 1)
+    if participants_count > 0 and responses_count >= participants_count and feedback_count >= expected_feedback:
+        conn.execute(
+            "UPDATE gd_sessions SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (session_id,)
+        )
+        return True
+    return False
+
+
+def _fallback_gd_evaluation(topic, response, experience, peer_feedback):
+    peer_text = ' '.join(
+        [f"{item.get('pros', '')} {item.get('cons', '')}" for item in (peer_feedback or [])]
+    ).lower()
+    response_text = (response or '').lower()
+    confidence = 7 if len(response_text) > 180 else 5
+    communication = 7 if 'example' in response_text or 'because' in response_text else 6
+    logical = 7 if any(x in response_text for x in ['therefore', 'however', 'first', 'second']) else 6
+    participation = 'High' if len(response_text) > 220 else 'Moderate'
+
+    strengths = []
+    weaknesses = []
+    if 'confidence' in peer_text or 'clear' in peer_text:
+        strengths.append('Good confidence and clear speaking style.')
+    if 'example' in response_text:
+        strengths.append('Used examples to support arguments.')
+    if not strengths:
+        strengths.append('Maintained relevant points around the GD topic.')
+
+    if 'repeat' in peer_text or 'repetition' in peer_text:
+        weaknesses.append('Repetition was noticed in some arguments.')
+    if len(response_text) < 120:
+        weaknesses.append('Could add more structured depth to arguments.')
+    if not weaknesses:
+        weaknesses.append('Need stronger structure while presenting key points.')
+
+    improvements = [
+        'Start early with a clear opening framework (Point -> Reason -> Example).',
+        'Use concise rebuttals and avoid repeating previous statements.',
+        'Close with a balanced summary highlighting practical impact.'
+    ]
+
+    return {
+        'confidence': confidence,
+        'communication': communication,
+        'logical_thinking': logical,
+        'participation': participation,
+        'strengths': strengths[:3],
+        'weaknesses': weaknesses[:3],
+        'improvements': improvements[:3],
+        'final_feedback': 'You performed well overall. Improve argument structure and timing for stronger GD impact.'
+    }
+
+
+def _generate_gd_ai_evaluation(topic, response, experience, peer_feedback):
+    peer_feedback_text = '\n'.join(
+        [f"Pros: {item.get('pros', '')} | Cons: {item.get('cons', '')}" for item in (peer_feedback or [])]
+    )
+    prompt = [
+        {
+            'role': 'system',
+            'content': 'You are an AI evaluator in a group discussion platform. Return strict JSON only.'
+        },
+        {
+            'role': 'user',
+            'content': (
+                f'Topic: {topic}\n'
+                f'Student Response: {response}\n'
+                f'Student Experience: {experience}\n'
+                f'Peer Feedback: {peer_feedback_text}\n\n'
+                'Evaluate and return JSON in this structure:\n'
+                '{'
+                '"confidence":0,'
+                '"communication":0,'
+                '"logical_thinking":0,'
+                '"participation":"High|Moderate|Low",'
+                '"strengths":[],'
+                '"weaknesses":[],'
+                '"improvements":[],'
+                '"final_feedback":"..."'
+                '}'
+            )
+        }
+    ]
+    client = get_openai_client()
+    completion = client.chat.completions.create(
+        model=get_ai_model(),
+        messages=prompt,
+        temperature=0.4,
+        max_tokens=700,
+        response_format={'type': 'json_object'}
+    )
+    raw = (completion.choices[0].message.content or '').strip()
+    parsed = json.loads(raw)
+
+    def _normalize_list(value):
+        if isinstance(value, list):
+            return [str(v).strip() for v in value if str(v).strip()]
+        if isinstance(value, str):
+            parts = [part.strip() for part in re.split(r'[;\n,]+', value) if part.strip()]
+            return parts
+        return []
+
+    return {
+        'confidence': max(0, min(10, _safe_int(parsed.get('confidence'), 6))),
+        'communication': max(0, min(10, _safe_int(parsed.get('communication'), 6))),
+        'logical_thinking': max(0, min(10, _safe_int(parsed.get('logical_thinking'), 6))),
+        'participation': str(parsed.get('participation') or 'Moderate').title(),
+        'strengths': _normalize_list(parsed.get('strengths'))[:4],
+        'weaknesses': _normalize_list(parsed.get('weaknesses'))[:4],
+        'improvements': _normalize_list(parsed.get('improvements'))[:4],
+        'final_feedback': str(parsed.get('final_feedback') or '').strip() or 'Good effort. Keep improving your GD structure.'
+    }
+
+
+def _get_or_create_gd_evaluation(conn, session_id, user_id, topic, response, experience, peer_feedback):
+    existing = conn.execute(
+        "SELECT evaluation_json FROM gd_ai_evaluations WHERE session_id = ? AND user_id = ?",
+        (session_id, user_id)
+    ).fetchone()
+    if existing:
+        try:
+            return json.loads(existing['evaluation_json'])
+        except Exception:
+            pass
+
+    try:
+        evaluation = _generate_gd_ai_evaluation(topic, response, experience, peer_feedback)
+        source = get_ai_provider()
+    except Exception as e:
+        print(f"GD AI evaluation fallback: {e}")
+        evaluation = _fallback_gd_evaluation(topic, response, experience, peer_feedback)
+        source = 'fallback'
+
+    evaluation['source'] = source
+    conn.execute(
+        """INSERT INTO gd_ai_evaluations (session_id, user_id, evaluation_json)
+           VALUES (?, ?, ?)
+           ON CONFLICT(session_id, user_id)
+           DO UPDATE SET evaluation_json = excluded.evaluation_json, created_at = CURRENT_TIMESTAMP""",
+        (session_id, user_id, json.dumps(evaluation))
+    )
+    return evaluation
+
+
+def _build_template_gd_feedback(member_name, topic, response, experience, peer_feedback_rows, message_count):
+    """Create consistent per-member feedback text without AI generation."""
+    response_text = str(response or '').strip()
+    experience_text = str(experience or '').strip()
+    response_words = len(re.findall(r'\w+', response_text))
+    peer_rows = peer_feedback_rows or []
+    peer_text_pros = ' '.join(str(item.get('pros') or '') for item in peer_rows).lower()
+    peer_text_cons = ' '.join(str(item.get('cons') or '') for item in peer_rows).lower()
+
+    activity_score = (message_count * 2) + min(8, response_words // 30)
+    if activity_score >= 12:
+        participation_band = 'High'
+    elif activity_score >= 6:
+        participation_band = 'Moderate'
+    else:
+        participation_band = 'Needs Improvement'
+
+    strengths = []
+    if 'confiden' in peer_text_pros:
+        strengths.append('Showed visible confidence while sharing points.')
+    if 'clear' in peer_text_pros or 'clarity' in peer_text_pros:
+        strengths.append('Explained ideas clearly and stayed understandable.')
+    if any(token in response_text.lower() for token in ['because', 'therefore', 'however', 'for example']):
+        strengths.append('Used reasoning words to support arguments.')
+    if response_words >= 90:
+        strengths.append('Contributed enough depth to the GD discussion.')
+    if not strengths:
+        strengths.append('Stayed connected to the GD topic and participated sincerely.')
+
+    improvements = []
+    if any(token in peer_text_cons for token in ['repeat', 'repetition']):
+        improvements.append('Avoid repeating the same point multiple times.')
+    if any(token in peer_text_cons for token in ['interrupt', 'timing', 'late']):
+        improvements.append('Improve speaking timing and entry into the discussion.')
+    if response_words < 60:
+        improvements.append('Add more structured points with one clear example each.')
+    if 'structure' in peer_text_cons or 'flow' in peer_text_cons:
+        improvements.append('Use a fixed structure: Point -> Reason -> Example.')
+    if not improvements:
+        improvements.append('Strengthen rebuttals by linking your point to practical outcomes.')
+
+    next_steps = [
+        f"Prepare a 30-second opening on '{topic}' before the next GD.",
+        'Share at least one data-backed or real-world example in your first two turns.',
+        'Close with a concise summary instead of adding new points at the end.'
+    ]
+
+    summary = (
+        f"{member_name} had {participation_band.lower()} participation. "
+        f"Strongest area: {strengths[0]} "
+        f"Primary improvement focus: {improvements[0]}"
+    )
+    if experience_text:
+        summary += f" Self-reflection noted: {experience_text[:120]}"
+
+    return {
+        'participation_band': participation_band,
+        'strengths': strengths[:3],
+        'improvements': improvements[:3],
+        'next_steps': next_steps,
+        'summary': summary
+    }
+
+
+def _extract_gd_room_id(value):
+    """Extract GD room id from plain code or URL."""
+    text = str(value or '').strip()
+    if not text:
+        return ''
+    code_match = re.search(r'(GD-\d{14}-\d{3})', text, flags=re.IGNORECASE)
+    if code_match:
+        return code_match.group(1).upper()
+    try:
+        parsed = urlparse(text)
+        path = parsed.path or ''
+        url_match = re.search(r'/gd/connect/(GD-\d{14}-\d{3})', path, flags=re.IGNORECASE)
+        if url_match:
+            return url_match.group(1).upper()
+    except Exception:
+        pass
+    return ''
+
+
+def _get_pending_gd_stop_request(conn, session_id, viewer_user_id=None):
+    row = conn.execute(
+        """SELECT sr.*,
+                  u.username AS requester_name,
+                  (SELECT COUNT(*) FROM gd_stop_votes sv WHERE sv.stop_request_id = sr.id AND sv.vote = 'approve') AS approvals,
+                  (SELECT COUNT(*) FROM gd_stop_votes sv WHERE sv.stop_request_id = sr.id AND sv.vote = 'reject') AS rejects
+           FROM gd_stop_requests sr
+           JOIN users u ON u.id = sr.requested_by
+           WHERE sr.session_id = ? AND sr.status = 'pending'
+           ORDER BY sr.id DESC
+           LIMIT 1""",
+        (session_id,)
+    ).fetchone()
+    if not row:
+        return None
+    data = dict(row)
+    if viewer_user_id:
+        my_vote_row = conn.execute(
+            "SELECT vote FROM gd_stop_votes WHERE stop_request_id = ? AND user_id = ?",
+            (row['id'], viewer_user_id)
+        ).fetchone()
+        data['my_vote'] = my_vote_row['vote'] if my_vote_row else None
+    else:
+        data['my_vote'] = None
+    return data
+
 # ==================== SKILL SAATHI MODULE ====================
 @app.route('/skill')
 @login_required
@@ -1589,6 +2620,166 @@ def skill_home():
     except Exception as e:
         print(f"Skill home error: {e}")
         return f"<h2>Error: {e}</h2><a href='/'>Back to Home</a>", 500
+
+
+@app.route('/skill/aptitude-quiz')
+@login_required
+def skill_aptitude_quiz():
+    """Daily aptitude quiz with topic and random mode."""
+    try:
+        selected_topic = (request.args.get('topic') or 'Random').strip()
+        topics = ['Random'] + list(APTITUDE_QUESTION_BANK.keys())
+        if selected_topic not in topics:
+            selected_topic = 'Random'
+
+        log_activity(
+            'page_view',
+            'skill',
+            'Opened aptitude quiz page',
+            f"topic: {selected_topic}"
+        )
+
+        return render_template(
+            'skill/aptitude_quiz.html',
+            topics=topics,
+            selected_topic=selected_topic,
+            date_key=datetime.now().strftime('%Y-%m-%d'),
+            user_id=g.current_user['id']
+        )
+    except Exception as e:
+        print(f"Aptitude quiz page error: {e}")
+        return f"Error: {e}", 500
+
+
+@app.route('/skill/aptitude-quiz/generate', methods=['POST'])
+@login_required
+def generate_aptitude_quiz():
+    """Generate real-time aptitude quiz using Gemini/OpenAI-compatible AI with daily caching."""
+    try:
+        data = request.get_json(silent=True) or {}
+        topic = str(data.get('topic') or 'Random').strip()
+        mode = str(data.get('mode') or 'daily').strip().lower()
+        if mode not in ('daily', 'random'):
+            mode = 'daily'
+
+        topics = ['Random'] + list(APTITUDE_QUESTION_BANK.keys())
+        if topic not in topics:
+            topic = 'Random'
+
+        user_id = g.current_user['id']
+        today = datetime.now().strftime('%Y-%m-%d')
+
+        if mode == 'daily':
+            conn = get_db_connection()
+            cached = conn.execute(
+                '''SELECT questions_json, source
+                   FROM daily_aptitude_quizzes
+                   WHERE user_id = ? AND quiz_date = ? AND topic = ? AND mode = 'daily'
+                   LIMIT 1''',
+                (user_id, today, topic)
+            ).fetchone()
+            conn.close()
+
+            if cached:
+                try:
+                    cached_questions = json.loads(cached['questions_json'])
+                    if isinstance(cached_questions, list) and len(cached_questions) >= 10:
+                        return jsonify({
+                            'success': True,
+                            'questions': cached_questions,
+                            'topic': topic,
+                            'mode': mode,
+                            'source': 'cache',
+                            'notice': 'Loaded your saved daily quiz for today.'
+                        })
+                except Exception:
+                    pass
+
+        source = get_ai_provider()
+        notice = ''
+        try:
+            questions = _generate_aptitude_questions_with_openai(
+                topic=topic,
+                user_id=user_id,
+                mode=mode,
+                question_count=10
+            )
+        except Exception as generation_error:
+            print(f"Aptitude quiz AI generation failed: {generation_error}")
+            questions = _fallback_aptitude_questions(topic=topic, user_id=user_id, mode=mode, question_count=10)
+            source = 'fallback'
+            notice = 'AI quiz is temporarily unavailable, so a backup quiz is shown.'
+
+        if mode == 'daily' and source != 'fallback':
+            conn = get_db_connection()
+            conn.execute(
+                '''INSERT INTO daily_aptitude_quizzes (user_id, quiz_date, topic, mode, questions_json, source)
+                   VALUES (?, ?, ?, 'daily', ?, ?)
+                   ON CONFLICT(user_id, quiz_date, topic, mode)
+                   DO UPDATE SET questions_json = excluded.questions_json, source = excluded.source, created_at = CURRENT_TIMESTAMP''',
+                (user_id, today, topic, json.dumps(questions), source)
+            )
+            conn.commit()
+            conn.close()
+
+        log_activity(
+            'aptitude_quiz_generated',
+            'skill',
+            'Generated aptitude quiz',
+            f"topic={topic}; mode={mode}; source={source}"
+        )
+
+        return jsonify({
+            'success': True,
+            'questions': questions,
+            'topic': topic,
+            'mode': mode,
+            'source': source,
+            'notice': notice
+        })
+    except Exception as e:
+        print(f"Aptitude quiz generation route error: {e}")
+        return jsonify({'success': False, 'error': 'Unable to generate quiz right now.'}), 500
+
+
+@app.route('/skill/aptitude-quiz/submit', methods=['POST'])
+@login_required
+def submit_aptitude_quiz():
+    """Store quiz completion summary for analytics and notifications."""
+    try:
+        data = request.get_json(silent=True) or {}
+        score = _safe_int(data.get('score'), 0)
+        total_questions = max(1, _safe_int(data.get('total_questions'), 10))
+        time_taken_seconds = max(0, _safe_int(data.get('time_taken_seconds'), 0))
+        topic = str(data.get('topic') or 'Random')
+        mode = str(data.get('mode') or 'daily')
+        source = str(data.get('source') or get_ai_provider())
+        topic_breakdown = data.get('topic_breakdown') if isinstance(data.get('topic_breakdown'), dict) else {}
+
+        accuracy = round((score / total_questions) * 100, 2)
+        quiz_summary = {
+            'topic': topic,
+            'mode': mode,
+            'source': source,
+            'score': score,
+            'total_questions': total_questions,
+            'accuracy_percent': accuracy,
+            'time_taken_seconds': time_taken_seconds,
+            'topic_breakdown': topic_breakdown
+        }
+
+        log_activity(
+            'aptitude_quiz_completed',
+            'skill',
+            'Completed aptitude quiz',
+            json.dumps(quiz_summary)
+        )
+
+        return jsonify({'success': True, 'accuracy': accuracy})
+    except Exception as e:
+        print(f"Aptitude quiz submit error: {e}")
+        return jsonify({'success': False, 'error': 'Unable to save quiz result.'}), 500
+
 
 @app.route('/skill/browse')
 @login_required
@@ -1690,6 +2881,1210 @@ def skill_browse():
                              search=search)
     except Exception as e:
         print(f"Skill browse error: {e}")
+        return f"Error: {e}", 500
+
+# ==================== STUDENT GD CONNECT MODULE ====================
+@app.route('/gd')
+@login_required
+def gd_home():
+    """Student-managed GD home using Student Community connections."""
+    try:
+        user_id = g.current_user['id']
+        conn = get_db_connection()
+
+        connections = conn.execute(
+            '''SELECT CASE WHEN sc.requester_id = ? THEN sc.addressee_id ELSE sc.requester_id END AS user_id,
+                      u.username
+               FROM student_connections sc
+               JOIN users u ON u.id = CASE WHEN sc.requester_id = ? THEN sc.addressee_id ELSE sc.requester_id END
+               WHERE sc.status = 'accepted'
+                 AND (sc.requester_id = ? OR sc.addressee_id = ?)
+               ORDER BY u.username COLLATE NOCASE''',
+            (user_id, user_id, user_id, user_id)
+        ).fetchall()
+
+        pending_invites = conn.execute(
+            '''SELECT gi.id, gi.session_id, gi.created_at,
+                      gs.topic, gs.room_id, gs.duration_minutes, gs.max_participants, gs.status AS session_status,
+                      u.username AS host_name,
+                      (SELECT COUNT(*) FROM gd_participants gp WHERE gp.session_id = gs.id AND gp.status = 'accepted') AS joined_count
+               FROM gd_invites gi
+               JOIN gd_sessions gs ON gs.id = gi.session_id
+               JOIN users u ON u.id = gi.from_user
+               WHERE gi.to_user = ? AND gi.status = 'pending'
+                 AND gs.status IN ('planning', 'active')
+               ORDER BY gi.created_at DESC''',
+            (user_id,)
+        ).fetchall()
+
+        incoming_join_requests = conn.execute(
+            '''SELECT jr.id, jr.requester_user_id, jr.requester_name, jr.field, jr.target_role, jr.created_at,
+                      gs.id AS session_id, gs.room_id, gs.topic, gs.max_participants,
+                      (SELECT COUNT(*) FROM gd_participants gp WHERE gp.session_id = gs.id AND gp.status = 'accepted') AS joined_count
+               FROM gd_join_requests jr
+               JOIN gd_sessions gs ON gs.id = jr.session_id
+               WHERE gs.host_user_id = ? AND jr.status = 'pending'
+                 AND gs.status IN ('planning', 'active')
+               ORDER BY jr.created_at DESC''',
+            (user_id,)
+        ).fetchall()
+
+        my_sessions_raw = conn.execute(
+            '''SELECT DISTINCT gs.*,
+                      gp.role AS my_role,
+                      (SELECT COUNT(*) FROM gd_participants p2 WHERE p2.session_id = gs.id AND p2.status = 'accepted') AS joined_count
+               FROM gd_sessions gs
+               JOIN gd_participants gp ON gp.session_id = gs.id
+               WHERE gp.user_id = ? AND gp.status = 'accepted'
+                 AND gs.status IN ('planning', 'active', 'feedback')
+               ORDER BY gs.created_at DESC''',
+            (user_id,)
+        ).fetchall()
+
+        my_sessions = []
+        for row in my_sessions_raw:
+            synced = _sync_gd_session_status(conn, row)
+            phase, remaining_seconds = _calculate_gd_phase(synced)
+            if not synced:
+                continue
+            item = dict(synced)
+            item['phase'] = phase
+            item['remaining_seconds'] = remaining_seconds
+            item['my_role'] = row['my_role']
+            item['joined_count'] = row['joined_count']
+            my_sessions.append(item)
+
+        conn.commit()
+        conn.close()
+        return render_template(
+            'gd/home.html',
+            connections=[dict(r) for r in connections],
+            pending_invites=[dict(r) for r in pending_invites],
+            incoming_join_requests=[dict(r) for r in incoming_join_requests],
+            my_sessions=my_sessions
+        )
+    except Exception as e:
+        print(f"GD home error: {e}")
+        return f"Error: {e}", 500
+
+
+@app.route('/gd/join', methods=['POST'])
+@login_required
+def gd_join_queue():
+    """Create a student-managed GD meeting and invite selected connections."""
+    try:
+        user_id = g.current_user['id']
+        name = _sanitize_text(request.form.get('name') or g.current_user.get('username') or 'Student', 80)
+        field = _sanitize_text(request.form.get('field') or '', 80)
+        target_role = _sanitize_text(request.form.get('target_role') or '', 80)
+        duration_minutes = max(5, min(90, _safe_int(request.form.get('duration_minutes'), 12)))
+        max_participants = max(2, min(60, _safe_int(request.form.get('max_participants'), 5)))
+        topic = _sanitize_text(request.form.get('topic') or '', 180)
+
+        invitee_ids_raw = request.form.getlist('invitee_ids')
+        invitee_ids = []
+        for raw in invitee_ids_raw:
+            invitee_id = _safe_int(raw, 0)
+            if invitee_id > 0 and invitee_id != user_id and invitee_id not in invitee_ids:
+                invitee_ids.append(invitee_id)
+
+        conn = get_db_connection()
+        if not topic:
+            topic = _generate_gd_topic(field, target_role)
+
+        # Keep only accepted community connections for invitations.
+        valid_invitees = []
+        for invitee_id in invitee_ids:
+            row = conn.execute(
+                '''SELECT 1 FROM student_connections
+                   WHERE status = 'accepted'
+                     AND ((requester_id = ? AND addressee_id = ?)
+                       OR (requester_id = ? AND addressee_id = ?))
+                   LIMIT 1''',
+                (user_id, invitee_id, invitee_id, user_id)
+            ).fetchone()
+            if row:
+                valid_invitees.append(invitee_id)
+        valid_invitees = valid_invitees[:max(0, max_participants - 1)]
+
+        room_id = _build_gd_room_id()
+        conn.execute(
+            '''INSERT INTO gd_sessions
+               (topic, room_id, status, host_user_id, max_participants, duration_minutes)
+               VALUES (?, ?, 'planning', ?, ?, ?)''',
+            (topic, room_id, user_id, max_participants, duration_minutes)
+        )
+        session_id = conn.execute('SELECT last_insert_rowid() AS id').fetchone()['id']
+
+        conn.execute(
+            '''INSERT INTO gd_participants
+               (session_id, user_id, name, field, target_role, status, role)
+               VALUES (?, ?, ?, ?, ?, 'accepted', 'host')''',
+            (session_id, user_id, name, field, target_role)
+        )
+
+        for invitee_id in valid_invitees:
+            conn.execute(
+                '''INSERT INTO gd_invites (session_id, from_user, to_user, status)
+                   VALUES (?, ?, ?, 'pending')
+                   ON CONFLICT(session_id, to_user)
+                   DO UPDATE SET status = 'pending', updated_at = CURRENT_TIMESTAMP''',
+                (session_id, user_id, invitee_id)
+            )
+
+        conn.commit()
+        conn.close()
+        log_activity('gd_meeting_created', 'gd', 'Created student-managed GD meeting', f'room_id={room_id}; invites={len(valid_invitees)}')
+        return redirect(url_for('gd_room', room_id=room_id))
+    except Exception as e:
+        print(f"GD create meeting error: {e}")
+        flash('Unable to create GD meeting right now. Please try again.', 'error')
+        return redirect(url_for('gd_home'))
+
+
+@app.route('/gd/connect', methods=['POST'])
+@login_required
+def gd_connect_quick():
+    """Quick join by room code or shared connection link."""
+    room_input = request.form.get('room_input') or ''
+    room_id = _extract_gd_room_id(room_input)
+    if not room_id:
+        flash('Please enter a valid GD room code or share link.', 'warning')
+        return redirect(url_for('gd_home'))
+    return redirect(url_for('gd_connect_link', room_id=room_id))
+
+
+@app.route('/gd/create', methods=['POST'])
+@login_required
+def gd_create():
+    """Alias for GD meeting creation endpoint."""
+    return gd_join_queue()
+
+
+@app.route('/gd/invite/respond', methods=['POST'])
+@login_required
+def gd_invite_respond():
+    """Accept/reject invite and capture participant details."""
+    try:
+        user_id = g.current_user['id']
+        invite_id = _safe_int(request.form.get('invite_id'), 0)
+        action = (request.form.get('action') or 'accept').strip().lower()
+        field = _sanitize_text(request.form.get('field') or '', 80)
+        target_role = _sanitize_text(request.form.get('target_role') or '', 80)
+        if action not in ('accept', 'reject'):
+            action = 'accept'
+
+        conn = get_db_connection()
+        invite = conn.execute(
+            "SELECT * FROM gd_invites WHERE id = ? AND to_user = ?",
+            (invite_id, user_id)
+        ).fetchone()
+        if not invite:
+            conn.close()
+            flash('Invite not found.', 'warning')
+            return redirect(url_for('gd_home'))
+
+        session_row = conn.execute("SELECT * FROM gd_sessions WHERE id = ?", (invite['session_id'],)).fetchone()
+        if not session_row:
+            conn.close()
+            flash('Meeting no longer exists.', 'warning')
+            return redirect(url_for('gd_home'))
+
+        session_row = _sync_gd_session_status(conn, session_row)
+        if session_row['status'] not in ('planning', 'active'):
+            conn.execute("UPDATE gd_invites SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?", (invite_id,))
+            conn.commit()
+            conn.close()
+            flash('This GD meeting is no longer accepting participants.', 'warning')
+            return redirect(url_for('gd_home'))
+        if action == 'reject':
+            conn.execute("UPDATE gd_invites SET status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE id = ?", (invite_id,))
+            conn.commit()
+            conn.close()
+            flash('Invite rejected.', 'info')
+            return redirect(url_for('gd_home'))
+
+        accepted_count = conn.execute(
+            "SELECT COUNT(*) as c FROM gd_participants WHERE session_id = ? AND status = 'accepted'",
+            (session_row['id'],)
+        ).fetchone()['c']
+        max_participants = max(2, _safe_int(session_row['max_participants'], 5))
+        if accepted_count >= max_participants:
+            conn.execute("UPDATE gd_invites SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?", (invite_id,))
+            conn.commit()
+            conn.close()
+            flash('This GD room is full.', 'warning')
+            return redirect(url_for('gd_home'))
+
+        user_row = conn.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()
+        name = _sanitize_text((user_row['username'] if user_row else 'Student'), 80)
+        conn.execute(
+            '''INSERT OR IGNORE INTO gd_participants
+               (session_id, user_id, name, field, target_role, status, role)
+               VALUES (?, ?, ?, ?, ?, 'accepted', 'participant')''',
+            (session_row['id'], user_id, name, field, target_role)
+        )
+        conn.execute("UPDATE gd_invites SET status = 'accepted', updated_at = CURRENT_TIMESTAMP WHERE id = ?", (invite_id,))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('gd_room', room_id=session_row['room_id']))
+    except Exception as e:
+        print(f"GD invite respond error: {e}")
+        flash('Unable to process invite right now.', 'error')
+        return redirect(url_for('gd_home'))
+
+
+@app.route('/gd/connect/<room_id>', methods=['GET', 'POST'])
+@login_required
+def gd_connect_link(room_id):
+    """Join-by-link page for registered students to request access to a GD room."""
+    try:
+        user_id = g.current_user['id']
+        conn = get_db_connection()
+        session_row = conn.execute("SELECT * FROM gd_sessions WHERE room_id = ?", (room_id,)).fetchone()
+        if not session_row:
+            conn.close()
+            return "GD room not found", 404
+
+        session_row = _sync_gd_session_status(conn, session_row)
+        if session_row['status'] not in ('planning', 'active'):
+            conn.close()
+            flash('This GD session is closed for new join requests.', 'warning')
+            return redirect(url_for('gd_home'))
+
+        existing_participant = conn.execute(
+            "SELECT 1 FROM gd_participants WHERE session_id = ? AND user_id = ? AND status = 'accepted'",
+            (session_row['id'], user_id)
+        ).fetchone()
+        if existing_participant:
+            conn.close()
+            return redirect(url_for('gd_room', room_id=room_id))
+
+        joined_count = conn.execute(
+            "SELECT COUNT(*) AS c FROM gd_participants WHERE session_id = ? AND status = 'accepted'",
+            (session_row['id'],)
+        ).fetchone()['c']
+        max_participants = max(2, _safe_int(session_row['max_participants'], 5))
+        host_user = conn.execute("SELECT username FROM users WHERE id = ?", (session_row['host_user_id'],)).fetchone()
+        request_row = conn.execute(
+            "SELECT * FROM gd_join_requests WHERE session_id = ? AND requester_user_id = ?",
+            (session_row['id'], user_id)
+        ).fetchone()
+
+        if request.method == 'POST':
+            if joined_count >= max_participants:
+                conn.close()
+                flash('This GD room is full right now.', 'warning')
+                return redirect(url_for('gd_home'))
+
+            field = _sanitize_text(request.form.get('field') or '', 80)
+            target_role = _sanitize_text(request.form.get('target_role') or '', 80)
+            name = _sanitize_text(g.current_user.get('username') or 'Student', 80)
+            conn.execute(
+                """INSERT INTO gd_join_requests (session_id, requester_user_id, requester_name, field, target_role, status)
+                   VALUES (?, ?, ?, ?, ?, 'pending')
+                   ON CONFLICT(session_id, requester_user_id)
+                   DO UPDATE SET requester_name = excluded.requester_name,
+                                 field = excluded.field,
+                                 target_role = excluded.target_role,
+                                 status = 'pending',
+                                 updated_at = CURRENT_TIMESTAMP""",
+                (session_row['id'], user_id, name, field, target_role)
+            )
+            conn.commit()
+            request_row = conn.execute(
+                "SELECT * FROM gd_join_requests WHERE session_id = ? AND requester_user_id = ?",
+                (session_row['id'], user_id)
+            ).fetchone()
+            flash('Join request sent. You will get an update in notifications and GD page.', 'success')
+
+        conn.close()
+        return render_template(
+            'gd/waiting.html',
+            session=dict(session_row),
+            host_name=(host_user['username'] if host_user else 'Host'),
+            joined_count=joined_count,
+            max_participants=max_participants,
+            request_status=(request_row['status'] if request_row else None)
+        )
+    except Exception as e:
+        print(f"GD connect link error: {e}")
+        return f"Error: {e}", 500
+
+
+@app.route('/gd/connect-status/<room_id>')
+@login_required
+def gd_connect_status(room_id):
+    """Polling endpoint for quick join request status."""
+    try:
+        user_id = g.current_user['id']
+        conn = get_db_connection()
+        session_row = conn.execute("SELECT * FROM gd_sessions WHERE room_id = ?", (room_id,)).fetchone()
+        if not session_row:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Room not found'}), 404
+
+        session_row = _sync_gd_session_status(conn, session_row)
+        if session_row['status'] not in ('planning', 'active'):
+            conn.close()
+            return jsonify({'success': True, 'status': 'closed'})
+
+        joined_count = conn.execute(
+            "SELECT COUNT(*) AS c FROM gd_participants WHERE session_id = ? AND status = 'accepted'",
+            (session_row['id'],)
+        ).fetchone()['c']
+
+        participant = conn.execute(
+            "SELECT 1 FROM gd_participants WHERE session_id = ? AND user_id = ? AND status = 'accepted'",
+            (session_row['id'], user_id)
+        ).fetchone()
+        if participant:
+            conn.close()
+            return jsonify({
+                'success': True,
+                'status': 'approved',
+                'joined_count': joined_count,
+                'room_url': url_for('gd_room', room_id=room_id)
+            })
+
+        req = conn.execute(
+            "SELECT status FROM gd_join_requests WHERE session_id = ? AND requester_user_id = ?",
+            (session_row['id'], user_id)
+        ).fetchone()
+        conn.close()
+        return jsonify({
+            'success': True,
+            'status': (req['status'] if req else 'none'),
+            'joined_count': joined_count
+        })
+    except Exception as e:
+        print(f"GD connect status error: {e}")
+        return jsonify({'success': False, 'error': 'Unable to fetch request status.'}), 500
+
+
+@app.route('/gd/join-request/respond', methods=['POST'])
+@login_required
+def gd_join_request_respond():
+    """Host approves or rejects join requests coming from shared room links."""
+    try:
+        user_id = g.current_user['id']
+        request_id = _safe_int(request.form.get('request_id'), 0)
+        action = (request.form.get('action') or 'approve').strip().lower()
+        if action not in ('approve', 'reject'):
+            action = 'approve'
+
+        conn = get_db_connection()
+        req = conn.execute("SELECT * FROM gd_join_requests WHERE id = ?", (request_id,)).fetchone()
+        if not req:
+            conn.close()
+            flash('Join request not found.', 'warning')
+            return redirect(url_for('gd_home'))
+
+        session_row = conn.execute("SELECT * FROM gd_sessions WHERE id = ?", (req['session_id'],)).fetchone()
+        if not session_row or session_row['host_user_id'] != user_id:
+            conn.close()
+            flash('You are not allowed to manage this request.', 'error')
+            return redirect(url_for('gd_home'))
+
+        session_row = _sync_gd_session_status(conn, session_row)
+        if session_row['status'] not in ('planning', 'active'):
+            conn.execute("UPDATE gd_join_requests SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?", (request_id,))
+            conn.commit()
+            conn.close()
+            flash('Meeting is closed for new participants.', 'warning')
+            return redirect(url_for('gd_home'))
+
+        if action == 'reject':
+            conn.execute("UPDATE gd_join_requests SET status = 'rejected', updated_at = CURRENT_TIMESTAMP WHERE id = ?", (request_id,))
+            conn.commit()
+            conn.close()
+            flash('Join request rejected.', 'info')
+            return redirect(url_for('gd_home'))
+
+        accepted_count = conn.execute(
+            "SELECT COUNT(*) as c FROM gd_participants WHERE session_id = ? AND status = 'accepted'",
+            (session_row['id'],)
+        ).fetchone()['c']
+        max_participants = max(2, _safe_int(session_row['max_participants'], 5))
+        if accepted_count >= max_participants:
+            conn.execute("UPDATE gd_join_requests SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?", (request_id,))
+            conn.commit()
+            conn.close()
+            flash('Cannot approve. Room is full.', 'warning')
+            return redirect(url_for('gd_home'))
+
+        conn.execute(
+            """INSERT OR IGNORE INTO gd_participants
+               (session_id, user_id, name, field, target_role, status, role)
+               VALUES (?, ?, ?, ?, ?, 'accepted', 'participant')""",
+            (session_row['id'], req['requester_user_id'], req['requester_name'], req['field'], req['target_role'])
+        )
+        conn.execute("UPDATE gd_join_requests SET status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = ?", (request_id,))
+        conn.commit()
+        conn.close()
+        flash('Join request approved.', 'success')
+        return redirect(url_for('gd_home'))
+    except Exception as e:
+        print(f"GD join request respond error: {e}")
+        flash('Unable to process join request.', 'error')
+        return redirect(url_for('gd_home'))
+
+
+@app.route('/gd/waiting')
+@login_required
+def gd_waiting_room():
+    """Legacy waiting endpoint kept for compatibility."""
+    return redirect(url_for('gd_home'))
+
+
+@app.route('/gd/waiting-status')
+@login_required
+def gd_waiting_status():
+    """Legacy waiting status endpoint kept for compatibility."""
+    return jsonify({'success': True, 'status': 'managed'})
+
+
+@app.route('/gd/room/<room_id>')
+@login_required
+def gd_room(room_id):
+    """Live GD room with student-managed timer and WebRTC signaling."""
+    try:
+        user_id = g.current_user['id']
+        conn = get_db_connection()
+        session_row = conn.execute(
+            "SELECT * FROM gd_sessions WHERE room_id = ?",
+            (room_id,)
+        ).fetchone()
+        if not session_row:
+            conn.close()
+            return "GD room not found", 404
+
+        participant = conn.execute(
+            "SELECT * FROM gd_participants WHERE session_id = ? AND user_id = ?",
+            (session_row['id'], user_id)
+        ).fetchone()
+        if not participant or participant['status'] != 'accepted':
+            session_row = _sync_gd_session_status(conn, session_row)
+            conn.close()
+            if session_row and session_row['status'] in ('planning', 'active'):
+                return redirect(url_for('gd_connect_link', room_id=room_id))
+            return "You are not part of this GD room.", 403
+
+        session_row = _sync_gd_session_status(conn, session_row)
+        conn.commit()
+        phase, remaining_seconds = _calculate_gd_phase(session_row)
+
+        if phase == 'completed':
+            conn.close()
+            return redirect(url_for('gd_result', room_id=room_id))
+        if phase == 'feedback':
+            conn.close()
+            return redirect(url_for('gd_feedback', room_id=room_id))
+
+        participants = conn.execute(
+            """SELECT user_id, name, field, target_role, role
+               FROM gd_participants
+               WHERE session_id = ? AND status = 'accepted'
+               ORDER BY joined_at ASC""",
+            (session_row['id'],)
+        ).fetchall()
+        messages = conn.execute(
+            """SELECT m.id, m.message, m.created_at, p.name
+               FROM gd_messages m
+               JOIN gd_participants p ON p.session_id = m.session_id AND p.user_id = m.user_id
+               WHERE m.session_id = ?
+               ORDER BY m.id DESC LIMIT 40""",
+            (session_row['id'],)
+        ).fetchall()
+        joined_count = len(participants)
+        max_participants = max(2, _safe_int(session_row['max_participants'], 5))
+        is_host = bool(session_row['host_user_id'] == user_id or participant['role'] == 'host')
+        can_start_timer = is_host and phase == 'lobby' and joined_count >= 2
+        can_stop_timer = is_host and phase == 'discussion'
+        pending_stop_request = _get_pending_gd_stop_request(conn, session_row['id'], user_id)
+        share_join_link = request.url_root.rstrip('/') + url_for('gd_connect_link', room_id=room_id)
+        conn.close()
+
+        return render_template(
+            'gd/room.html',
+            session=dict(session_row),
+            participants=[dict(p) for p in participants],
+            messages=[dict(m) for m in reversed(messages)],
+            phase=phase,
+            remaining_seconds=remaining_seconds,
+            current_user_id=user_id,
+            current_user_name=g.current_user.get('username', 'Student'),
+            is_host=is_host,
+            can_start_timer=can_start_timer,
+            can_stop_timer=can_stop_timer,
+            joined_count=joined_count,
+            max_participants=max_participants,
+            pending_stop_request=pending_stop_request,
+            share_join_link=share_join_link
+        )
+    except Exception as e:
+        print(f"GD room error: {e}")
+        return f"Error: {e}", 500
+
+
+@app.route('/gd/room/<room_id>/state')
+@login_required
+def gd_room_state(room_id):
+    """Polling endpoint for room phase, timer and participants."""
+    try:
+        user_id = g.current_user['id']
+        conn = get_db_connection()
+        session_row = conn.execute("SELECT * FROM gd_sessions WHERE room_id = ?", (room_id,)).fetchone()
+        if not session_row:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Room not found'}), 404
+
+        participant = conn.execute(
+            "SELECT * FROM gd_participants WHERE session_id = ? AND user_id = ?",
+            (session_row['id'], user_id)
+        ).fetchone()
+        if not participant or participant['status'] != 'accepted':
+            conn.close()
+            return jsonify({'success': False, 'error': 'Not authorized'}), 403
+
+        session_row = _sync_gd_session_status(conn, session_row)
+        participants = conn.execute(
+            """SELECT user_id, name, field, target_role, role
+               FROM gd_participants
+               WHERE session_id = ? AND status = 'accepted'
+               ORDER BY joined_at ASC""",
+            (session_row['id'],)
+        ).fetchall()
+        joined_count = len(participants)
+        max_participants = max(2, _safe_int(session_row['max_participants'], 5))
+        pending_stop_request = _get_pending_gd_stop_request(conn, session_row['id'], user_id)
+        is_host = bool(session_row['host_user_id'] == user_id or participant['role'] == 'host')
+        conn.commit()
+        phase, remaining_seconds = _calculate_gd_phase(session_row)
+        conn.close()
+
+        payload = {
+            'success': True,
+            'status': session_row['status'],
+            'phase': phase,
+            'remaining_seconds': remaining_seconds,
+            'topic': session_row['topic'],
+            'max_participants': max_participants,
+            'joined_count': joined_count,
+            'duration_minutes': _safe_int(session_row['duration_minutes'], 10),
+            'participants': [dict(p) for p in participants],
+            'can_start_timer': is_host and phase == 'lobby' and joined_count >= 2,
+            'can_stop_timer': is_host and phase == 'discussion',
+            'is_host': is_host,
+            'stop_request': pending_stop_request
+        }
+        if phase == 'feedback':
+            payload['redirect_url'] = url_for('gd_feedback', room_id=room_id)
+        if phase == 'completed':
+            payload['redirect_url'] = url_for('gd_result', room_id=room_id)
+        return jsonify(payload)
+    except Exception as e:
+        print(f"GD room state error: {e}")
+        return jsonify({'success': False, 'error': 'Unable to load room state'}), 500
+
+
+@app.route('/gd/room/<room_id>/timer/start', methods=['POST'])
+@login_required
+def gd_start_timer(room_id):
+    """Start discussion timer manually by host only."""
+    try:
+        user_id = g.current_user['id']
+        data = request.get_json(silent=True) or {}
+        requested_duration = _safe_int(data.get('duration_minutes'), 0)
+
+        conn = get_db_connection()
+        session_row = conn.execute("SELECT * FROM gd_sessions WHERE room_id = ?", (room_id,)).fetchone()
+        if not session_row:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Room not found'}), 404
+
+        participant = conn.execute(
+            "SELECT * FROM gd_participants WHERE session_id = ? AND user_id = ?",
+            (session_row['id'], user_id)
+        ).fetchone()
+        if not participant or participant['status'] != 'accepted':
+            conn.close()
+            return jsonify({'success': False, 'error': 'Not authorized'}), 403
+        is_host = bool(session_row['host_user_id'] == user_id or participant['role'] == 'host')
+        if not is_host:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Only host can start GD timer.'}), 403
+
+        session_row = _sync_gd_session_status(conn, session_row)
+        current_status = session_row['status']
+        if current_status in ('feedback', 'completed'):
+            conn.close()
+            return jsonify({'success': False, 'error': 'Timer cannot be started now.'}), 400
+
+        joined_count = conn.execute(
+            "SELECT COUNT(*) AS c FROM gd_participants WHERE session_id = ? AND status = 'accepted'",
+            (session_row['id'],)
+        ).fetchone()['c']
+        if joined_count < 2:
+            conn.close()
+            return jsonify({'success': False, 'error': 'At least 2 students are required to start GD.'}), 400
+
+        duration_minutes = max(5, min(90, requested_duration if requested_duration > 0 else _safe_int(session_row['duration_minutes'], 10)))
+        if current_status == 'planning':
+            conn.execute(
+                """UPDATE gd_sessions
+                   SET status = 'active',
+                       started_at = CURRENT_TIMESTAMP,
+                       ended_at = NULL,
+                       timer_started_by = ?,
+                       duration_minutes = ?
+                   WHERE id = ?""",
+                (user_id, duration_minutes, session_row['id'])
+            )
+        elif current_status == 'active' and not session_row['started_at']:
+            conn.execute(
+                """UPDATE gd_sessions
+                   SET started_at = CURRENT_TIMESTAMP,
+                       timer_started_by = ?,
+                       duration_minutes = ?
+                   WHERE id = ?""",
+                (user_id, duration_minutes, session_row['id'])
+            )
+
+        refreshed = conn.execute("SELECT * FROM gd_sessions WHERE id = ?", (session_row['id'],)).fetchone()
+        conn.commit()
+        phase, remaining_seconds = _calculate_gd_phase(refreshed)
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'phase': phase,
+            'remaining_seconds': remaining_seconds,
+            'status': refreshed['status']
+        })
+    except Exception as e:
+        print(f"GD start timer error: {e}")
+        return jsonify({'success': False, 'error': 'Unable to start timer.'}), 500
+
+
+@app.route('/gd/room/<room_id>/timer/stop', methods=['POST'])
+@login_required
+def gd_stop_timer(room_id):
+    """Stop discussion timer and move room to feedback phase (host only)."""
+    try:
+        user_id = g.current_user['id']
+        conn = get_db_connection()
+        session_row = conn.execute("SELECT * FROM gd_sessions WHERE room_id = ?", (room_id,)).fetchone()
+        if not session_row:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Room not found'}), 404
+
+        participant = conn.execute(
+            "SELECT * FROM gd_participants WHERE session_id = ? AND user_id = ?",
+            (session_row['id'], user_id)
+        ).fetchone()
+        if not participant or participant['status'] != 'accepted':
+            conn.close()
+            return jsonify({'success': False, 'error': 'Not authorized'}), 403
+        is_host = bool(session_row['host_user_id'] == user_id or participant['role'] == 'host')
+        if not is_host:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Only host can stop GD timer.'}), 403
+
+        session_row = _sync_gd_session_status(conn, session_row)
+        if session_row['status'] in ('completed',):
+            conn.close()
+            return jsonify({'success': True, 'phase': 'completed', 'redirect_url': url_for('gd_result', room_id=room_id)})
+
+        conn.execute(
+            "UPDATE gd_sessions SET status = 'feedback', ended_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (session_row['id'],)
+        )
+        conn.execute(
+            "UPDATE gd_stop_requests SET status = 'cancelled', resolved_at = CURRENT_TIMESTAMP WHERE session_id = ? AND status = 'pending'",
+            (session_row['id'],)
+        )
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'phase': 'feedback', 'redirect_url': url_for('gd_feedback', room_id=room_id)})
+    except Exception as e:
+        print(f"GD stop timer error: {e}")
+        return jsonify({'success': False, 'error': 'Unable to stop timer.'}), 500
+
+
+@app.route('/gd/room/<room_id>/stop-request', methods=['POST'])
+@login_required
+def gd_stop_request(room_id):
+    """Legacy endpoint: now host stop only."""
+    return gd_stop_timer(room_id)
+
+
+@app.route('/gd/room/<room_id>/stop-request/vote', methods=['POST'])
+@login_required
+def gd_stop_request_vote(room_id):
+    """Legacy endpoint no longer used in host-only timer control."""
+    return jsonify({'success': False, 'error': 'Stop voting is disabled. Only host can stop GD.'}), 400
+
+
+@app.route('/gd/room/<room_id>/signal', methods=['POST'])
+@login_required
+def gd_send_signal(room_id):
+    """Store WebRTC signaling messages for polling-based delivery."""
+    try:
+        user_id = g.current_user['id']
+        data = request.get_json(silent=True) or {}
+        signal_type = _sanitize_text(data.get('signal_type') or '', 40).lower()
+        to_user = _safe_int(data.get('to_user'), 0)
+        to_user = to_user if to_user > 0 else None
+        payload = data.get('payload')
+        if payload is None:
+            payload = {}
+        if not signal_type:
+            return jsonify({'success': False, 'error': 'signal_type is required.'}), 400
+
+        payload_text = json.dumps(payload, ensure_ascii=False)
+        if len(payload_text) > 50000:
+            return jsonify({'success': False, 'error': 'Signal payload too large.'}), 400
+
+        conn = get_db_connection()
+        session_row = conn.execute("SELECT * FROM gd_sessions WHERE room_id = ?", (room_id,)).fetchone()
+        if not session_row:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Room not found'}), 404
+
+        participant = conn.execute(
+            "SELECT * FROM gd_participants WHERE session_id = ? AND user_id = ?",
+            (session_row['id'], user_id)
+        ).fetchone()
+        if not participant or participant['status'] != 'accepted':
+            conn.close()
+            return jsonify({'success': False, 'error': 'Not authorized'}), 403
+
+        if to_user:
+            target = conn.execute(
+                "SELECT 1 FROM gd_participants WHERE session_id = ? AND user_id = ? AND status = 'accepted'",
+                (session_row['id'], to_user)
+            ).fetchone()
+            if not target:
+                conn.close()
+                return jsonify({'success': False, 'error': 'Target participant not found.'}), 404
+
+        conn.execute(
+            """INSERT INTO gd_webrtc_signals (session_id, from_user, to_user, signal_type, signal_payload)
+               VALUES (?, ?, ?, ?, ?)""",
+            (session_row['id'], user_id, to_user, signal_type, payload_text)
+        )
+        conn.execute(
+            """DELETE FROM gd_webrtc_signals
+               WHERE session_id = ? AND id < (
+                    SELECT CASE WHEN MAX(id) > 1500 THEN MAX(id) - 1500 ELSE 0 END
+                    FROM gd_webrtc_signals WHERE session_id = ?
+               )""",
+            (session_row['id'], session_row['id'])
+        )
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"GD signal send error: {e}")
+        return jsonify({'success': False, 'error': 'Unable to send signal.'}), 500
+
+
+@app.route('/gd/room/<room_id>/signals')
+@login_required
+def gd_poll_signals(room_id):
+    """Fetch WebRTC signals addressed to current participant."""
+    try:
+        user_id = g.current_user['id']
+        after_id = max(0, _safe_int(request.args.get('after_id'), 0))
+        limit = max(20, min(300, _safe_int(request.args.get('limit'), 120)))
+
+        conn = get_db_connection()
+        session_row = conn.execute("SELECT * FROM gd_sessions WHERE room_id = ?", (room_id,)).fetchone()
+        if not session_row:
+            conn.close()
+            return jsonify({'success': False, 'signals': []}), 404
+
+        participant = conn.execute(
+            "SELECT * FROM gd_participants WHERE session_id = ? AND user_id = ?",
+            (session_row['id'], user_id)
+        ).fetchone()
+        if not participant or participant['status'] != 'accepted':
+            conn.close()
+            return jsonify({'success': False, 'signals': []}), 403
+
+        rows = conn.execute(
+            """SELECT s.id, s.from_user, s.to_user, s.signal_type, s.signal_payload, s.created_at, u.username AS from_name
+               FROM gd_webrtc_signals s
+               LEFT JOIN users u ON u.id = s.from_user
+               WHERE s.session_id = ?
+                 AND s.id > ?
+                 AND s.from_user != ?
+                 AND (s.to_user IS NULL OR s.to_user = ?)
+               ORDER BY s.id ASC
+               LIMIT ?""",
+            (session_row['id'], after_id, user_id, user_id, limit)
+        ).fetchall()
+        conn.close()
+
+        signals = []
+        for row in rows:
+            item = dict(row)
+            try:
+                item['payload'] = json.loads(item.get('signal_payload') or '{}')
+            except Exception:
+                item['payload'] = {}
+            item.pop('signal_payload', None)
+            signals.append(item)
+        return jsonify({'success': True, 'signals': signals})
+    except Exception as e:
+        print(f"GD poll signals error: {e}")
+        return jsonify({'success': False, 'signals': []}), 500
+
+
+@app.route('/gd/room/<room_id>/messages')
+@login_required
+def gd_room_messages(room_id):
+    """Fetch new GD room messages."""
+    try:
+        user_id = g.current_user['id']
+        after_id = _safe_int(request.args.get('after_id'), 0)
+        conn = get_db_connection()
+        session_row = conn.execute("SELECT * FROM gd_sessions WHERE room_id = ?", (room_id,)).fetchone()
+        if not session_row:
+            conn.close()
+            return jsonify({'success': False, 'messages': []}), 404
+
+        participant = conn.execute(
+            "SELECT 1 FROM gd_participants WHERE session_id = ? AND user_id = ?",
+            (session_row['id'], user_id)
+        ).fetchone()
+        if not participant:
+            conn.close()
+            return jsonify({'success': False, 'messages': []}), 403
+
+        rows = conn.execute(
+            """SELECT m.id, m.user_id, m.message, m.created_at, p.name
+               FROM gd_messages m
+               JOIN gd_participants p ON p.session_id = m.session_id AND p.user_id = m.user_id
+               WHERE m.session_id = ? AND m.id > ?
+               ORDER BY m.id ASC
+               LIMIT 120""",
+            (session_row['id'], after_id)
+        ).fetchall()
+        conn.close()
+        return jsonify({'success': True, 'messages': [dict(r) for r in rows]})
+    except Exception as e:
+        print(f"GD messages error: {e}")
+        return jsonify({'success': False, 'messages': []}), 500
+
+
+@app.route('/gd/room/<room_id>/message', methods=['POST'])
+@login_required
+def gd_send_message(room_id):
+    """Send message during discussion phase."""
+    try:
+        user_id = g.current_user['id']
+        data = request.get_json(silent=True) or {}
+        message = _sanitize_text(data.get('message') or '', max_len=500)
+        if not message:
+            return jsonify({'success': False, 'error': 'Message cannot be empty.'}), 400
+
+        conn = get_db_connection()
+        session_row = conn.execute("SELECT * FROM gd_sessions WHERE room_id = ?", (room_id,)).fetchone()
+        if not session_row:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Room not found'}), 404
+
+        participant = conn.execute(
+            "SELECT 1 FROM gd_participants WHERE session_id = ? AND user_id = ?",
+            (session_row['id'], user_id)
+        ).fetchone()
+        if not participant:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Not authorized'}), 403
+
+        session_row = _sync_gd_session_status(conn, session_row)
+        phase, _ = _calculate_gd_phase(session_row)
+        if phase != 'discussion':
+            conn.close()
+            return jsonify({'success': False, 'error': 'Messages are allowed only during discussion phase.'}), 400
+
+        conn.execute(
+            "INSERT INTO gd_messages (session_id, user_id, message) VALUES (?, ?, ?)",
+            (session_row['id'], user_id, message)
+        )
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        print(f"GD send message error: {e}")
+        return jsonify({'success': False, 'error': 'Unable to send message.'}), 500
+
+
+@app.route('/gd/feedback/<room_id>', methods=['GET', 'POST'])
+@login_required
+def gd_feedback(room_id):
+    """Feedback collection page after discussion."""
+    try:
+        user_id = g.current_user['id']
+        conn = get_db_connection()
+        session_row = conn.execute("SELECT * FROM gd_sessions WHERE room_id = ?", (room_id,)).fetchone()
+        if not session_row:
+            conn.close()
+            return "GD session not found", 404
+
+        participant = conn.execute(
+            "SELECT * FROM gd_participants WHERE session_id = ? AND user_id = ?",
+            (session_row['id'], user_id)
+        ).fetchone()
+        if not participant:
+            conn.close()
+            return "You are not part of this GD session.", 403
+
+        session_row = _sync_gd_session_status(conn, session_row)
+        conn.commit()
+        phase, _ = _calculate_gd_phase(session_row)
+
+        if phase in ('lobby', 'thinking', 'discussion'):
+            conn.close()
+            return redirect(url_for('gd_room', room_id=room_id))
+
+        participants = conn.execute(
+            "SELECT user_id, name, field, target_role FROM gd_participants WHERE session_id = ? ORDER BY joined_at ASC",
+            (session_row['id'],)
+        ).fetchall()
+        peer_participants = [dict(p) for p in participants if p['user_id'] != user_id]
+
+        if request.method == 'POST':
+            experience = _sanitize_text(request.form.get('experience') or '', 1800)
+            response_text = _sanitize_text(request.form.get('response') or '', 2200)
+            if not response_text:
+                conn.close()
+                flash('Please add your points/response for AI evaluation.', 'warning')
+                return redirect(url_for('gd_feedback', room_id=room_id))
+
+            conn.execute(
+                """INSERT INTO gd_responses (session_id, user_id, response, experience, updated_at)
+                   VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                   ON CONFLICT(session_id, user_id)
+                   DO UPDATE SET response = excluded.response, experience = excluded.experience, updated_at = CURRENT_TIMESTAMP""",
+                (session_row['id'], user_id, response_text, experience)
+            )
+
+            for peer in peer_participants:
+                peer_user_id = peer['user_id']
+                pros = _sanitize_text(request.form.get(f'pros_{peer_user_id}') or 'Good participation.', 600)
+                cons = _sanitize_text(request.form.get(f'cons_{peer_user_id}') or 'Can improve structure and examples.', 600)
+                conn.execute(
+                    """INSERT INTO gd_peer_feedback (session_id, from_user, to_user, pros, cons, updated_at)
+                       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                       ON CONFLICT(session_id, from_user, to_user)
+                       DO UPDATE SET pros = excluded.pros, cons = excluded.cons, updated_at = CURRENT_TIMESTAMP""",
+                    (session_row['id'], user_id, peer_user_id, pros, cons)
+                )
+
+            _update_gd_session_completion(conn, session_row['id'])
+            conn.commit()
+            conn.close()
+
+            log_activity('gd_feedback_submitted', 'gd', 'Submitted GD feedback', f'room_id={room_id}')
+            return redirect(url_for('gd_result', room_id=room_id))
+
+        existing_response = conn.execute(
+            "SELECT * FROM gd_responses WHERE session_id = ? AND user_id = ?",
+            (session_row['id'], user_id)
+        ).fetchone()
+        existing_feedback = conn.execute(
+            "SELECT to_user, pros, cons FROM gd_peer_feedback WHERE session_id = ? AND from_user = ?",
+            (session_row['id'], user_id)
+        ).fetchall()
+        feedback_map = {row['to_user']: {'pros': row['pros'], 'cons': row['cons']} for row in existing_feedback}
+        conn.close()
+
+        return render_template(
+            'gd/feedback.html',
+            session=dict(session_row),
+            peer_participants=peer_participants,
+            existing_response=dict(existing_response) if existing_response else None,
+            feedback_map=feedback_map
+        )
+    except Exception as e:
+        print(f"GD feedback error: {e}")
+        return f"Error: {e}", 500
+
+
+@app.route('/gd/result/<room_id>')
+@login_required
+def gd_result(room_id):
+    """Show AI + peer GD evaluation."""
+    try:
+        user_id = g.current_user['id']
+        conn = get_db_connection()
+        session_row = conn.execute("SELECT * FROM gd_sessions WHERE room_id = ?", (room_id,)).fetchone()
+        if not session_row:
+            conn.close()
+            return "GD session not found", 404
+
+        participant = conn.execute(
+            "SELECT * FROM gd_participants WHERE session_id = ? AND user_id = ?",
+            (session_row['id'], user_id)
+        ).fetchone()
+        if not participant:
+            conn.close()
+            return "You are not part of this GD session.", 403
+
+        session_row = _sync_gd_session_status(conn, session_row)
+        conn.commit()
+
+        response_row = conn.execute(
+            "SELECT * FROM gd_responses WHERE session_id = ? AND user_id = ?",
+            (session_row['id'], user_id)
+        ).fetchone()
+        if not response_row:
+            conn.close()
+            flash('Please submit your feedback first.', 'warning')
+            return redirect(url_for('gd_feedback', room_id=room_id))
+
+        peer_feedback_rows = conn.execute(
+            """SELECT f.pros, f.cons, p.name AS from_name
+               FROM gd_peer_feedback f
+               JOIN gd_participants p ON p.session_id = f.session_id AND p.user_id = f.from_user
+               WHERE f.session_id = ? AND f.to_user = ?
+               ORDER BY f.id ASC""",
+            (session_row['id'], user_id)
+        ).fetchall()
+        peer_feedback = [dict(r) for r in peer_feedback_rows]
+
+        my_messages = conn.execute(
+            """SELECT message FROM gd_messages
+               WHERE session_id = ? AND user_id = ?
+               ORDER BY id ASC LIMIT 40""",
+            (session_row['id'], user_id)
+        ).fetchall()
+        message_points = '; '.join([row['message'] for row in my_messages])[:2500]
+        response_text = (response_row['response'] or '').strip()
+        if message_points:
+            response_text = f"{response_text}\nKey discussion points: {message_points}".strip()
+
+        evaluation = _get_or_create_gd_evaluation(
+            conn=conn,
+            session_id=session_row['id'],
+            user_id=user_id,
+            topic=session_row['topic'],
+            response=response_text,
+            experience=response_row['experience'] or '',
+            peer_feedback=peer_feedback
+        )
+
+        participant_rows = conn.execute(
+            """SELECT user_id, name, field, target_role, role
+               FROM gd_participants
+               WHERE session_id = ? AND status = 'accepted'
+               ORDER BY joined_at ASC""",
+            (session_row['id'],)
+        ).fetchall()
+        response_rows = conn.execute(
+            "SELECT user_id, response, experience FROM gd_responses WHERE session_id = ?",
+            (session_row['id'],)
+        ).fetchall()
+        message_rows = conn.execute(
+            "SELECT user_id, message FROM gd_messages WHERE session_id = ? ORDER BY id ASC",
+            (session_row['id'],)
+        ).fetchall()
+        message_count_rows = conn.execute(
+            "SELECT user_id, COUNT(*) AS c FROM gd_messages WHERE session_id = ? GROUP BY user_id",
+            (session_row['id'],)
+        ).fetchall()
+        peer_incoming_rows = conn.execute(
+            "SELECT to_user, pros, cons FROM gd_peer_feedback WHERE session_id = ? ORDER BY id ASC",
+            (session_row['id'],)
+        ).fetchall()
+
+        response_map = {row['user_id']: dict(row) for row in response_rows}
+        message_text_map = {}
+        for row in message_rows:
+            uid = row['user_id']
+            message_text_map.setdefault(uid, []).append(row['message'])
+        message_text_map = {uid: '; '.join(parts)[:2500] for uid, parts in message_text_map.items()}
+        message_count_map = {row['user_id']: row['c'] for row in message_count_rows}
+        peer_received_map = {}
+        for row in peer_incoming_rows:
+            peer_received_map.setdefault(row['to_user'], []).append({'pros': row['pros'], 'cons': row['cons']})
+
+        member_feedback_cards = []
+        for member in participant_rows:
+            member_dict = dict(member)
+            member_id = member_dict['user_id']
+            member_response = response_map.get(member_id, {})
+            member_response_text = (member_response.get('response') or '').strip()
+            member_message_points = message_text_map.get(member_id, '')
+            if member_message_points:
+                member_response_text = f"{member_response_text}\nKey discussion points: {member_message_points}".strip()
+            member_experience = member_response.get('experience', '')
+            member_peer_feedback = peer_received_map.get(member_id, [])
+
+            card_feedback = _build_template_gd_feedback(
+                member_name=member_dict.get('name') or 'Student',
+                topic=session_row['topic'],
+                response=member_response_text,
+                experience=member_experience,
+                peer_feedback_rows=member_peer_feedback,
+                message_count=message_count_map.get(member_id, 0)
+            )
+
+            member_eval = None
+            if member_id == user_id:
+                member_eval = evaluation
+            elif member_response_text or member_experience or member_peer_feedback:
+                member_eval = _get_or_create_gd_evaluation(
+                    conn=conn,
+                    session_id=session_row['id'],
+                    user_id=member_id,
+                    topic=session_row['topic'],
+                    response=member_response_text,
+                    experience=member_experience,
+                    peer_feedback=member_peer_feedback
+                )
+
+            member_dict.update(card_feedback)
+            member_dict['ai_feedback_ready'] = bool(member_eval)
+            member_dict['ai_confidence'] = member_eval.get('confidence') if member_eval else None
+            member_dict['ai_communication'] = member_eval.get('communication') if member_eval else None
+            member_dict['ai_logical_thinking'] = member_eval.get('logical_thinking') if member_eval else None
+            member_dict['ai_participation'] = member_eval.get('participation') if member_eval else member_dict.get('participation_band')
+            member_dict['ai_final_feedback'] = (member_eval.get('final_feedback') if member_eval else member_dict.get('summary'))
+            member_dict['ai_strengths'] = member_eval.get('strengths', []) if member_eval else member_dict.get('strengths', [])
+            member_dict['ai_improvements'] = member_eval.get('improvements', []) if member_eval else member_dict.get('improvements', [])
+            member_dict['ai_source'] = (member_eval.get('source') if member_eval else 'template')
+            member_dict['submitted'] = bool(member_response)
+            member_feedback_cards.append(member_dict)
+
+        total_participants = conn.execute(
+            "SELECT COUNT(*) as c FROM gd_participants WHERE session_id = ?",
+            (session_row['id'],)
+        ).fetchone()['c']
+        responses_submitted = conn.execute(
+            "SELECT COUNT(*) as c FROM gd_responses WHERE session_id = ?",
+            (session_row['id'],)
+        ).fetchone()['c']
+
+        conn.commit()
+        conn.close()
+
+        log_activity('gd_result_viewed', 'gd', 'Viewed GD result', f'room_id={room_id}')
+        return render_template(
+            'gd/result.html',
+            session=dict(session_row),
+            response=dict(response_row),
+            peer_feedback=peer_feedback,
+            evaluation=evaluation,
+            total_participants=total_participants,
+            responses_submitted=responses_submitted,
+            member_feedback_cards=member_feedback_cards
+        )
+    except Exception as e:
+        print(f"GD result error: {e}")
         return f"Error: {e}", 500
 
 # ==================== MENTAL HEALTH MODULE ====================
@@ -3890,6 +6285,368 @@ def _generic_explanation_response(query):
         f'4. Progress step: build one mini project and review what improved'
     )
 
+def _looks_like_placement_coach_request(query):
+    q = (query or '').lower()
+    return (
+        'you are an ai placement coach' in q
+        or (
+            'student profile' in q
+            and 'target role' in q
+            and 'current status' in q
+            and 'placement readiness score' in q
+        )
+    )
+
+def _extract_profile_field(text, label):
+    pattern = rf'^\s*{re.escape(label)}\s*:\s*(.*?)\s*(?:\([^)]*\)\s*)?$'
+    match = re.search(pattern, text or '', flags=re.IGNORECASE | re.MULTILINE)
+    return _clean_chat_text(match.group(1)) if match else ''
+
+def _is_missing_or_placeholder(value):
+    cleaned = _clean_chat_text(str(value or ''))
+    if not cleaned:
+        return True
+    if re.fullmatch(r'\{[^{}]+\}', cleaned):
+        return True
+    return cleaned.lower() in {'na', 'n/a', 'none', 'unknown', '-'}
+
+def _normalize_level(value, default='medium'):
+    cleaned = _clean_chat_text(str(value or '')).lower()
+    if cleaned in {'low', 'medium', 'high'}:
+        return cleaned
+    return default
+
+def _normalize_yes_no(value):
+    cleaned = _clean_chat_text(str(value or '')).lower()
+    if cleaned in {'yes', 'y', 'true', '1'}:
+        return 'yes'
+    if cleaned in {'no', 'n', 'false', '0'}:
+        return 'no'
+    return ''
+
+def _choose_aptitude_topic(aptitude_level):
+    if aptitude_level == 'low':
+        return 'Percentages'
+    if aptitude_level == 'high':
+        return 'Data Interpretation'
+    return 'Time and Work'
+
+def _get_aptitude_practice(topic):
+    banks = {
+        'Percentages': [
+            {
+                'q': 'A number increases from 200 to 260. What is the percentage increase?',
+                'a': '30%',
+                'e': 'Increase is 60. Percentage increase = (60/200)*100 = 30%.'
+            },
+            {
+                'q': 'The price of an item is reduced by 20% from 500. What is the new price?',
+                'a': '400',
+                'e': '20% of 500 is 100. New price = 500 - 100 = 400.'
+            },
+            {
+                'q': 'A student scores 72 out of 90. What is the score percentage?',
+                'a': '80%',
+                'e': 'Percentage = (72/90)*100 = 80%.'
+            },
+            {
+                'q': 'If x is increased by 25% and becomes 100, what is x?',
+                'a': '80',
+                'e': '100 = 125% of x, so x = 100/1.25 = 80.'
+            },
+            {
+                'q': 'After two successive discounts of 10% and 20%, what is the net discount?',
+                'a': '28%',
+                'e': 'Effective factor = 0.9 * 0.8 = 0.72, so net discount = 28%.'
+            }
+        ],
+        'Time and Work': [
+            {
+                'q': 'A can finish a task in 12 days and B in 18 days. In how many days together?',
+                'a': '7.2 days',
+                'e': 'Combined rate = 1/12 + 1/18 = 5/36. Time = 36/5 = 7.2 days.'
+            },
+            {
+                'q': 'If 8 workers complete a job in 15 days, how many days for 12 workers?',
+                'a': '10 days',
+                'e': 'Work = 8*15 = 120 worker-days. Days with 12 workers = 120/12 = 10.'
+            },
+            {
+                'q': 'A alone does a job in 20 days. After 5 days, B joins and they finish in 5 more days. B alone takes?',
+                'a': '20 days',
+                'e': 'A did 5/20 = 1/4 work. Remaining 3/4 done by A+B in 5 days => rate 3/20. B rate = 3/20 - 1/20 = 1/10.'
+            },
+            {
+                'q': 'P is twice as efficient as Q. If Q takes 30 days, P takes how many days?',
+                'a': '15 days',
+                'e': 'Double efficiency means half time.'
+            },
+            {
+                'q': 'A tap fills a tank in 6 hours and another in 8 hours. Together they fill in?',
+                'a': '24/7 hours (about 3.43 hours)',
+                'e': 'Rate = 1/6 + 1/8 = 7/24. Time = 24/7 hours.'
+            }
+        ],
+        'Data Interpretation': [
+            {
+                'q': 'Sales were 120, 150, 180 in three months. Find average sales.',
+                'a': '150',
+                'e': 'Average = (120+150+180)/3 = 450/3 = 150.'
+            },
+            {
+                'q': 'A pie chart shows 25% for category A out of total 800. Value of A?',
+                'a': '200',
+                'e': '25% of 800 = 200.'
+            },
+            {
+                'q': 'A value rises from 250 to 300. Find percentage growth.',
+                'a': '20%',
+                'e': 'Growth = 50. Percentage = (50/250)*100 = 20%.'
+            },
+            {
+                'q': 'Company X has revenue 500 and profit 50. Profit margin?',
+                'a': '10%',
+                'e': 'Margin = (50/500)*100 = 10%.'
+            },
+            {
+                'q': 'If ratio of boys:girls is 3:2 in class of 50, number of girls?',
+                'a': '20',
+                'e': 'Total parts = 5. Each part = 10. Girls = 2 parts = 20.'
+            }
+        ]
+    }
+    return banks.get(topic, banks['Time and Work'])
+
+def _infer_field(field, target_role):
+    if not _is_missing_or_placeholder(field):
+        return field.strip()
+    role = (target_role or '').lower()
+    if any(token in role for token in ('analyst', 'data', 'ml', 'ai')):
+        return 'Data'
+    if any(token in role for token in ('engineer', 'developer', 'software', 'web', 'cloud', 'devops')):
+        return 'Tech'
+    return 'Non-Tech'
+
+def _build_project_suggestion(field, target_role, target_company):
+    role = target_role if not _is_missing_or_placeholder(target_role) else 'target role'
+    company = target_company if not _is_missing_or_placeholder(target_company) else 'your target company'
+    field_lower = (field or '').lower()
+
+    if field_lower.startswith('tech'):
+        return (
+            f'Build a "{role} Preparation Tracker" web app for {company}: create aptitude mock tests, '
+            'track DSA/subject progress, and add analytics for weak-topic trends. Include login, dashboard, '
+            'and weekly improvement reports to demonstrate full-stack and problem-solving ability.'
+        )
+    if field_lower.startswith('data'):
+        return (
+            f'Build a "{role} Hiring Insights Dashboard" for {company}: collect job-post data, clean it, and '
+            'analyze skill demand, salary bands, and location patterns. Add interactive visuals and one predictive '
+            'model for role fit scoring to show end-to-end data skills.'
+        )
+    if field_lower.startswith('core'):
+        return (
+            f'Build a "{role} Process Optimizer" project aligned to {company}: model a real core-domain workflow, '
+            'measure bottlenecks, and propose efficiency improvements with clear KPIs, simulation results, '
+            'and implementation recommendations.'
+        )
+    return (
+        f'Build a "{role} Placement Strategy System" for {company}: include company research sheets, application '
+        'tracking, mock interview notes, and communication improvement logs. Show measurable outcomes like increased '
+        'shortlisting rate and better interview response quality.'
+    )
+
+def _placement_readiness_score(aptitude_level, skill_level, dsa_knowledge, projects_done, resume_ready):
+    score = 20
+    score += {'low': 8, 'medium': 16, 'high': 24}.get(aptitude_level, 12)
+    score += {'low': 5, 'medium': 10, 'high': 15}.get(skill_level, 8)
+    if dsa_knowledge == 'yes':
+        score += 15
+    if projects_done == 'yes':
+        score += 20
+    if resume_ready == 'yes':
+        score += 15
+    return max(0, min(100, score))
+
+def _get_readiness_status(score):
+    if score < 40:
+        return 'Not Ready'
+    if score < 70:
+        return 'Improving'
+    return 'Placement Ready'
+
+def _placement_coach_response(query):
+    if not _looks_like_placement_coach_request(query):
+        return None
+
+    name = _extract_profile_field(query, 'Name')
+    branch = _extract_profile_field(query, 'Branch')
+    year = _extract_profile_field(query, 'Year')
+    field = _extract_profile_field(query, 'Field')
+    skills = _extract_profile_field(query, 'Skills')
+    skill_level = _normalize_level(_extract_profile_field(query, 'Skill Level'), default='medium')
+    target_role = _extract_profile_field(query, 'Target Role')
+    target_company = _extract_profile_field(query, 'Target Company')
+    aptitude_level = _normalize_level(_extract_profile_field(query, 'Aptitude Level'), default='medium')
+    dsa_knowledge = _normalize_yes_no(_extract_profile_field(query, 'DSA Knowledge'))
+    projects_done = _normalize_yes_no(_extract_profile_field(query, 'Projects Done'))
+    resume_ready = _normalize_yes_no(_extract_profile_field(query, 'Resume Ready'))
+
+    inferred_field = _infer_field(field, target_role)
+    skill_text = skills if not _is_missing_or_placeholder(skills) else 'basic domain skills'
+    role_text = target_role if not _is_missing_or_placeholder(target_role) else 'target role'
+
+    strengths = []
+    if not _is_missing_or_placeholder(branch):
+        strengths.append(f'Branch alignment: {branch} provides a solid base for {role_text}.')
+    strengths.append(f'Current skill set identified: {skill_text}.')
+    if aptitude_level in {'medium', 'high'}:
+        strengths.append(f'Aptitude baseline is {aptitude_level}, which supports placement test performance.')
+    if dsa_knowledge == 'yes':
+        strengths.append('DSA foundation is present, useful for screening and coding rounds.')
+    if projects_done == 'yes':
+        strengths.append('Project experience exists, which strengthens practical interview discussions.')
+    if resume_ready == 'yes':
+        strengths.append('Resume is already prepared and can be optimized for target roles quickly.')
+    if not strengths:
+        strengths.append('You are actively planning your placement journey, which is a strong starting point.')
+
+    weaknesses = []
+    if aptitude_level == 'low':
+        weaknesses.append('Aptitude is currently a bottleneck and needs daily timed practice.')
+    elif aptitude_level == 'medium':
+        weaknesses.append('Aptitude needs stronger speed and accuracy under time pressure.')
+    if inferred_field.lower().startswith('tech') and dsa_knowledge != 'yes':
+        weaknesses.append('DSA preparation is missing for tech hiring rounds.')
+    if projects_done != 'yes':
+        weaknesses.append('Project proof of skills is missing; this can reduce shortlist chances.')
+    if resume_ready != 'yes':
+        weaknesses.append('Resume is not interview-ready yet and needs role-specific improvements.')
+    if _is_missing_or_placeholder(skill_text):
+        weaknesses.append('Skill details are unclear; define 3-5 measurable core skills immediately.')
+    if not weaknesses:
+        weaknesses.append('Main gap is consistency in mock tests and interview simulation.')
+
+    daily_plan = [
+        f'Aptitude (Main Focus): Solve 25 mixed questions on {_choose_aptitude_topic(aptitude_level)} and review all mistakes in a formula/error log.',
+        'Aptitude Speed Drill: Attempt 1 timed mini-mock (20-30 min) and target accuracy above 80%.'
+    ]
+    if inferred_field.lower().startswith('tech'):
+        daily_plan.append('Technical Task: Solve 2 coding problems (1 easy, 1 medium) and revise one key concept for interviews.')
+    if projects_done != 'yes':
+        daily_plan.append('Project Improvement: Spend 60 minutes building one measurable feature and document impact in README.')
+    else:
+        daily_plan.append('Resume/Project Polish: Add quantified outcomes to one project bullet and align it with target role keywords.')
+    daily_plan.append('Communication Task: Practice a 2-minute self-introduction and one GD summary response aloud.')
+
+    aptitude_topic = _choose_aptitude_topic(aptitude_level)
+    aptitude_set = _get_aptitude_practice(aptitude_topic)
+
+    resume_tips = [
+        f'Customize headline and summary for {role_text} with 4-6 matching keywords from job descriptions.',
+        'Convert project bullets to impact format: Action + Tool + Result (with numbers).',
+        'Keep resume one page, remove generic statements, and prioritize strongest work in top half.'
+    ]
+
+    gd_topic = 'Should AI-based assessments be used as the primary filter in campus placements?'
+    gd_for = [
+        'AI assessments scale quickly and evaluate large applicant pools consistently.',
+        'They reduce manual bias in early screening when designed well.',
+        'They provide faster feedback loops to students and recruiters.'
+    ]
+    gd_against = [
+        'Over-reliance on AI may miss creativity, communication, and real potential.',
+        'Algorithm bias or poor test design can unfairly impact candidates.',
+        'Many students have unequal access to tools and preparation environments.'
+    ]
+
+    mock_questions = [
+        'Tell me about yourself and why you are interested in this role.',
+        'Describe a challenge you faced and how you handled it under pressure.'
+    ]
+
+    readiness_score = _placement_readiness_score(
+        aptitude_level=aptitude_level,
+        skill_level=skill_level,
+        dsa_knowledge=dsa_knowledge,
+        projects_done=projects_done,
+        resume_ready=resume_ready
+    )
+    readiness_status = _get_readiness_status(readiness_score)
+
+    immediate_actions = []
+    if aptitude_level != 'high':
+        immediate_actions.append('start daily timed aptitude practice with strict error tracking')
+    if inferred_field.lower().startswith('tech') and dsa_knowledge != 'yes':
+        immediate_actions.append('begin core DSA topics (arrays, strings, hashing, recursion) this week')
+    if projects_done != 'yes':
+        immediate_actions.append('complete one role-aligned project milestone in the next 7 days')
+    if resume_ready != 'yes':
+        immediate_actions.append('finish and review a role-specific resume this week')
+    if not immediate_actions:
+        immediate_actions.append('increase mock interview frequency and improve answer structure using STAR')
+
+    profile_note = ''
+    if any(
+        _is_missing_or_placeholder(v)
+        for v in (name, branch, year, field, skills, target_role, target_company)
+    ):
+        profile_note = 'Some profile fields are placeholders, so this plan is generated as a baseline template.\n\n'
+
+    lines = []
+    if profile_note:
+        lines.append(profile_note.strip())
+        lines.append('')
+
+    lines.extend([
+        'Strengths:',
+        *[f'- {item}' for item in strengths[:5]],
+        '',
+        'Weaknesses:',
+        *[f'- {item}' for item in weaknesses[:5]],
+        '',
+        'Daily Plan:',
+        *[f'- {item}' for item in daily_plan],
+        '',
+        'Aptitude Practice:',
+    ])
+
+    for idx, item in enumerate(aptitude_set[:5], start=1):
+        lines.extend([
+            f'Q{idx}: {item["q"]}',
+            f'Answer: {item["a"]}',
+            f'Explanation: {item["e"]}'
+        ])
+
+    lines.extend([
+        '',
+        'Project Suggestion:',
+        _build_project_suggestion(inferred_field, target_role, target_company),
+        '',
+        'Resume Tips:',
+        *[f'- {tip}' for tip in resume_tips],
+        '',
+        'Group Discussion Topic:',
+        f'Topic: {gd_topic}',
+        'For:',
+        *[f'- {point}' for point in gd_for],
+        'Against:',
+        *[f'- {point}' for point in gd_against],
+        '',
+        'Mock Interview Questions:',
+        f'1. {mock_questions[0]}',
+        f'2. {mock_questions[1]}',
+        '',
+        'Performance Insight:',
+        f'Immediate priority: {", ".join(immediate_actions)}.',
+        '',
+        'Placement Readiness Score:',
+        f'Score: {readiness_score}/100',
+        f'Status: {readiness_status}'
+    ])
+
+    return '\n'.join(lines)
+
 def _local_capabilities_response():
     return (
         'I can answer questions without any API key.\n'
@@ -3917,6 +6674,10 @@ def _local_capabilities_response():
 def get_advanced_local_chatbot_response(message, history=None):
     resolved = _merge_with_context(message, history or [])
     lower = resolved.lower()
+
+    placement_reply = _placement_coach_response(resolved)
+    if placement_reply:
+        return _absolutize_links_in_text(placement_reply)
 
     if any(greet in lower for greet in ('hello', 'hi', 'hey', 'namaste', 'good morning', 'good evening')):
         return _absolutize_links_in_text(
@@ -5505,6 +8266,42 @@ def get_notifications_api():
                 'link': '/student-community'
             })
 
+        # Pending GD invites for current user.
+        pending_gd_invites = conn.execute(
+            '''SELECT COUNT(*) AS c
+               FROM gd_invites gi
+               JOIN gd_sessions gs ON gs.id = gi.session_id
+               WHERE gi.to_user = ?
+                 AND gi.status = 'pending'
+                 AND gs.status IN ('planning', 'active')''',
+            (user_id,)
+        ).fetchone()['c']
+        if pending_gd_invites:
+            notifications.append({
+                'id': f'pending-gd-invites-{pending_gd_invites}',
+                'title': 'GD Invite',
+                'message': f'You have {pending_gd_invites} pending GD invite(s).',
+                'link': '/gd'
+            })
+
+        # Join requests on rooms hosted by current user.
+        pending_join_requests = conn.execute(
+            '''SELECT COUNT(*) AS c
+               FROM gd_join_requests jr
+               JOIN gd_sessions gs ON gs.id = jr.session_id
+               WHERE gs.host_user_id = ?
+                 AND jr.status = 'pending'
+                 AND gs.status IN ('planning', 'active')''',
+            (user_id,)
+        ).fetchone()['c']
+        if pending_join_requests:
+            notifications.append({
+                'id': f'pending-gd-join-requests-{pending_join_requests}',
+                'title': 'GD Join Requests',
+                'message': f'{pending_join_requests} student(s) requested to join your GD room.',
+                'link': '/gd'
+            })
+
         # Unread community chat messages.
         unread_count = conn.execute(
             'SELECT COUNT(*) AS c FROM student_messages WHERE receiver_id = ? AND is_read = 0',
@@ -5539,6 +8336,23 @@ def get_notifications_api():
                 'title': 'Internship Community',
                 'message': f'{recent_stories} new internship story(s) shared in the last 24 hours.',
                 'link': '/internships/community'
+            })
+
+        # Daily aptitude quiz reminder.
+        today_quiz_done = conn.execute(
+            '''SELECT COUNT(*) AS c
+               FROM user_activity
+               WHERE user_id = ?
+                 AND activity_type = 'aptitude_quiz_completed'
+                 AND date(timestamp, 'localtime') = date('now', 'localtime')''',
+            (user_id,)
+        ).fetchone()['c']
+        if not today_quiz_done:
+            notifications.append({
+                'id': 'daily-aptitude-reminder',
+                'title': 'Daily Aptitude Quiz',
+                'message': 'Please solve today\'s aptitude quiz (10 questions) to boost placement readiness.',
+                'link': '/skill/aptitude-quiz'
             })
 
         conn.close()

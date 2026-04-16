@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}GD Feedback - {{ session.room_id }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <h3 class="mb-2"><i class="fas fa-clipboard-check text-primary me-2"></i>Post-Discussion Feedback</h3>
+            <p class="mb-0 text-muted"><strong>Room:</strong> {{ session.room_id }} | <strong>Topic:</strong> {{ session.topic }}</p>
+        </div>
+    </div>
+
+    <form method="post" class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <h5 class="mb-3">1) Your Self Experience</h5>
+            <textarea name="experience" rows="4" class="form-control mb-4" placeholder="How do you think you performed?">{{ existing_response.experience if existing_response else '' }}</textarea>
+
+            <h5 class="mb-3">2) Your Main Points Shared</h5>
+            <textarea name="response" rows="5" class="form-control mb-4" placeholder="Write arguments and examples you shared in the GD..." required>{{ existing_response.response if existing_response else '' }}</textarea>
+
+            <h5 class="mb-3">3) Peer Feedback</h5>
+            {% for peer in peer_participants %}
+            <div class="border rounded p-3 mb-3">
+                <h6 class="mb-2">{{ peer.name }} <small class="text-muted">({{ peer.field or 'General' }}, {{ peer.target_role or 'Role not set' }})</small></h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Pros</label>
+                        <textarea class="form-control" name="pros_{{ peer.user_id }}" rows="2" placeholder="Strengths you noticed">{{ feedback_map.get(peer.user_id, {}).get('pros', '') }}</textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Cons</label>
+                        <textarea class="form-control" name="cons_{{ peer.user_id }}" rows="2" placeholder="Areas to improve">{{ feedback_map.get(peer.user_id, {}).get('cons', '') }}</textarea>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <button class="btn btn-success" type="submit">
+                <i class="fas fa-paper-plane me-1"></i>Submit Feedback & View Ai Feedback
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

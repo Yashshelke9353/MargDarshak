@@ -3,10 +3,61 @@
 {% block title %}Browse Resources - Skill Saathi{% endblock %}
 
 {% block content %}
+<style>
+  .quiz-cta-wrap {
+    background: linear-gradient(135deg, #ecfeff 0%, #eef2ff 100%);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    border-radius: 16px;
+    padding: 14px;
+    max-width: 760px;
+    margin: 0 auto;
+    box-shadow: 0 10px 22px rgba(79, 70, 229, 0.08);
+  }
+  .quiz-cta-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    border-radius: 999px;
+    padding: 12px 20px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    color: #fff;
+    background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 60%, #8b5cf6 100%);
+    box-shadow: 0 12px 26px rgba(99, 102, 241, 0.28);
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .quiz-cta-btn:hover {
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 16px 28px rgba(99, 102, 241, 0.34);
+  }
+  .quiz-cta-btn .icon-bubble {
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.2);
+  }
+</style>
 <div class="container my-5">
   <h1 class="text-center mb-3">📚 Curated Learning Resources</h1>
 <p class="text-center text-muted mb-2">Handpicked content to help you learn faster and smarter</p>
 <p class="text-center text-muted mb-4">Showing {{ resources|length }} of {{ total_resources }} learning resources available on the website.</p>
+
+<div class="text-center mb-4">
+  <div class="quiz-cta-wrap">
+    <a href="/skill/aptitude-quiz" class="quiz-cta-btn">
+      <span class="icon-bubble"><i class="fas fa-brain"></i></span>
+      <span>Start Daily Aptitude Quiz</span>
+      <i class="fas fa-arrow-right"></i>
+    </a>
+    <p class="text-muted mt-2 mb-0 small">Attempt 10 daily questions with timer, result analysis, and topic-wise feedback.</p>
+  </div>
+</div>
 
 <!-- Video Button -->
 <div class="text-center mb-4">

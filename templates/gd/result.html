@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block title %}GD Result - {{ session.room_id }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h3 class="mb-2"><i class="fas fa-chart-line text-success me-2"></i>GD Evaluation Result</h3>
+                    <p class="mb-0 text-muted"><strong>Room:</strong> {{ session.room_id }} | <strong>Topic:</strong> {{ session.topic }}</p>
+                    <p class="mb-0 text-muted">Feedback submissions: {{ responses_submitted }}/{{ total_participants }}</p>
+                </div>
+                <span class="badge bg-info text-dark">Source: {{ evaluation.source|upper if evaluation.source else 'GEMINI' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="p-3 border rounded bg-light">
+                <small class="text-muted">Confidence</small>
+                <h4 class="mb-0">{{ evaluation.confidence }}/10</h4>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-3 border rounded bg-light">
+                <small class="text-muted">Communication</small>
+                <h4 class="mb-0">{{ evaluation.communication }}/10</h4>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-3 border rounded bg-light">
+                <small class="text-muted">Logical Thinking</small>
+                <h4 class="mb-0">{{ evaluation.logical_thinking }}/10</h4>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-3 border rounded bg-light">
+                <small class="text-muted">Participation</small>
+                <h4 class="mb-0">{{ evaluation.participation }}</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="mb-3 text-success">Strengths</h5>
+                    <ul class="mb-0">
+                        {% for item in evaluation.strengths %}
+                        <li>{{ item }}</li>
+                        {% else %}
+                        <li>No strength data available.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="mb-3 text-danger">Weaknesses</h5>
+                    <ul class="mb-0">
+                        {% for item in evaluation.weaknesses %}
+                        <li>{{ item }}</li>
+                        {% else %}
+                        <li>No weakness data available.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="mb-3 text-primary">Improvements</h5>
+                    <ul class="mb-0">
+                        {% for item in evaluation.improvements %}
+                        <li>{{ item }}</li>
+                        {% else %}
+                        <li>No improvement data available.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body">
+            <h5 class="mb-2">Final Feedback</h5>
+            <p class="mb-0">{{ evaluation.final_feedback }}</p>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body">
+            <h5 class="mb-3">Ai Feedback</h5>
+            {% if member_feedback_cards %}
+                <div class="row g-3">
+                    {% for member in member_feedback_cards %}
+                    <div class="col-lg-6">
+                        <div class="border rounded p-3 h-100">
+                            <h6 class="mb-1">{{ member.name }}</h6>
+                            <p class="mb-2 text-muted small">
+                                {{ member.field or 'General' }} | {{ member.target_role or 'Role not set' }} | Participation: {{ member.ai_participation }}
+                            </p>
+                            <p class="small mb-2">{{ member.ai_final_feedback }}</p>
+                            <div class="small text-muted mb-2">
+                                Source: {{ member.ai_source|upper if member.ai_source else 'TEMPLATE' }}
+                                {% if member.ai_confidence is not none %}
+                                | Confidence {{ member.ai_confidence }}/10
+                                | Communication {{ member.ai_communication }}/10
+                                | Logical {{ member.ai_logical_thinking }}/10
+                                {% endif %}
+                            </div>
+                            <div class="mb-2">
+                                <strong class="small">What Went Well</strong>
+                                <ul class="small mb-0">
+                                    {% for item in member.ai_strengths %}
+                                    <li>{{ item }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <div class="mb-2">
+                                <strong class="small">Improve Next Round</strong>
+                                <ul class="small mb-0">
+                                    {% for item in member.ai_improvements %}
+                                    <li>{{ item }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            <div>
+                                <strong class="small">Practice Plan</strong>
+                                <ul class="small mb-0">
+                                    {% for item in member.next_steps %}
+                                    <li>{{ item }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">No member feedback available yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body">
+            <h5 class="mb-3">Peer Feedback Received</h5>
+            {% if peer_feedback %}
+                {% for item in peer_feedback %}
+                <div class="border rounded p-3 mb-2">
+                    <div class="fw-semibold mb-1">{{ item.from_name }}</div>
+                    <div><strong>Pros:</strong> {{ item.pros }}</div>
+                    <div><strong>Cons:</strong> {{ item.cons }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted mb-0">Peer feedback is not available yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mt-4 d-flex gap-2">
+        <a href="/gd" class="btn btn-primary">
+            <i class="fas fa-redo me-1"></i>Start New GD
+        </a>
+        <a href="/skill" class="btn btn-outline-secondary">Back to Skill Saathi</a>
+    </div>
+</div>
+{% endblock %}

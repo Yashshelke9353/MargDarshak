@@ -1,0 +1,392 @@
+{% extends 'base.html' %}
+
+{% block title %}Daily Aptitude Quiz - Skill Saathi{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <h2 class="mb-2"><i class="fas fa-brain text-primary me-2"></i>Daily Aptitude Quiz</h2>
+                    <p class="text-muted mb-0">Generate a unique 10-question quiz using Gemini AI with timer, result analysis, and topic insights.</p>
+                </div>
+                <a href="/skill/browse" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Skills
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="quizTopic" class="form-label fw-semibold">Select Topic</label>
+                    <select id="quizTopic" class="form-select">
+                        {% for topic in topics %}
+                        <option value="{{ topic }}" {% if topic == selected_topic %}selected{% endif %}>{{ topic }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-8">
+                    <div class="d-flex flex-wrap gap-2">
+                        <button id="startDailyBtn" class="btn btn-primary">
+                            <i class="fas fa-calendar-day me-1"></i>Start Daily Quiz
+                        </button>
+                        <button id="startRandomBtn" class="btn btn-warning">
+                            <i class="fas fa-random me-1"></i>Start Random Quiz
+                        </button>
+                        <button id="resetQuizBtn" class="btn btn-outline-secondary" style="display:none;">
+                            <i class="fas fa-redo me-1"></i>Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="quizStatus" class="mt-3"></div>
+        </div>
+    </div>
+
+    <div id="quizPanel" class="card shadow-sm border-0 mb-4" style="display:none;">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div>
+                    <span id="quizModeBadge" class="badge bg-primary me-2">Daily</span>
+                    <span id="quizTopicBadge" class="badge bg-info text-dark">Topic</span>
+                    <span id="quizSourceBadge" class="badge bg-secondary ms-2">Gemini</span>
+                </div>
+                <div class="fw-semibold">
+                    <i class="fas fa-clock me-1 text-danger"></i>
+                    <span id="elapsedTime">00:00</span>
+                </div>
+            </div>
+
+            <div class="progress mb-3" style="height: 10px;">
+                <div id="quizProgressBar" class="progress-bar" role="progressbar" style="width: 10%;"></div>
+            </div>
+            <p id="questionCounter" class="text-muted mb-3">Question 1 of 10</p>
+
+            <h5 id="questionText" class="mb-3"></h5>
+            <div id="optionsContainer" class="d-grid gap-2"></div>
+
+            <div class="d-flex flex-wrap justify-content-between mt-4 gap-2">
+                <button id="prevBtn" class="btn btn-outline-secondary">
+                    <i class="fas fa-chevron-left me-1"></i>Previous
+                </button>
+                <div class="d-flex gap-2">
+                    <button id="nextBtn" class="btn btn-outline-primary">
+                        Next<i class="fas fa-chevron-right ms-1"></i>
+                    </button>
+                    <button id="submitBtn" class="btn btn-success" style="display:none;">
+                        <i class="fas fa-check me-1"></i>Submit Quiz
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="resultPanel" class="card shadow-sm border-0" style="display:none;">
+        <div class="card-body p-4">
+            <h4 class="mb-3"><i class="fas fa-chart-line text-success me-2"></i>Quiz Result & Analysis</h4>
+            <div id="resultSummary" class="row g-3 mb-3"></div>
+            <div id="resultAnalysis" class="mb-3"></div>
+            <div id="topicBreakdown" class="mb-3"></div>
+            <div id="reviewAnswers"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const DATE_KEY = {{ date_key|tojson }};
+const USER_ID = {{ user_id|tojson }};
+
+let quizMode = 'daily';
+let currentTopic = 'Random';
+let questionSetSource = 'gemini';
+let questions = [];
+let currentIndex = 0;
+let answers = {};
+let startTimeMs = null;
+let timerInterval = null;
+
+function setStatus(message, type = 'info') {
+    const status = document.getElementById('quizStatus');
+    const classMap = {
+        info: 'alert alert-info',
+        success: 'alert alert-success',
+        warning: 'alert alert-warning',
+        error: 'alert alert-danger'
+    };
+    status.innerHTML = `<div class="${classMap[type] || classMap.info} mb-0">${message}</div>`;
+}
+
+function formatTime(totalSeconds) {
+    const mins = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+    const secs = String(totalSeconds % 60).padStart(2, '0');
+    return `${mins}:${secs}`;
+}
+
+function stopTimer() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+}
+
+function startTimer() {
+    stopTimer();
+    startTimeMs = Date.now();
+    document.getElementById('elapsedTime').textContent = '00:00';
+    timerInterval = setInterval(() => {
+        const elapsedSeconds = Math.floor((Date.now() - startTimeMs) / 1000);
+        document.getElementById('elapsedTime').textContent = formatTime(elapsedSeconds);
+    }, 1000);
+}
+
+function getCurrentElapsedSeconds() {
+    if (!startTimeMs) return 0;
+    return Math.floor((Date.now() - startTimeMs) / 1000);
+}
+
+function saveCurrentAnswer() {
+    const q = questions[currentIndex];
+    if (!q) return;
+    const selected = document.querySelector('input[name="quizOption"]:checked');
+    if (selected) {
+        answers[q.id] = Number(selected.value);
+    }
+}
+
+function renderQuestion() {
+    const q = questions[currentIndex];
+    if (!q) return;
+
+    document.getElementById('questionCounter').textContent = `Question ${currentIndex + 1} of ${questions.length}`;
+    document.getElementById('questionText').textContent = q.question;
+    document.getElementById('quizProgressBar').style.width = `${((currentIndex + 1) / questions.length) * 100}%`;
+
+    const existing = answers[q.id];
+    const optionsHtml = q.options.map((opt, idx) => {
+        const checked = existing === idx ? 'checked' : '';
+        return `
+            <label class="border rounded p-2 option-item">
+                <input type="radio" name="quizOption" value="${idx}" ${checked}>
+                <span class="ms-2">${opt}</span>
+            </label>
+        `;
+    }).join('');
+    document.getElementById('optionsContainer').innerHTML = optionsHtml;
+
+    document.getElementById('prevBtn').disabled = currentIndex === 0;
+    const isLast = currentIndex === questions.length - 1;
+    document.getElementById('nextBtn').style.display = isLast ? 'none' : 'inline-block';
+    document.getElementById('submitBtn').style.display = isLast ? 'inline-block' : 'none';
+}
+
+function getPerformanceBand(accuracy) {
+    if (accuracy >= 85) return 'Excellent';
+    if (accuracy >= 70) return 'Good';
+    if (accuracy >= 50) return 'Needs Improvement';
+    return 'Focus Required';
+}
+
+function buildTopicBreakdown() {
+    const stats = {};
+    questions.forEach(q => {
+        const topic = q.topic || 'General';
+        if (!stats[topic]) stats[topic] = { total: 0, correct: 0 };
+        stats[topic].total += 1;
+        if (answers[q.id] === q.answer_index) stats[topic].correct += 1;
+    });
+    return stats;
+}
+
+async function saveQuizResult(score, totalQuestions, timeTakenSeconds, topicBreakdown) {
+    try {
+        await fetch('/skill/aptitude-quiz/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                score: score,
+                total_questions: totalQuestions,
+                time_taken_seconds: timeTakenSeconds,
+                topic: currentTopic,
+                mode: quizMode,
+                source: questionSetSource,
+                topic_breakdown: topicBreakdown
+            })
+        });
+    } catch (err) {
+        console.error('Unable to store quiz summary:', err);
+    }
+}
+
+function renderResults() {
+    stopTimer();
+    const totalQuestions = questions.length;
+    let score = 0;
+    questions.forEach(q => {
+        if (answers[q.id] === q.answer_index) score += 1;
+    });
+
+    const timeTakenSeconds = getCurrentElapsedSeconds();
+    const accuracy = totalQuestions ? Math.round((score / totalQuestions) * 100) : 0;
+    const avgTime = totalQuestions ? Math.round(timeTakenSeconds / totalQuestions) : 0;
+    const band = getPerformanceBand(accuracy);
+    const topicBreakdown = buildTopicBreakdown();
+
+    const weakTopics = Object.entries(topicBreakdown)
+        .filter(([, val]) => ((val.correct / Math.max(val.total, 1)) * 100) < 60)
+        .map(([topic]) => topic);
+
+    const analysisItems = [];
+    analysisItems.push(`Performance: <strong>${band}</strong> (${accuracy}% accuracy).`);
+    analysisItems.push(`Timing: You took <strong>${formatTime(timeTakenSeconds)}</strong> total, about <strong>${avgTime}s</strong> per question.`);
+    if (weakTopics.length) {
+        analysisItems.push(`Priority topics to improve: <strong>${weakTopics.join(', ')}</strong>.`);
+    } else {
+        analysisItems.push('Strong consistency across all selected topics.');
+    }
+
+    document.getElementById('resultSummary').innerHTML = `
+        <div class="col-md-3">
+            <div class="p-3 bg-light rounded border"><small class="text-muted">Score</small><h4 class="mb-0">${score}/${totalQuestions}</h4></div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-3 bg-light rounded border"><small class="text-muted">Accuracy</small><h4 class="mb-0">${accuracy}%</h4></div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-3 bg-light rounded border"><small class="text-muted">Time Taken</small><h4 class="mb-0">${formatTime(timeTakenSeconds)}</h4></div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-3 bg-light rounded border"><small class="text-muted">Avg / Question</small><h4 class="mb-0">${avgTime}s</h4></div>
+        </div>
+    `;
+
+    document.getElementById('resultAnalysis').innerHTML = `
+        <div class="alert alert-secondary mb-0">
+            ${analysisItems.map(item => `<div class="mb-1">${item}</div>`).join('')}
+        </div>
+    `;
+
+    const rows = Object.entries(topicBreakdown).map(([topic, val]) => {
+        const pct = Math.round((val.correct / Math.max(val.total, 1)) * 100);
+        return `<tr><td>${topic}</td><td>${val.correct}/${val.total}</td><td>${pct}%</td></tr>`;
+    }).join('');
+
+    document.getElementById('topicBreakdown').innerHTML = `
+        <h6 class="mb-2">Topic-wise Breakdown</h6>
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead><tr><th>Topic</th><th>Correct</th><th>Accuracy</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
+
+    const review = questions.map((q, idx) => {
+        const selected = answers[q.id];
+        const isCorrect = selected === q.answer_index;
+        const yourAnswer = selected === undefined ? 'Not Answered' : q.options[selected];
+        const correctAnswer = q.options[q.answer_index];
+        return `
+            <div class="border rounded p-3 mb-2 ${isCorrect ? 'bg-light' : 'bg-danger bg-opacity-10'}">
+                <div class="fw-semibold mb-1">Q${idx + 1}. ${q.question}</div>
+                <div><strong>Your Answer:</strong> ${yourAnswer}</div>
+                <div><strong>Correct Answer:</strong> ${correctAnswer}</div>
+                <div class="text-muted"><strong>Why:</strong> ${q.explanation}</div>
+            </div>
+        `;
+    }).join('');
+    document.getElementById('reviewAnswers').innerHTML = `
+        <h6 class="mb-2">Question Review</h6>
+        ${review}
+    `;
+
+    saveQuizResult(score, totalQuestions, timeTakenSeconds, topicBreakdown);
+    document.getElementById('resultPanel').style.display = 'block';
+    document.getElementById('resultPanel').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function generateQuiz(mode) {
+    quizMode = mode;
+    currentTopic = document.getElementById('quizTopic').value || 'Random';
+    setStatus('Generating quiz in real time. Please wait...', 'info');
+
+    try {
+        const resp = await fetch('/skill/aptitude-quiz/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic: currentTopic, mode: quizMode })
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.success) {
+            throw new Error(data.error || 'Quiz generation failed.');
+        }
+
+        questions = Array.isArray(data.questions) ? data.questions.slice(0, 10) : [];
+        if (questions.length < 10) {
+            throw new Error('Quiz did not return 10 questions.');
+        }
+
+        currentIndex = 0;
+        answers = {};
+        questionSetSource = data.source || 'gemini';
+
+        document.getElementById('quizPanel').style.display = 'block';
+        document.getElementById('resultPanel').style.display = 'none';
+        document.getElementById('resetQuizBtn').style.display = 'inline-block';
+        document.getElementById('quizModeBadge').textContent = quizMode === 'daily' ? 'Daily' : 'Random';
+        document.getElementById('quizTopicBadge').textContent = data.topic || currentTopic;
+        document.getElementById('quizSourceBadge').textContent = (questionSetSource || 'gemini').toUpperCase();
+
+        renderQuestion();
+        startTimer();
+
+        if (data.notice) {
+            setStatus(data.notice, questionSetSource === 'fallback' ? 'warning' : 'success');
+        } else {
+            setStatus('Quiz generated successfully. All the best!', 'success');
+        }
+    } catch (err) {
+        console.error(err);
+        setStatus(err.message || 'Unable to generate quiz right now.', 'error');
+    }
+}
+
+function resetQuizView() {
+    stopTimer();
+    questions = [];
+    currentIndex = 0;
+    answers = {};
+    startTimeMs = null;
+    document.getElementById('quizPanel').style.display = 'none';
+    document.getElementById('resultPanel').style.display = 'none';
+    document.getElementById('resetQuizBtn').style.display = 'none';
+    setStatus('Select topic and start a daily or random quiz.', 'info');
+}
+
+document.getElementById('startDailyBtn').addEventListener('click', () => generateQuiz('daily'));
+document.getElementById('startRandomBtn').addEventListener('click', () => generateQuiz('random'));
+document.getElementById('resetQuizBtn').addEventListener('click', resetQuizView);
+
+document.getElementById('prevBtn').addEventListener('click', () => {
+    saveCurrentAnswer();
+    if (currentIndex > 0) currentIndex -= 1;
+    renderQuestion();
+});
+
+document.getElementById('nextBtn').addEventListener('click', () => {
+    saveCurrentAnswer();
+    if (currentIndex < questions.length - 1) currentIndex += 1;
+    renderQuestion();
+});
+
+document.getElementById('submitBtn').addEventListener('click', () => {
+    saveCurrentAnswer();
+    renderResults();
+});
+
+setStatus('Select topic and start a daily or random quiz.', 'info');
+</script>
+{% endblock %}

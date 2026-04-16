@@ -1033,7 +1033,11 @@
 
     function handleResumeFileChange(e) {
         const file = e.target.files[0];
-        if (!file) return;
+        if (!file) {
+            selectedFile = null;
+            renderEmptyFileDropzone();
+            return;
+        }
         selectedFile = file;
         renderSelectedFilePreview(file);
     }
@@ -1052,7 +1056,8 @@
 
         const targetRole = document.getElementById('targetRole').value.trim();
         const resumeText = document.getElementById('resumeText').value.trim();
-        const resumeFile = document.getElementById('resumeFile').files[0];
+        const resumeFileInput = document.getElementById('resumeFile');
+        const resumeFile = selectedFile || resumeFileInput?.files?.[0] || null;
         const statusMessage = document.getElementById('statusMessage');
         const analyzeBtn = document.getElementById('analyzeBtn');
 
@@ -1110,7 +1115,7 @@
             }
 
             // Render results
-            document.getElementById('analysisSummary').innerHTML = renderAnalysis(data.analysis);
+            document.getElementById('analysisSummary').innerHTML = renderAnalysis(data.analysis, targetRole);
             document.getElementById('resultsSection').style.display = 'block';
 
             // Generate and render suggestions
@@ -1190,12 +1195,14 @@
     }
 
     // Render functions
-    function renderAnalysis(analysis) {
+    function renderAnalysis(analysis, targetRole = '') {
         const strongSkills = analysis.skills_analysis?.strong_skills || [];
         const missingSkills = analysis.skills_analysis?.missing_skills || [];
         const skillLevels = analysis.skills_analysis?.skill_levels || {};
         const roadmap = analysis.roadmap || {};
         const summaryText = analysis.analysis_summary || generateLiveSummary(analysis);
+        const jobReadiness = Number.isFinite(Number(analysis.job_readiness_score)) ? Number(analysis.job_readiness_score) : 0;
+        const placementReadiness = Number.isFinite(Number(analysis.placement_readiness_score)) ? Number(analysis.placement_readiness_score) : 0;
 
         return `
             <div class="resume-dashboard">
@@ -1215,6 +1222,8 @@
                     <div class="summary-metrics-grid">
                         ${renderMetricCard('Strong Skills', strongSkills.length, strongSkills.slice(0, 4).join(', ') || 'Add more core skills', 'fas fa-check-circle', '#10b981')}
                         ${renderMetricCard('Top Skill Gap', missingSkills[0] || 'No major gap detected', missingSkills.length ? `${missingSkills.length} area(s) to improve` : 'On track', 'fas fa-exclamation-triangle', '#f59e0b')}
+                        ${renderMetricCard('Job Readiness', `${jobReadiness}%`, 'Readiness for target job roles', 'fas fa-briefcase', '#2563eb')}
+                        ${renderMetricCard('Placement Readiness', `${placementReadiness}%`, 'Campus/interview readiness level', 'fas fa-user-graduate', '#7c3aed')}
                         ${renderMetricCard('Roadmap Steps', Object.values(roadmap).flat().length, 'A clear 12-month path', 'fas fa-route', '#3b82f6')}
                         ${renderMetricCard('Internship Ideas', (analysis.internship_suggestions || []).length, (analysis.internship_suggestions || []).slice(0, 3).join(', ') || 'Explore relevant roles', 'fas fa-briefcase', '#8b5cf6')}
                     </div>
@@ -1225,6 +1234,7 @@
                         ${renderProfile(analysis.profile)}
                         ${renderBadgeList('Strong Skills', strongSkills, 'skill-strong')}
                         ${renderBadgeList('Skills to Improve', missingSkills, 'skill-missing')}
+                        ${renderReadinessRoadmaps(analysis, targetRole)}
                         ${renderList('Actionable Resume Improvements', analysis.resume_improvements || [])}
                         ${renderList('Priority Development Areas', analysis.skill_gap || [])}
                     </div>
@@ -1328,6 +1338,58 @@
                     ${buildPhase('3 Months', roadmap['3_month'])}
                     ${buildPhase('6 Months', roadmap['6_month'])}
                     ${buildPhase('12 Months', roadmap['12_month'])}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderReadinessRoadmaps(analysis, targetRole = '') {
+        const missingSkills = analysis.skills_analysis?.missing_skills || [];
+        const roleHint = targetRole || document.getElementById('targetRole')?.value?.trim() || 'your target role';
+        const missingBrief = analysis.missing_skills_brief ||
+            (missingSkills.length
+                ? `For ${roleHint}, focus first on ${missingSkills.slice(0, 3).join(', ')}.`
+                : `For ${roleHint}, no major missing skills were detected; focus on execution and interview performance.`);
+
+        const jobRoadmap = (analysis.job_ready_roadmap && analysis.job_ready_roadmap.length)
+            ? analysis.job_ready_roadmap
+            : [
+                `Close the top missing skill for ${roleHint} with one structured course and practice set.`,
+                `Build one project that demonstrates business impact for ${roleHint} interviews.`,
+                `Tailor resume bullets to match ${roleHint} job descriptions with measurable outcomes.`,
+                `Apply consistently and track interview conversion weekly.`
+            ];
+
+        const placementRoadmap = (analysis.placement_ready_roadmap && analysis.placement_ready_roadmap.length)
+            ? analysis.placement_ready_roadmap
+            : [
+                'Practice aptitude and fundamentals daily on a fixed schedule.',
+                'Solve role-relevant coding/problem sets and review weak topics weekly.',
+                'Run technical + HR mock interviews and refine communication.',
+                'Prepare a placement-ready kit: resume, intro pitch, and project demos.'
+            ];
+
+        return `
+            <div class="analysis-card section-block section-block--highlight">
+                <div class="section-title-block">
+                    <h3>Job & Placement Readiness</h3>
+                </div>
+                <div class="section-content">
+                    <p><strong>Missing Skills Brief:</strong> ${missingBrief}</p>
+                    <div class="roadmap-grid mt-3">
+                        <div class="roadmap-phase-compact">
+                            <strong>Job-Ready Roadmap</strong>
+                            <ul class="mb-0 mt-3">
+                                ${jobRoadmap.slice(0, 4).map(step => `<li>${step}</li>`).join('')}
+                            </ul>
+                        </div>
+                        <div class="roadmap-phase-compact">
+                            <strong>Placement-Ready Roadmap</strong>
+                            <ul class="mb-0 mt-3">
+                                ${placementRoadmap.slice(0, 4).map(step => `<li>${step}</li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;

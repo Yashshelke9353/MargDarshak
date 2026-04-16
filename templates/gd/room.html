@@ -1,0 +1,525 @@
+{% extends 'base.html' %}
+
+{% block title %}GD Room {{ session.room_id }} - MargDarshak{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body p-4">
+            <div class="d-flex flex-wrap justify-content-between gap-2 align-items-start">
+                <div>
+                    <h4 class="mb-2"><i class="fas fa-video text-primary me-2"></i>GD Room: {{ session.room_id }}</h4>
+                    <p class="mb-0 text-muted">{{ joined_count }}/{{ max_participants }} students joined | Timer: {{ session.duration_minutes }} minutes</p>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-primary" id="phaseBadge">{{ phase|title }}</span>
+                    <div class="mt-2 fs-5 fw-bold text-danger" id="timerText">00:00</div>
+                </div>
+            </div>
+            <div class="input-group mt-3">
+                <span class="input-group-text">Share GD Link</span>
+                <input id="shareLink" class="form-control" readonly value="{{ share_join_link }}">
+                <button class="btn btn-outline-primary" id="copyShareLink" type="button">Copy</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-primary border-2 shadow-sm mb-3" style="background: linear-gradient(135deg, #fff7ed, #eff6ff);">
+        <div class="card-body text-center py-3">
+            <div class="text-uppercase text-primary fw-bold small mb-1">Meeting Topic</div>
+            <div class="fw-bold" style="font-size: 1.45rem; line-height: 1.35;">{{ session.topic }}</div>
+        </div>
+    </div>
+
+    <div id="roomNotice" class="alert alert-info mb-3">
+        {% if phase == 'lobby' %}
+        Lobby mode: invitees can join. Host can start timer when the group is ready.
+        {% elif phase == 'discussion' %}
+        Discussion in progress. Host can stop GD to move to feedback.
+        {% else %}
+        GD session is progressing.
+        {% endif %}
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <button class="btn btn-outline-primary btn-sm" id="btnMute">
+                            <i class="fas fa-microphone-slash me-1"></i>Mute
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" id="btnCamera">
+                            <i class="fas fa-video-slash me-1"></i>Camera Off
+                        </button>
+                        <div class="input-group input-group-sm" style="width: 180px;">
+                            <span class="input-group-text">Minutes</span>
+                            <input id="durationInput" type="number" class="form-control" min="5" max="90" value="{{ session.duration_minutes or 12 }}" {% if not is_host %}disabled{% endif %}>
+                        </div>
+                        <button class="btn btn-success btn-sm" id="btnStartTimer" {% if not can_start_timer %}disabled{% endif %}>
+                            <i class="fas fa-play me-1"></i>Start Timer
+                        </button>
+                        <button class="btn btn-warning btn-sm" id="btnStopTimer" {% if not can_stop_timer %}disabled{% endif %}>
+                            <i class="fas fa-stop me-1"></i>Stop GD
+                        </button>
+                        <a class="btn btn-outline-danger btn-sm" href="/gd">
+                            <i class="fas fa-sign-out-alt me-1"></i>Leave Room
+                        </a>
+                    </div>
+                    {% if not is_host %}
+                    <div class="alert alert-secondary py-2 mb-3">
+                        Only host can start and stop the GD timer.
+                    </div>
+                    {% endif %}
+
+                    <div id="mediaWarning" class="alert alert-warning d-none mb-3"></div>
+
+                    <div id="videoGrid" class="row g-2">
+                        <div class="col-md-6" id="tile-local">
+                            <div class="border rounded p-2 bg-dark text-white">
+                                <div class="small mb-1">You ({{ current_user_name }})</div>
+                                <video id="localVideo" autoplay playsinline muted style="width:100%;height:220px;object-fit:cover;background:#111;"></video>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="mb-3"><i class="fas fa-comment-dots me-1 text-success"></i>Discussion Chat</h6>
+                    <div id="chatBox" class="border rounded p-3 mb-3" style="height: 270px; overflow-y: auto; background: #fafbff;"></div>
+                    <div class="input-group">
+                        <input id="chatInput" type="text" class="form-control" placeholder="Type your discussion point...">
+                        <button id="sendBtn" class="btn btn-primary" type="button">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="mb-3"><i class="fas fa-users me-1 text-info"></i>Participants ({{ participants|length }})</h6>
+                    <ul class="list-group list-group-flush" id="participantsList">
+                        {% for p in participants %}
+                        <li class="list-group-item px-0">
+                            <strong>{{ p.name }}</strong>
+                            {% if p.role == 'host' %}
+                            <span class="badge bg-secondary ms-1">Host</span>
+                            {% endif %}
+                            <br>
+                            <small class="text-muted">{{ p.field or 'General' }} | {{ p.target_role or 'Role not set' }}</small>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const ROOM_ID = {{ session.room_id|tojson }};
+const CURRENT_USER_ID = {{ current_user_id|int }};
+const CURRENT_USER_NAME = {{ current_user_name|tojson }};
+const IS_HOST = {{ is_host|tojson }};
+let phase = {{ phase|tojson }};
+let remainingSeconds = {{ remaining_seconds|int }};
+let lastMessageId = 0;
+let lastSignalId = 0;
+let localStream = null;
+let isMuted = false;
+let isCameraOff = false;
+const peerConnections = {};
+const remoteVideos = {};
+const initialMessages = {{ messages|tojson }};
+let knownParticipants = {{ participants|tojson }};
+
+function escapeHtml(str) {
+    return (str || '').replace(/[&<>"']/g, function(tag) {
+        const chars = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+        return chars[tag] || tag;
+    });
+}
+
+function formatTime(seconds) {
+    const s = Math.max(0, Number(seconds || 0));
+    const m = String(Math.floor(s / 60)).padStart(2, '0');
+    const sec = String(s % 60).padStart(2, '0');
+    return `${m}:${sec}`;
+}
+
+function updateTimerText() {
+    document.getElementById('timerText').textContent = formatTime(remainingSeconds);
+}
+
+function setWarning(msg) {
+    const box = document.getElementById('mediaWarning');
+    if (!msg) {
+        box.classList.add('d-none');
+        box.textContent = '';
+        return;
+    }
+    box.classList.remove('d-none');
+    box.textContent = msg;
+}
+
+function appendMessage(message) {
+    const chatBox = document.getElementById('chatBox');
+    const item = document.createElement('div');
+    item.className = 'mb-2 pb-2 border-bottom';
+    item.innerHTML = `
+        <div><strong>${escapeHtml(message.name || 'Student')}</strong></div>
+        <div>${escapeHtml(message.message || '')}</div>
+        <small class="text-muted">${escapeHtml(message.created_at || '')}</small>
+    `;
+    chatBox.appendChild(item);
+    chatBox.scrollTop = chatBox.scrollHeight;
+    if (message.id && message.id > lastMessageId) lastMessageId = message.id;
+}
+
+function renderInitialMessages() {
+    const chatBox = document.getElementById('chatBox');
+    chatBox.innerHTML = '';
+    initialMessages.forEach(appendMessage);
+}
+
+function renderParticipants(participants) {
+    knownParticipants = Array.isArray(participants) ? participants : knownParticipants;
+    const list = document.getElementById('participantsList');
+    list.innerHTML = '';
+    knownParticipants.forEach((p) => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item px-0';
+        const hostBadge = p.role === 'host' ? '<span class="badge bg-secondary ms-1">Host</span>' : '';
+        li.innerHTML = `
+            <strong>${escapeHtml(p.name || 'Student')}</strong>${hostBadge}<br>
+            <small class="text-muted">${escapeHtml(p.field || 'General')} | ${escapeHtml(p.target_role || 'Role not set')}</small>
+        `;
+        list.appendChild(li);
+    });
+}
+
+function getParticipantName(userId) {
+    const found = knownParticipants.find((p) => Number(p.user_id) === Number(userId));
+    return found ? found.name : `Student ${userId}`;
+}
+
+function updatePhaseUI() {
+    const phaseBadge = document.getElementById('phaseBadge');
+    const notice = document.getElementById('roomNotice');
+    const startBtn = document.getElementById('btnStartTimer');
+    const stopBtn = document.getElementById('btnStopTimer');
+    phaseBadge.textContent = phase.charAt(0).toUpperCase() + phase.slice(1);
+
+    if (phase === 'lobby') {
+        phaseBadge.className = 'badge bg-secondary';
+        notice.className = 'alert alert-info mb-3';
+        notice.textContent = 'Lobby mode: students can join through invite or shared GD link. Host can start timer.';
+        startBtn.disabled = !IS_HOST;
+        stopBtn.disabled = true;
+    } else if (phase === 'discussion') {
+        phaseBadge.className = 'badge bg-success';
+        notice.className = 'alert alert-success mb-3';
+        notice.textContent = 'Discussion in progress. Host can stop GD to move to feedback.';
+        startBtn.disabled = true;
+        stopBtn.disabled = !IS_HOST;
+    } else {
+        phaseBadge.className = 'badge bg-warning text-dark';
+        startBtn.disabled = true;
+        stopBtn.disabled = true;
+    }
+}
+
+async function pollMessages() {
+    try {
+        const resp = await fetch(`/gd/room/${encodeURIComponent(ROOM_ID)}/messages?after_id=${lastMessageId}`);
+        const data = await resp.json();
+        if (!data.success || !Array.isArray(data.messages)) return;
+        data.messages.forEach(appendMessage);
+    } catch (err) {
+        console.error('Message polling failed:', err);
+    }
+}
+
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const text = (input.value || '').trim();
+    if (!text) return;
+    try {
+        const resp = await fetch(`/gd/room/${encodeURIComponent(ROOM_ID)}/message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text })
+        });
+        const data = await resp.json();
+        if (!data.success) {
+            alert(data.error || 'Unable to send message.');
+            return;
+        }
+        input.value = '';
+        pollMessages();
+    } catch (err) {
+        console.error('Send message error:', err);
+    }
+}
+
+async function pollState() {
+    try {
+        const resp = await fetch(`/gd/room/${encodeURIComponent(ROOM_ID)}/state`);
+        const data = await resp.json();
+        if (!data.success) return;
+
+        phase = data.phase || phase;
+        remainingSeconds = Number(data.remaining_seconds || 0);
+        renderParticipants(data.participants || knownParticipants);
+        document.getElementById('btnStartTimer').disabled = !Boolean(data.can_start_timer);
+        document.getElementById('btnStopTimer').disabled = !Boolean(data.can_stop_timer);
+        updatePhaseUI();
+        updateTimerText();
+
+        if (data.redirect_url) window.location.href = data.redirect_url;
+    } catch (err) {
+        console.error('State polling failed:', err);
+    }
+}
+
+async function startTimer() {
+    try {
+        const durationMinutes = Number(document.getElementById('durationInput').value || 0);
+        const resp = await fetch(`/gd/room/${encodeURIComponent(ROOM_ID)}/timer/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ duration_minutes: durationMinutes })
+        });
+        const data = await resp.json();
+        if (!data.success) {
+            alert(data.error || 'Unable to start timer.');
+            return;
+        }
+        phase = data.phase || phase;
+        remainingSeconds = Number(data.remaining_seconds || remainingSeconds);
+        updatePhaseUI();
+        updateTimerText();
+    } catch (err) {
+        console.error('Start timer error:', err);
+    }
+}
+
+async function stopTimer() {
+    try {
+        const resp = await fetch(`/gd/room/${encodeURIComponent(ROOM_ID)}/timer/stop`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await resp.json();
+        if (!data.success) {
+            alert(data.error || 'Unable to stop GD.');
+            return;
+        }
+        if (data.redirect_url) window.location.href = data.redirect_url;
+    } catch (err) {
+        console.error('Stop timer error:', err);
+    }
+}
+
+async function sendSignal(signalType, payload, toUser = null) {
+    try {
+        await fetch(`/gd/room/${encodeURIComponent(ROOM_ID)}/signal`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ signal_type: signalType, payload: payload || {}, to_user: toUser })
+        });
+    } catch (err) {
+        console.error('Signal send error:', err);
+    }
+}
+
+function ensureRemoteVideoTile(userId, name) {
+    if (remoteVideos[userId]) return remoteVideos[userId];
+    const grid = document.getElementById('videoGrid');
+    const wrapper = document.createElement('div');
+    wrapper.className = 'col-md-6';
+    wrapper.id = `tile-remote-${userId}`;
+    wrapper.innerHTML = `
+        <div class="border rounded p-2 bg-dark text-white">
+            <div class="small mb-1">${escapeHtml(name || getParticipantName(userId))}</div>
+            <video autoplay playsinline style="width:100%;height:220px;object-fit:cover;background:#111;"></video>
+        </div>
+    `;
+    grid.appendChild(wrapper);
+    remoteVideos[userId] = wrapper.querySelector('video');
+    return remoteVideos[userId];
+}
+
+function removeRemoteVideoTile(userId) {
+    const tile = document.getElementById(`tile-remote-${userId}`);
+    if (tile) tile.remove();
+    delete remoteVideos[userId];
+}
+
+function cleanupPeer(userId) {
+    const pc = peerConnections[userId];
+    if (pc) {
+        try { pc.close(); } catch (e) {}
+        delete peerConnections[userId];
+    }
+    removeRemoteVideoTile(userId);
+}
+
+function createPeerConnection(remoteUserId, remoteName) {
+    if (peerConnections[remoteUserId]) return peerConnections[remoteUserId];
+    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    peerConnections[remoteUserId] = pc;
+    if (localStream) localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+    pc.ontrack = (event) => {
+        const video = ensureRemoteVideoTile(remoteUserId, remoteName);
+        if (video && event.streams && event.streams[0]) video.srcObject = event.streams[0];
+    };
+    pc.onicecandidate = (event) => {
+        if (event.candidate) sendSignal('ice-candidate', { candidate: event.candidate }, remoteUserId);
+    };
+    pc.onconnectionstatechange = () => {
+        if (['failed', 'disconnected', 'closed'].includes(pc.connectionState)) cleanupPeer(remoteUserId);
+    };
+    return pc;
+}
+
+async function maybeCreateOffer(remoteUserId, remoteName) {
+    if (!localStream) return;
+    if (CURRENT_USER_ID > Number(remoteUserId)) return;
+    const pc = createPeerConnection(remoteUserId, remoteName);
+    try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await sendSignal('offer', { sdp: offer }, remoteUserId);
+    } catch (err) {
+        console.error('Offer error:', err);
+    }
+}
+
+async function handleSignal(signal) {
+    const fromUserId = Number(signal.from_user);
+    const fromName = signal.from_name || getParticipantName(fromUserId);
+    const payload = signal.payload || {};
+    if (!fromUserId || fromUserId === CURRENT_USER_ID) return;
+
+    if (signal.signal_type === 'join' || signal.signal_type === 'presence') {
+        await maybeCreateOffer(fromUserId, fromName);
+        if (signal.signal_type === 'join') await sendSignal('presence', { user_id: CURRENT_USER_ID }, fromUserId);
+        return;
+    }
+    if (signal.signal_type === 'leave') return cleanupPeer(fromUserId);
+    if (signal.signal_type === 'offer') {
+        const pc = createPeerConnection(fromUserId, fromName);
+        try {
+            if (!payload.sdp) return;
+            await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await sendSignal('answer', { sdp: answer }, fromUserId);
+        } catch (err) {
+            console.error('Offer handling error:', err);
+        }
+        return;
+    }
+    if (signal.signal_type === 'answer') {
+        const pc = peerConnections[fromUserId];
+        if (!pc || !payload.sdp) return;
+        try { await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp)); } catch (err) { console.error('Answer handling error:', err); }
+        return;
+    }
+    if (signal.signal_type === 'ice-candidate') {
+        const pc = peerConnections[fromUserId] || createPeerConnection(fromUserId, fromName);
+        try { if (payload.candidate) await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)); } catch (err) { console.error('ICE handling error:', err); }
+    }
+}
+
+async function pollSignals() {
+    try {
+        const resp = await fetch(`/gd/room/${encodeURIComponent(ROOM_ID)}/signals?after_id=${lastSignalId}`);
+        const data = await resp.json();
+        if (!data.success || !Array.isArray(data.signals)) return;
+        for (const sig of data.signals) {
+            if (sig.id > lastSignalId) lastSignalId = sig.id;
+            await handleSignal(sig);
+        }
+    } catch (err) {
+        console.error('Signal polling error:', err);
+    }
+}
+
+async function setupMedia() {
+    const localVideo = document.getElementById('localVideo');
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = localStream;
+        setWarning('');
+        await sendSignal('join', { user_id: CURRENT_USER_ID, name: CURRENT_USER_NAME }, null);
+        for (const p of knownParticipants) {
+            if (Number(p.user_id) !== CURRENT_USER_ID) await maybeCreateOffer(Number(p.user_id), p.name);
+        }
+    } catch (err) {
+        console.error('Media error:', err);
+        setWarning('Camera/Mic permission denied. You can continue using chat, timer, and feedback.');
+    }
+}
+
+function toggleMute() {
+    if (!localStream) return;
+    isMuted = !isMuted;
+    localStream.getAudioTracks().forEach((track) => { track.enabled = !isMuted; });
+    const btn = document.getElementById('btnMute');
+    btn.className = isMuted ? 'btn btn-danger btn-sm' : 'btn btn-outline-primary btn-sm';
+    btn.innerHTML = isMuted ? '<i class="fas fa-microphone me-1"></i>Unmute' : '<i class="fas fa-microphone-slash me-1"></i>Mute';
+}
+
+function toggleCamera() {
+    if (!localStream) return;
+    isCameraOff = !isCameraOff;
+    localStream.getVideoTracks().forEach((track) => { track.enabled = !isCameraOff; });
+    const btn = document.getElementById('btnCamera');
+    btn.className = isCameraOff ? 'btn btn-danger btn-sm' : 'btn btn-outline-primary btn-sm';
+    btn.innerHTML = isCameraOff ? '<i class="fas fa-video me-1"></i>Camera On' : '<i class="fas fa-video-slash me-1"></i>Camera Off';
+}
+
+function copyShareLink() {
+    const input = document.getElementById('shareLink');
+    input.select();
+    input.setSelectionRange(0, 99999);
+    document.execCommand('copy');
+    alert('GD connection link copied.');
+}
+
+window.addEventListener('beforeunload', () => {
+    sendSignal('leave', { user_id: CURRENT_USER_ID }, null);
+});
+
+document.getElementById('sendBtn').addEventListener('click', sendMessage);
+document.getElementById('chatInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+document.getElementById('btnStartTimer').addEventListener('click', startTimer);
+document.getElementById('btnStopTimer').addEventListener('click', stopTimer);
+document.getElementById('btnMute').addEventListener('click', toggleMute);
+document.getElementById('btnCamera').addEventListener('click', toggleCamera);
+document.getElementById('copyShareLink').addEventListener('click', copyShareLink);
+
+renderParticipants(knownParticipants);
+renderInitialMessages();
+updatePhaseUI();
+updateTimerText();
+setupMedia();
+
+setInterval(() => {
+    if (remainingSeconds > 0) {
+        remainingSeconds -= 1;
+        updateTimerText();
+    }
+}, 1000);
+setInterval(pollMessages, 2000);
+setInterval(pollSignals, 1000);
+setInterval(pollState, 3000);
+</script>
+{% endblock %}
