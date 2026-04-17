@@ -6,7 +6,7 @@ numpy
 scikit-learn
 gunicorn
 python-dotenv
-openai
+google-generativeai
 PyPDF2
 spacy
 reportlab

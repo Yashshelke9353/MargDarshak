@@ -6,6 +6,9 @@ import traceback
 import ast
 import operator
 import random
+import threading
+import time
+from types import SimpleNamespace
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, g, send_from_directory, jsonify, has_request_context
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -20,13 +23,18 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib import colors
 from io import BytesIO
 from urllib.parse import urlparse, parse_qs
+import google.generativeai as genai
 #change
+load_dotenv()
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, '.env'))
 
-GEMINI_OPENAI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/'
-DEFAULT_GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash')
-DEFAULT_OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
+DEFAULT_GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-flash-latest')
+DEFAULT_AI_PROVIDER = 'gemini'
+SUPPORTED_AI_PROVIDERS = (DEFAULT_AI_PROVIDER,)
+
+_GEMINI_REQUEST_LOCK = threading.Lock()
+_GEMINI_NEXT_REQUEST_AT = 0.0
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev_secret_change_me')
@@ -627,68 +635,177 @@ def log_activity(activity_type, module, description, metadata=None):
 
 
 def _is_ai_provider_configured(provider):
-    if provider == 'gemini':
+    if provider == DEFAULT_AI_PROVIDER:
         return bool(os.environ.get('GEMINI_API_KEY'))
-    if provider == 'openai':
-        return bool(os.environ.get('OPENAI_API_KEY'))
     return False
 
 
+def get_ai_provider_priority():
+    raw_priority = os.environ.get('AI_PROVIDER_PREFERENCE')
+    return _parse_ai_provider_priority(raw_priority, default=[DEFAULT_AI_PROVIDER])
+
+
+def _parse_ai_provider_priority(raw_priority, default=None):
+    default = default or [DEFAULT_AI_PROVIDER]
+    if raw_priority is None:
+        return list(default)
+
+    ordered = []
+    for value in str(raw_priority).split(','):
+        provider = value.strip().lower()
+        if provider in SUPPORTED_AI_PROVIDERS and provider not in ordered:
+            ordered.append(provider)
+
+    return ordered or list(default)
+
+
+def get_resume_analysis_provider_priority():
+    raw_priority = os.environ.get('RESUME_ANALYSIS_PROVIDER_PREFERENCE')
+    return _parse_ai_provider_priority(raw_priority, default=[DEFAULT_AI_PROVIDER])
+
+
 def get_configured_ai_providers():
-    return [provider for provider in ('gemini', 'openai') if _is_ai_provider_configured(provider)]
+    return [provider for provider in get_ai_provider_priority() if _is_ai_provider_configured(provider)]
 
 
 def get_ai_provider(preferred=None):
-    if preferred in ('gemini', 'openai') and _is_ai_provider_configured(preferred):
+    if preferred in SUPPORTED_AI_PROVIDERS and _is_ai_provider_configured(preferred):
         return preferred
 
     configured = get_configured_ai_providers()
     if configured:
         return configured[0]
 
-    return preferred if preferred in ('gemini', 'openai') else 'gemini'
+    if preferred in SUPPORTED_AI_PROVIDERS:
+        return preferred
+    return get_ai_provider_priority()[0]
 
 
 def get_ai_provider_label(provider=None):
-    provider = provider or get_ai_provider()
-    return 'Gemini' if provider == 'gemini' else 'OpenAI'
+    return 'Gemini'
 
 
 def get_ai_model(provider=None):
-    provider = provider or get_ai_provider()
-    if provider == 'openai':
-        return DEFAULT_OPENAI_MODEL
-    return DEFAULT_GEMINI_MODEL
+    return _normalize_gemini_model_name(DEFAULT_GEMINI_MODEL)
+
+
+def _normalize_gemini_model_name(model_name):
+    normalized = str(model_name or '').strip()
+    legacy_aliases = {
+        'gemini-1.5-flash': 'gemini-flash-latest',
+        'models/gemini-1.5-flash': 'gemini-flash-latest',
+        'gemini-1.5-pro': 'gemini-pro-latest',
+        'models/gemini-1.5-pro': 'gemini-pro-latest',
+    }
+    normalized = legacy_aliases.get(normalized, normalized)
+    if normalized.startswith('models/'):
+        return normalized.split('/', 1)[1]
+    return normalized or 'gemini-flash-latest'
+
+
+def _configure_gemini_client():
+    gemini_api_key = os.environ.get('GEMINI_API_KEY')
+    if not gemini_api_key:
+        raise ValueError('GEMINI_API_KEY is not configured.')
+    genai.configure(api_key=gemini_api_key)
+    return genai
 
 
 def get_openai_client(provider=None):
-    from openai import OpenAI
-    provider = provider if provider in ('gemini', 'openai') else get_ai_provider()
-    gemini_api_key = os.environ.get('GEMINI_API_KEY')
+    provider = provider if provider in SUPPORTED_AI_PROVIDERS else get_ai_provider()
+    if provider == DEFAULT_AI_PROVIDER:
+        return _configure_gemini_client()
+
+    raise ValueError('No AI API key is configured. Set GEMINI_API_KEY.')
+
+
+def _get_gemini_min_request_interval_seconds():
+    try:
+        interval = int(os.getenv('GEMINI_MIN_REQUEST_INTERVAL_SECONDS', 2))
+    except (TypeError, ValueError):
+        interval = 2
+    return max(2, interval)
+
+
+def _wait_for_gemini_rate_limit(context_label='request'):
+    global _GEMINI_NEXT_REQUEST_AT
+
+    with _GEMINI_REQUEST_LOCK:
+        delay = _get_gemini_min_request_interval_seconds()
+        now = time.monotonic()
+        wait_seconds = max(0.0, _GEMINI_NEXT_REQUEST_AT - now)
+        if wait_seconds > 0:
+            print(f'Gemini rate limiter waiting {wait_seconds:.2f}s before {context_label}.')
+            time.sleep(wait_seconds)
+            now = time.monotonic()
+        _GEMINI_NEXT_REQUEST_AT = now + delay
+
+
+def _create_ai_chat_completion(client, provider, *, context_label, **kwargs):
     if provider == 'gemini':
-        if not gemini_api_key:
-            raise ValueError('GEMINI_API_KEY is not configured.')
-        return OpenAI(
-            api_key=gemini_api_key,
-            base_url=GEMINI_OPENAI_BASE_URL
-        )
+        _wait_for_gemini_rate_limit(context_label)
+        return _create_gemini_chat_completion(client, **kwargs)
+    return client.chat.completions.create(**kwargs)
 
-    openai_api_key = os.environ.get('OPENAI_API_KEY')
-    if provider == 'openai':
-        if not openai_api_key:
-            raise ValueError('OPENAI_API_KEY is not configured.')
-        return OpenAI(api_key=openai_api_key)
 
-    raise ValueError('No AI API key is configured. Set GEMINI_API_KEY (preferred) or OPENAI_API_KEY.')
+def _messages_to_gemini_prompt(messages):
+    prompt_sections = []
+    for message in messages or []:
+        role = str(message.get('role') or 'user').upper()
+        content = _extract_ai_message_text(message.get('content', '')).strip()
+        if content:
+            prompt_sections.append(f'{role}:\n{content}')
+    return '\n\n'.join(prompt_sections)
+
+
+def _extract_gemini_response_text(response):
+    try:
+        text = getattr(response, 'text', None)
+    except Exception:
+        text = None
+    if isinstance(text, str) and text.strip():
+        return text
+
+    parts = []
+    for candidate in getattr(response, 'candidates', []) or []:
+        content = getattr(candidate, 'content', None)
+        for part in getattr(content, 'parts', []) or []:
+            part_text = getattr(part, 'text', None)
+            if isinstance(part_text, str) and part_text.strip():
+                parts.append(part_text)
+    if parts:
+        return '\n'.join(parts)
+
+    raise ValueError('Gemini returned no text content.')
+
+
+def _wrap_chat_completion_text(text):
+    return SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(content=text)
+            )
+        ]
+    )
+
+
+def _create_gemini_chat_completion(client, **kwargs):
+    model_name = _normalize_gemini_model_name(kwargs.get('model'))
+    prompt = _messages_to_gemini_prompt(kwargs.get('messages', []))
+    generation_config = {
+        'temperature': kwargs.get('temperature', 0.2),
+        'max_output_tokens': kwargs.get('max_tokens', 1024),
+    }
+
+    model = client.GenerativeModel(model_name)
+    response = model.generate_content(prompt, generation_config=generation_config)
+    return _wrap_chat_completion_text(_extract_gemini_response_text(response).strip())
 
 def describe_openai_resume_error(error):
     """Convert provider SDK errors into short user-safe messages."""
-    status_code = getattr(error, 'status_code', None)
-    error_code = None
-    response_body = getattr(error, 'body', None)
+    status_code = _get_ai_error_status_code(error)
+    error_code = _get_ai_error_code(error)
     error_message = str(error or '').lower()
-    if isinstance(response_body, dict):
-        error_code = response_body.get('error', {}).get('code')
 
     if isinstance(error, json.JSONDecodeError) or 'incomplete json' in error_message or 'malformed json' in error_message:
         return 'Real-time AI analysis is temporarily unavailable because the AI provider returned an incomplete structured response.'
@@ -703,6 +820,83 @@ def describe_openai_resume_error(error):
     if error_code:
         return f'Real-time AI analysis failed ({error_code}).'
     return 'Real-time AI analysis failed. Verify API key, billing, and network, then try again.'
+
+
+def _get_ai_error_status_code(error):
+    status_code = getattr(error, 'status_code', None)
+    if status_code is not None:
+        return status_code
+
+    for attr_name in ('code', 'status'):
+        attr_value = getattr(error, attr_name, None)
+        if callable(attr_value):
+            try:
+                attr_value = attr_value()
+            except Exception:
+                attr_value = None
+        if isinstance(attr_value, int):
+            return attr_value
+
+    message_match = re.search(r'\b(4\d{2}|5\d{2})\b', str(error or ''))
+    if message_match:
+        return int(message_match.group(1))
+    return None
+
+
+def _get_ai_error_code(error):
+    response_body = getattr(error, 'body', None)
+    if isinstance(response_body, list):
+        for item in response_body:
+            if isinstance(item, dict):
+                nested_error = item.get('error', {})
+                code = nested_error.get('code') or nested_error.get('status')
+                if code is not None:
+                    return str(code).lower()
+    if isinstance(response_body, dict):
+        body_error = response_body.get('error', {})
+        code = body_error.get('code') or body_error.get('status')
+        if code is not None:
+            return str(code).lower()
+    return None
+
+
+def _should_retry_ai_request(error):
+    status_code = _get_ai_error_status_code(error)
+    error_code = _get_ai_error_code(error)
+    error_message = str(error or '').lower()
+
+    if isinstance(error, json.JSONDecodeError):
+        return False
+    if status_code in (400, 401, 403, 404, 409, 429):
+        return False
+    if error_code in ('insufficient_quota', 'invalid_api_key', 'permission_denied', 'model_not_found'):
+        return False
+    if any(marker in error_message for marker in ('quota', 'billing', 'invalid api key', 'unauthorized')):
+        return False
+    return True
+
+
+def _should_try_next_ai_provider(error):
+    # Provider-specific failures should not block trying another configured provider.
+    return True
+
+
+def describe_ai_provider_attempts(provider_errors):
+    if not provider_errors:
+        return 'Real-time AI analysis failed. Verify API key, billing, and network, then try again.'
+
+    primary_provider, primary_error = provider_errors[0]
+    primary_message = describe_openai_resume_error(primary_error)
+    if len(provider_errors) == 1:
+        return primary_message
+
+    primary_label = get_ai_provider_label(primary_provider)
+    fallback_labels = [get_ai_provider_label(provider) for provider, _ in provider_errors[1:]]
+    if len(fallback_labels) == 1:
+        fallback_text = f'{fallback_labels[0]} fallback also failed.'
+    else:
+        fallback_text = f'Fallback providers also failed: {", ".join(fallback_labels)}.'
+    return f'{primary_label} was tried first. {primary_message} {fallback_text}'
 
 
 def _parse_structured_ai_json(raw, provider_label, context_label):
@@ -729,26 +923,49 @@ def _parse_structured_ai_json(raw, provider_label, context_label):
         raise ValueError(f'{provider_label} returned malformed JSON for {context_label}.') from parse_error
 
 
+def _extract_ai_message_text(content):
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, dict):
+                text_value = item.get('text')
+                if isinstance(text_value, str) and text_value.strip():
+                    parts.append(text_value)
+            elif isinstance(item, str) and item.strip():
+                parts.append(item)
+        return '\n'.join(parts)
+    if isinstance(content, dict):
+        text_value = content.get('text')
+        if isinstance(text_value, str):
+            return text_value
+    return str(content or '')
+
+
 def _create_structured_ai_completion(client, provider, messages, *, temperature, max_tokens, context_label):
     provider_label = get_ai_provider_label(provider)
     request_plan = [(temperature, max_tokens)]
 
-    retry_temperature = min(temperature, 0.2) if provider == 'gemini' else min(temperature, 0.3)
-    retry_max_tokens = max(max_tokens, 5000 if provider == 'gemini' else 4000)
+    retry_temperature = min(temperature, 0.2)
+    retry_max_tokens = max(max_tokens, 4096)
     if request_plan[0] != (retry_temperature, retry_max_tokens):
         request_plan.append((retry_temperature, retry_max_tokens))
 
     last_error = None
     for attempt_number, (attempt_temperature, attempt_max_tokens) in enumerate(request_plan, start=1):
         try:
-            response = client.chat.completions.create(
+            response = _create_ai_chat_completion(
+                client,
+                provider,
+                context_label=f'{context_label} attempt {attempt_number}',
                 model=get_ai_model(provider=provider),
                 messages=messages,
                 temperature=attempt_temperature,
                 max_tokens=attempt_max_tokens,
                 response_format={'type': 'json_object'}
             )
-            raw = (response.choices[0].message.content or '').strip()
+            raw = _extract_ai_message_text(response.choices[0].message.content).strip()
             print(
                 f'{provider_label} {context_label} response received: '
                 f'{len(raw)} characters on attempt {attempt_number}'
@@ -760,6 +977,8 @@ def _create_structured_ai_completion(client, provider, messages, *, temperature,
                 f'{provider_label} {context_label} attempt {attempt_number} failed: '
                 f'{type(completion_error).__name__}: {completion_error}'
             )
+            if attempt_number >= len(request_plan) or not _should_retry_ai_request(completion_error):
+                break
 
     raise last_error
 
@@ -1276,14 +1495,18 @@ def analyze_resume_fallback(resume_text, target_role):
 
 def analyze_resume_with_openai(resume_text, target_role, allow_fallback=True):
     prompt = build_resume_analysis_prompt(resume_text, target_role)
-    providers = get_configured_ai_providers()
+    providers = [
+        provider for provider in get_resume_analysis_provider_priority()
+        if _is_ai_provider_configured(provider)
+    ]
     if not providers:
         if allow_fallback:
             print('No AI API key configured. Using fallback analysis...')
             return analyze_resume_fallback(resume_text, target_role)
-        raise ValueError('No AI API key is configured. Set GEMINI_API_KEY (preferred) or OPENAI_API_KEY.')
+        raise ValueError('No AI API key is configured. Set GEMINI_API_KEY.')
 
     last_error = None
+    provider_errors = []
     for provider in providers:
         provider_label = get_ai_provider_label(provider)
         try:
@@ -1293,8 +1516,8 @@ def analyze_resume_with_openai(resume_text, target_role, allow_fallback=True):
                 client,
                 provider,
                 prompt,
-                temperature=0.35 if provider == 'gemini' else 0.55,
-                max_tokens=5000 if provider == 'gemini' else 3200,
+                temperature=0.35,
+                max_tokens=3200,
                 context_label='resume analysis'
             )
 
@@ -1311,16 +1534,20 @@ def analyze_resume_with_openai(resume_text, target_role, allow_fallback=True):
             return analysis
         except Exception as e:
             last_error = e
+            provider_errors.append((provider, e))
             print(f'{provider_label} resume analysis error: {e}')
             print(f'Error type: {type(e).__name__}')
             print(f'Traceback: {traceback.format_exc()}')
+            if not _should_try_next_ai_provider(e):
+                print(f'Skipping additional AI providers after non-retryable {provider_label} failure.')
+                break
 
     if allow_fallback:
         print('Falling back to basic analysis...')
         analysis = analyze_resume_fallback(resume_text, target_role)
-        analysis['analysis_notice'] = describe_openai_resume_error(last_error)
+        analysis['analysis_notice'] = describe_ai_provider_attempts(provider_errors)
         return analysis
-    raise ValueError(describe_openai_resume_error(last_error))
+    raise ValueError(describe_ai_provider_attempts(provider_errors))
 
 
 def generate_pdf_report(analysis, target_role):
@@ -2381,12 +2608,16 @@ def _generate_aptitude_questions_with_openai(topic, user_id, mode='daily', quest
         provider,
         prompt,
         temperature=0.2 if provider == 'gemini' else (0.35 if mode == 'random' else 0.25),
-        max_tokens=5000 if provider == 'gemini' else 3600,
+        max_tokens=5000,
         context_label='aptitude quiz generation'
     )
     normalized = _normalize_aptitude_questions(payload, requested_topic=selected_topic, question_count=question_count)
     if len(normalized) >= question_count:
         return normalized[:question_count]
+
+    allow_fallback = os.environ.get('APTITUDE_QUIZ_ALLOW_FALLBACK', '0') == '1'
+    if not allow_fallback:
+        raise ValueError(f'AI returned only {len(normalized)} valid questions.')
 
     fallback_questions = _fallback_aptitude_questions(
         topic=selected_topic,
@@ -2403,7 +2634,7 @@ def _generate_aptitude_questions_with_openai(topic, user_id, mode='daily', quest
 def _generate_aptitude_questions(topic, user_id, mode='daily', question_count=10):
     providers = get_configured_ai_providers()
     if not providers:
-        raise ValueError('No AI API key is configured. Set GEMINI_API_KEY or OPENAI_API_KEY.')
+        raise ValueError('No AI API key is configured. Set GEMINI_API_KEY.')
 
     last_error = None
     for provider in providers:
@@ -2472,7 +2703,8 @@ def _generate_gd_topic(field_hint='', role_hint=''):
     field_hint = _sanitize_text(field_hint, max_len=80)
     role_hint = _sanitize_text(role_hint, max_len=80)
     try:
-        client = get_openai_client()
+        provider = get_ai_provider()
+        client = get_openai_client(provider=provider)
         prompt = [
             {
                 'role': 'system',
@@ -2489,8 +2721,11 @@ def _generate_gd_topic(field_hint='', role_hint=''):
                 )
             }
         ]
-        result = client.chat.completions.create(
-            model=get_ai_model(),
+        result = _create_ai_chat_completion(
+            client,
+            provider,
+            context_label='gd topic generation',
+            model=get_ai_model(provider=provider),
             messages=prompt,
             temperature=0.9,
             max_tokens=60
@@ -2715,9 +2950,13 @@ def _generate_gd_ai_evaluation(topic, response, experience, peer_feedback):
             )
         }
     ]
-    client = get_openai_client()
-    completion = client.chat.completions.create(
-        model=get_ai_model(),
+    provider = get_ai_provider()
+    client = get_openai_client(provider=provider)
+    completion = _create_ai_chat_completion(
+        client,
+        provider,
+        context_label='gd ai evaluation',
+        model=get_ai_model(provider=provider),
         messages=prompt,
         temperature=0.4,
         max_tokens=700,
@@ -2972,7 +3211,7 @@ def skill_aptitude_quiz():
 @app.route('/skill/aptitude-quiz/generate', methods=['POST'])
 @login_required
 def generate_aptitude_quiz():
-    """Generate real-time aptitude quiz using Gemini/OpenAI-compatible AI with daily caching."""
+    """Generate real-time aptitude quiz using Gemini AI with daily caching."""
     try:
         data = request.get_json(silent=True) or {}
         topic = str(data.get('topic') or 'Random').strip()
@@ -3002,13 +3241,17 @@ def generate_aptitude_quiz():
                 try:
                     cached_questions = json.loads(cached['questions_json'])
                     if isinstance(cached_questions, list) and len(cached_questions) >= 10:
+                        cached_source = str(cached['source'] or get_ai_provider()).strip().lower()
+                        if cached_source not in ('gemini', 'fallback'):
+                            cached_source = get_ai_provider()
                         return jsonify({
                             'success': True,
                             'questions': cached_questions,
                             'topic': topic,
                             'mode': mode,
-                            'source': 'cache',
-                            'notice': 'Loaded your saved daily quiz for today.'
+                            'source': cached_source,
+                            'served_from': 'cache',
+                            'notice': 'Today\'s daily quiz is ready.'
                         })
                 except Exception:
                     pass
@@ -3024,6 +3267,12 @@ def generate_aptitude_quiz():
             )
         except Exception as generation_error:
             print(f"Aptitude quiz AI generation failed for all configured providers: {generation_error}")
+            allow_fallback = os.environ.get('APTITUDE_QUIZ_ALLOW_FALLBACK', '0') == '1'
+            if not allow_fallback:
+                return jsonify({
+                    'success': False,
+                    'error': 'AI quiz is temporarily unavailable right now. Please try again shortly.'
+                }), 503
             questions = _fallback_aptitude_questions(topic=topic, user_id=user_id, mode=mode, question_count=10)
             source = 'fallback'
             notice = 'AI quiz is temporarily unavailable, so a backup quiz is shown.'
@@ -3053,6 +3302,7 @@ def generate_aptitude_quiz():
             'topic': topic,
             'mode': mode,
             'source': source,
+            'served_from': 'live',
             'notice': notice
         })
     except Exception as e:
@@ -3071,7 +3321,9 @@ def submit_aptitude_quiz():
         time_taken_seconds = max(0, _safe_int(data.get('time_taken_seconds'), 0))
         topic = str(data.get('topic') or 'Random')
         mode = str(data.get('mode') or 'daily')
-        source = str(data.get('source') or get_ai_provider())
+        source = str(data.get('source') or get_ai_provider()).strip().lower()
+        if source not in ('gemini', 'fallback'):
+            source = get_ai_provider()
         topic_breakdown = data.get('topic_breakdown') if isinstance(data.get('topic_breakdown'), dict) else {}
 
         accuracy = round((score / total_questions) * 100, 2)
@@ -4831,10 +5083,10 @@ TOOLS_CATALOG = {
         'description': 'AI tool for creating flowcharts, diagrams, and visual ideas.',
         'purpose': 'Design'
     },
-    'chatgpt': {
-        'name': 'ChatGPT',
-        'url': 'https://chat.openai.com',
-        'description': 'Conversational AI for answering questions and generating text.',
+    'google_ai_studio': {
+        'name': 'Google AI Studio',
+        'url': 'https://aistudio.google.com',
+        'description': 'Google workspace for building and testing Gemini prompts.',
         'purpose': 'General'
     },
     'deepseek': {
@@ -6222,7 +6474,7 @@ _LOCAL_SITE_TOPICS = [
         'response': 'Find courses and skill resources at /skill/browse. Filter by topic and difficulty.'
     },
     {
-        'keywords': ('ai tools', 'tool recommendations', 'chatgpt', 'copilot'),
+        'keywords': ('ai tools', 'tool recommendations', 'gemini', 'copilot'),
         'response': 'Explore curated AI tools at /ai/tools by category and use case.'
     },
     {
@@ -7103,7 +7355,7 @@ Consistent practice à¤¸à¥‡ interview ready à¤¬à¤¨à¥‡à¤‚à¤
         
         else:
             return """<strong>Learning à¤•à¥‡ à¤²à¤¿à¤ à¤¹à¤®à¤¾à¤°à¥‡ à¤ªà¤¾à¤¸ à¤¹à¥ˆà¤‚:</strong><br>
-â€¢ <a href="/ai/tools" target="_blank">AI Tools</a> - ChatGPT, Coursera, YouTube, etc.<br>
+â€¢ <a href="/ai/tools" target="_blank">AI Tools</a> - Gemini AI, Coursera, YouTube, etc.<br>
 â€¢ Learning Guides - Platform-wise tutorials<br>
 â€¢ <a href="/skill/browse" target="_blank">Skill Saathi</a> - Curated learning resources<br><br>
 à¤†à¤ª à¤•à¥Œà¤¨ à¤¸à¤¾ subject à¤¯à¤¾ skill learn à¤•à¤°à¤¨à¤¾ à¤šà¤¾à¤¹à¤¤à¥‡ à¤¹à¥ˆà¤‚? à¤®à¥ˆà¤‚ guide à¤•à¤° à¤¸à¤•à¤¤à¤¾ à¤¹à¥‚à¤‚!"""
@@ -7171,14 +7423,14 @@ Spiritual guidance à¤•à¥‡ à¤²à¤¿à¤ perfect tool à¤¹à¥ˆ!"
 à¤¸à¤­à¥€ resources quality score à¤•à¥‡ à¤¸à¤¾à¤¥ ranked à¤¹à¥ˆà¤‚!"""
     
     # AI Tools queries
-    if any(word in message for word in ['ai', 'tool', 'chatgpt', 'artificial', 'à¤à¤†à¤ˆ', 'à¤Ÿà¥‚à¤²']):
+    if any(word in message for word in ['ai', 'tool', 'gemini', 'artificial', 'à¤à¤†à¤ˆ', 'à¤Ÿà¥‚à¤²']):
         return """<strong>AI tools à¤•à¥‡ recommendations à¤•à¥‡ à¤²à¤¿à¤:</strong><br>
 <a href="/ai/tools" target="_blank" class="btn btn-secondary btn-sm">AI Tools</a> à¤ªà¤° à¤œà¤¾à¤à¤‚<br>
 â€¢ Category select à¤•à¤°à¥‡à¤‚ (Writing, Coding, Design, etc.)<br>
 â€¢ Free/Paid filter apply à¤•à¤°à¥‡à¤‚<br>
 â€¢ Tool details à¤”à¤° tutorials à¤¦à¥‡à¤–à¥‡à¤‚<br>
 â€¢ Best tools try à¤•à¤°à¥‡à¤‚<br><br>
-ChatGPT, GitHub Copilot, Canva, etc. à¤œà¥ˆà¤¸à¥‡ tools à¤®à¤¿à¤²à¥‡à¤‚à¤—à¥‡!"""
+Gemini AI, GitHub Copilot, Canva, etc. à¤œà¥ˆà¤¸à¥‡ tools à¤®à¤¿à¤²à¥‡à¤‚à¤—à¥‡!"""
     
     # Mentor queries
     if any(word in message for word in ['mentor', 'guidance', 'teacher', 'expert', 'à¤®à¥‡à¤‚à¤Ÿà¤°']):
@@ -7300,7 +7552,7 @@ Short breaks à¤®à¥‡à¤‚ creativity à¤”à¤° energy boost à¤®à
         'mental', 'health', 'stress', 'mood', 'à¤®à¤¨', 'à¤¤à¤¨à¤¾à¤µ', 'à¤®à¤¨à¥‹à¤¦à¤¶à¤¾', 'breathing', 'à¤¸à¤¾à¤‚à¤¸', 'track',
         'wisdom', 'gyan', 'spiritual', 'shloka', 'à¤—à¥€à¤¤à¤¾', 'à¤œà¥à¤žà¤¾à¤¨', 'daily', 'search',
         'skill', 'resource', 'course', 'learning', 'à¤¸à¥à¤•à¤¿à¤²', 'à¤°à¤¿à¤¸à¥‹à¤°à¥à¤¸',
-        'ai', 'chatgpt', 'artificial', 'à¤à¤†à¤ˆ', 'à¤Ÿà¥‚à¤²',
+        'ai', 'gemini', 'artificial', 'à¤à¤†à¤ˆ', 'à¤Ÿà¥‚à¤²',
         'mentor', 'guidance', 'teacher', 'expert', 'à¤®à¥‡à¤‚à¤Ÿà¤°', 'connect', 'chat',
         'todo', 'task', 'productivity', 'list', 'à¤Ÿà¥‚à¤¡à¥‚', 'à¤Ÿà¤¾à¤¸à¥à¤•',
         'game', 'fun', 'joke', 'relax', 'à¤®à¤¨à¥‹à¤°à¤‚à¤œà¤¨',

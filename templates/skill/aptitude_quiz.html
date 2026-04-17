@@ -370,6 +370,7 @@ async function generateQuiz(mode) {
         currentIndex = 0;
         answers = {};
         questionSetSource = data.source || 'gemini';
+        const servedFrom = data.served_from || 'live';
 
         document.getElementById('quizPanel').style.display = 'block';
         document.getElementById('resultPanel').style.display = 'none';
@@ -382,9 +383,14 @@ async function generateQuiz(mode) {
         startTimer();
 
         if (data.notice) {
-            setStatus(data.notice, questionSetSource === 'fallback' ? 'warning' : 'success');
+            const statusType = questionSetSource === 'fallback'
+                ? 'warning'
+                : (servedFrom === 'cache' ? 'info' : 'success');
+            setStatus(data.notice, statusType);
         } else {
-            setStatus('Quiz generated successfully. All the best!', 'success');
+            setStatus(servedFrom === 'cache'
+                ? 'Today\'s daily quiz is ready.'
+                : 'Quiz generated successfully. All the best!', servedFrom === 'cache' ? 'info' : 'success');
         }
     } catch (err) {
         console.error(err);
